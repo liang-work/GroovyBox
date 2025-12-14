@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:groovybox/data/db.dart';
+import 'package:groovybox/data/playlist_repository.dart';
+import 'package:groovybox/ui/screens/playlist_detail_screen.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
-import '../../data/db.dart';
-import '../../data/playlist_repository.dart';
 
 class PlaylistsTab extends HookConsumerWidget {
   const PlaylistsTab({super.key});
@@ -44,8 +45,9 @@ class PlaylistsTab extends HookConsumerWidget {
       body: StreamBuilder<List<Playlist>>(
         stream: repo.watchAllPlaylists(),
         builder: (context, snapshot) {
-          if (!snapshot.hasData)
+          if (!snapshot.hasData) {
             return const Center(child: CircularProgressIndicator());
+          }
           final playlists = snapshot.data!;
 
           if (playlists.isEmpty) {
@@ -67,9 +69,12 @@ class PlaylistsTab extends HookConsumerWidget {
                   onPressed: () => repo.deletePlaylist(playlist.id),
                 ),
                 onTap: () {
-                  // Navigate to playlist details
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Open ${playlist.name}')),
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) =>
+                          PlaylistDetailScreen(playlist: playlist),
+                    ),
                   );
                 },
               );

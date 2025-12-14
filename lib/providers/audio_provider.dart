@@ -1,6 +1,5 @@
+import 'package:groovybox/logic/audio_handler.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
-
-import '../logic/audio_handler.dart';
 
 part 'audio_provider.g.dart';
 

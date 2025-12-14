@@ -1,15 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:groovybox/data/db.dart' as db;
+import 'package:groovybox/logic/lyrics_parser.dart';
+import 'package:groovybox/logic/metadata_service.dart';
+import 'package:groovybox/providers/audio_provider.dart';
+import 'package:groovybox/providers/db_provider.dart';
+import 'package:groovybox/ui/widgets/mini_player.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:super_sliver_list/super_sliver_list.dart';
-
-import '../../providers/audio_provider.dart';
-import '../../providers/db_provider.dart';
-import '../../logic/metadata_service.dart';
-import '../../logic/lyrics_parser.dart';
-import '../../data/db.dart' as db;
-import '../widgets/mini_player.dart';
 
 class PlayerScreen extends HookConsumerWidget {
   const PlayerScreen({super.key});

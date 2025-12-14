@@ -1,9 +1,9 @@
 import 'dart:io';
 import 'package:animations/animations.dart';
 import 'package:flutter/material.dart';
+import 'package:groovybox/data/playlist_repository.dart';
+import 'package:groovybox/ui/screens/album_detail_screen.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
-import '../../data/playlist_repository.dart';
-import '../screens/album_detail_screen.dart';
 
 class AlbumsTab extends HookConsumerWidget {
   const AlbumsTab({super.key});
@@ -15,8 +15,9 @@ class AlbumsTab extends HookConsumerWidget {
     return StreamBuilder<List<AlbumData>>(
       stream: repo.watchAllAlbums(),
       builder: (context, snapshot) {
-        if (!snapshot.hasData)
+        if (!snapshot.hasData) {
           return const Center(child: CircularProgressIndicator());
+        }
         final albums = snapshot.data!;
 
         if (albums.isEmpty) {

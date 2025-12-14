@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:gap/gap.dart';
+import 'package:groovybox/logic/metadata_service.dart';
+import 'package:groovybox/providers/audio_provider.dart';
+import 'package:groovybox/ui/screens/player_screen.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:media_kit/media_kit.dart';
-import '../../providers/audio_provider.dart';
-import '../../logic/metadata_service.dart';
-import '../screens/player_screen.dart';
 
 class MiniPlayer extends HookConsumerWidget {
   final bool enableTapToOpen;

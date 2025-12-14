@@ -1,6 +1,6 @@
 import 'package:drift/drift.dart';
+import 'package:groovybox/providers/db_provider.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
-import '../providers/db_provider.dart';
 import 'db.dart';
 
 part 'playlist_repository.g.dart';

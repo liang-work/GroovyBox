@@ -1,5 +1,5 @@
+import 'package:groovybox/data/db.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
-import '../data/db.dart';
 
 part 'db_provider.g.dart';
 

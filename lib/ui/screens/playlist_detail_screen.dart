@@ -1,39 +1,47 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:groovybox/data/db.dart';
 import 'package:groovybox/data/playlist_repository.dart';
 import 'package:groovybox/providers/audio_provider.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
-import 'package:media_kit/media_kit.dart' hide Track;
+import 'package:media_kit/media_kit.dart' hide Track, Playlist;
 
-class AlbumDetailScreen extends HookConsumerWidget {
-  final AlbumData album;
+class PlaylistDetailScreen extends HookConsumerWidget {
+  final Playlist playlist;
 
-  const AlbumDetailScreen({super.key, required this.album});
+  const PlaylistDetailScreen({super.key, required this.playlist});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final repo = ref.watch(playlistRepositoryProvider.notifier);
-    final tracksAsync = repo.watchAlbumTracks(album.album);
+    final tracksAsync = repo.watchPlaylistTracks(playlist.id);
 
     return Scaffold(
       body: CustomScrollView(
         slivers: [
           SliverAppBar(
-            expandedHeight: 300,
+            expandedHeight: 200,
             pinned: true,
             flexibleSpace: FlexibleSpaceBar(
-              title: Text(album.album),
-              background: album.artUri != null
-                  ? Image.file(File(album.artUri!), fit: BoxFit.cover)
-                  : Container(
-                      color: Colors.grey[800],
-                      child: const Icon(
-                        Icons.album,
-                        size: 100,
-                        color: Colors.white54,
-                      ),
-                    ),
+              title: Text(playlist.name),
+              background: Container(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      Colors.purple.withOpacity(0.8),
+                      Colors.blue.withOpacity(0.6),
+                    ],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                ),
+                child: const Center(
+                  child: Icon(
+                    Icons.queue_music,
+                    size: 80,
+                    color: Colors.white70,
+                  ),
+                ),
+              ),
             ),
           ),
           StreamBuilder<List<Track>>(
@@ -48,7 +56,7 @@ class AlbumDetailScreen extends HookConsumerWidget {
               final tracks = snapshot.data!;
               if (tracks.isEmpty) {
                 return const SliverFillRemaining(
-                  child: Center(child: Text('No tracks in this album')),
+                  child: Center(child: Text('No tracks in this playlist')),
                 );
               }
 
@@ -63,7 +71,7 @@ class AlbumDetailScreen extends HookConsumerWidget {
                             width: double.infinity,
                             child: FilledButton.icon(
                               onPressed: () {
-                                _playAlbum(ref, tracks);
+                                _playPlaylist(ref, tracks);
                               },
                               icon: const Icon(Icons.play_arrow),
                               label: const Text('Play All'),
@@ -92,15 +100,19 @@ class AlbumDetailScreen extends HookConsumerWidget {
         style: const TextStyle(color: Colors.grey, fontSize: 16),
       ),
       title: Text(track.title),
-      subtitle: Text(_formatDuration(track.duration)),
+      subtitle: Text(track.artist ?? 'Unknown Artist'),
+      trailing: Text(_formatDuration(track.duration)),
       onTap: () {
-        _playAlbum(ref, tracks, initialIndex: index);
+        _playPlaylist(ref, tracks, initialIndex: index);
       },
-      trailing: const Icon(Icons.play_circle_outline),
     );
   }
 
-  void _playAlbum(WidgetRef ref, List<Track> tracks, {int initialIndex = 0}) {
+  void _playPlaylist(
+    WidgetRef ref,
+    List<Track> tracks, {
+    int initialIndex = 0,
+  }) {
     final audioHandler = ref.read(audioHandlerProvider);
     final medias = tracks.map((t) => Media(t.path)).toList();
     audioHandler.openPlaylist(medias, initialIndex: initialIndex);

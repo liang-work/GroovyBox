@@ -3,18 +3,39 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:gap/gap.dart';
+import 'package:groovybox/data/db.dart';
+import 'package:groovybox/data/playlist_repository.dart';
+import 'package:groovybox/data/track_repository.dart';
+import 'package:groovybox/logic/lyrics_parser.dart';
+import 'package:groovybox/providers/audio_provider.dart';
+import 'package:groovybox/ui/tabs/albums_tab.dart';
+import 'package:groovybox/ui/tabs/playlists_tab.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
-
-import '../../data/track_repository.dart';
-import '../../providers/audio_provider.dart';
-import '../../data/playlist_repository.dart';
-import '../../data/db.dart';
-import '../../logic/lyrics_parser.dart';
-import '../tabs/albums_tab.dart';
-import '../tabs/playlists_tab.dart';
+import 'package:path/path.dart' as p;
 
 class LibraryScreen extends HookConsumerWidget {
   const LibraryScreen({super.key});
+
+  static const List<String> audioExtensions = [
+    'mp3',
+    'm4a',
+    'wav',
+    'flac',
+    'aac',
+    'ogg',
+    'wma',
+    'm4p',
+    'aiff',
+    'au',
+    'dss',
+  ];
+
+  static const List<String> lyricsExtensions = ['lrc', 'srt', 'txt'];
+
+  static const List<String> allAllowedExtensions = [
+    ...audioExtensions,
+    ...lyricsExtensions,
+  ];
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -81,6 +102,7 @@ class LibraryScreen extends HookConsumerWidget {
                 ],
               )
             : AppBar(
+                centerTitle: true,
                 title: const Text('Library'),
                 bottom: const TabBar(
                   tabs: [
@@ -92,28 +114,51 @@ class LibraryScreen extends HookConsumerWidget {
                 actions: [
                   IconButton(
                     icon: const Icon(Icons.add_circle_outline),
-                    tooltip: 'Add Tracks',
+                    tooltip: 'Import Files',
                     onPressed: () async {
                       final result = await FilePicker.platform.pickFiles(
-                        type: FileType.audio,
+                        type: FileType.custom,
+                        allowedExtensions: allAllowedExtensions,
                         allowMultiple: true,
                       );
-                      if (result != null) {
-                        // Collect paths
+                      if (result != null && result.files.isNotEmpty) {
                         final paths = result.files
                             .map((f) => f.path)
                             .whereType<String>()
                             .toList();
                         if (paths.isNotEmpty) {
-                          await repo.importFiles(paths);
+                          // Separate audio and lyrics files
+                          final audioPaths = paths.where((path) {
+                            final ext = p
+                                .extension(path)
+                                .toLowerCase()
+                                .replaceFirst('.', '');
+                            return audioExtensions.contains(ext);
+                          }).toList();
+                          final lyricsPaths = paths.where((path) {
+                            final ext = p
+                                .extension(path)
+                                .toLowerCase()
+                                .replaceFirst('.', '');
+                            return lyricsExtensions.contains(ext);
+                          }).toList();
+
+                          // Import tracks if any
+                          if (audioPaths.isNotEmpty) {
+                            await repo.importFiles(audioPaths);
+                          }
+
+                          // Import lyrics if any
+                          if (lyricsPaths.isNotEmpty) {
+                            await _batchImportLyricsFromPaths(
+                              context,
+                              ref,
+                              lyricsPaths,
+                            );
+                          }
                         }
                       }
                     },
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.lyrics_outlined),
-                    tooltip: 'Batch Import Lyrics',
-                    onPressed: () => _batchImportLyrics(context, ref),
                   ),
                   const Gap(8),
                 ],
@@ -609,14 +654,12 @@ class LibraryScreen extends HookConsumerWidget {
     }
   }
 
-  Future<void> _batchImportLyrics(BuildContext context, WidgetRef ref) async {
-    final result = await FilePicker.platform.pickFiles(
-      type: FileType.custom,
-      allowedExtensions: ['lrc', 'srt', 'txt'],
-      allowMultiple: true,
-    );
-
-    if (result == null || result.files.isEmpty) return;
+  Future<void> _batchImportLyricsFromPaths(
+    BuildContext context,
+    WidgetRef ref,
+    List<String> lyricsPaths,
+  ) async {
+    if (lyricsPaths.isEmpty) return;
 
     final repo = ref.read(trackRepositoryProvider.notifier);
     final tracks = await repo.getAllTracks();
@@ -624,12 +667,10 @@ class LibraryScreen extends HookConsumerWidget {
     int matched = 0;
     int notMatched = 0;
 
-    for (final pickedFile in result.files) {
-      if (pickedFile.path == null) continue;
-
-      final file = File(pickedFile.path!);
+    for (final path in lyricsPaths) {
+      final file = File(path);
       final content = await file.readAsString();
-      final filename = pickedFile.name;
+      final filename = p.basename(path);
 
       // Get basename without extension for matching
       final baseName = filename
