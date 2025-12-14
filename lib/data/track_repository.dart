@@ -128,4 +128,26 @@ class TrackRepository extends _$TrackRepository {
       }
     }
   }
+
+  /// Update lyrics for a track.
+  Future<void> updateLyrics(int trackId, String? lyricsJson) async {
+    final db = ref.read(databaseProvider);
+    await (db.update(db.tracks)..where((t) => t.id.equals(trackId))).write(
+      TracksCompanion(lyrics: Value(lyricsJson)),
+    );
+  }
+
+  /// Get a single track by ID.
+  Future<Track?> getTrack(int trackId) async {
+    final db = ref.read(databaseProvider);
+    return (db.select(
+      db.tracks,
+    )..where((t) => t.id.equals(trackId))).getSingleOrNull();
+  }
+
+  /// Get all tracks for batch matching.
+  Future<List<Track>> getAllTracks() async {
+    final db = ref.read(databaseProvider);
+    return db.select(db.tracks).get();
+  }
 }

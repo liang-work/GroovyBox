@@ -48,6 +48,8 @@ dependencies:
   flutter_media_metadata: ^1.0.0+1
   animations: ^2.1.1
   gap: ^3.0.1
+  styled_widget: ^0.4.1
+  super_sliver_list: ^0.4.1
 
 dev_dependencies:
   flutter_test:

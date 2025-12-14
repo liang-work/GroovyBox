@@ -9,6 +9,7 @@ import '../../data/track_repository.dart';
 import '../../providers/audio_provider.dart';
 import '../../data/playlist_repository.dart';
 import '../../data/db.dart';
+import '../../logic/lyrics_parser.dart';
 import '../tabs/albums_tab.dart';
 import '../tabs/playlists_tab.dart';
 
@@ -109,6 +110,11 @@ class LibraryScreen extends HookConsumerWidget {
                       }
                     },
                   ),
+                  IconButton(
+                    icon: const Icon(Icons.lyrics_outlined),
+                    tooltip: 'Batch Import Lyrics',
+                    onPressed: () => _batchImportLyrics(context, ref),
+                  ),
                   const Gap(8),
                 ],
               ),
@@ -130,6 +136,9 @@ class LibraryScreen extends HookConsumerWidget {
                 }
 
                 return ListView.builder(
+                  padding: EdgeInsets.only(
+                    bottom: 72 + MediaQuery.paddingOf(context).bottom,
+                  ),
                   itemCount: tracks.length,
                   itemBuilder: (context, index) {
                     final track = tracks[index];
@@ -293,6 +302,14 @@ class LibraryScreen extends HookConsumerWidget {
                 onTap: () {
                   Navigator.pop(context);
                   _showEditDialog(context, ref, track);
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.lyrics_outlined),
+                title: const Text('Import Lyrics'),
+                onTap: () {
+                  Navigator.pop(context);
+                  _importLyricsForTrack(context, ref, track);
                 },
               ),
               ListTile(
@@ -556,5 +573,93 @@ class LibraryScreen extends HookConsumerWidget {
         SnackBar(content: Text('Deleted ${trackIds.length} tracks')),
       );
     }
+  }
+
+  Future<void> _importLyricsForTrack(
+    BuildContext context,
+    WidgetRef ref,
+    Track track,
+  ) async {
+    final result = await FilePicker.platform.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: ['lrc', 'srt', 'txt'],
+      allowMultiple: false,
+    );
+
+    if (result != null && result.files.isNotEmpty) {
+      final file = File(result.files.first.path!);
+      final content = await file.readAsString();
+      final filename = result.files.first.name;
+
+      final lyricsData = LyricsParser.parse(content, filename);
+      final lyricsJson = lyricsData.toJsonString();
+
+      await ref
+          .read(trackRepositoryProvider.notifier)
+          .updateLyrics(track.id, lyricsJson);
+
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Imported ${lyricsData.lines.length} lyrics lines for "${track.title}"',
+          ),
+        ),
+      );
+    }
+  }
+
+  Future<void> _batchImportLyrics(BuildContext context, WidgetRef ref) async {
+    final result = await FilePicker.platform.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: ['lrc', 'srt', 'txt'],
+      allowMultiple: true,
+    );
+
+    if (result == null || result.files.isEmpty) return;
+
+    final repo = ref.read(trackRepositoryProvider.notifier);
+    final tracks = await repo.getAllTracks();
+
+    int matched = 0;
+    int notMatched = 0;
+
+    for (final pickedFile in result.files) {
+      if (pickedFile.path == null) continue;
+
+      final file = File(pickedFile.path!);
+      final content = await file.readAsString();
+      final filename = pickedFile.name;
+
+      // Get basename without extension for matching
+      final baseName = filename
+          .replaceAll(RegExp(r'\.(lrc|srt|txt)$', caseSensitive: false), '')
+          .toLowerCase();
+
+      // Try to find a matching track by title
+      final matchingTrack = tracks.where((t) {
+        final trackTitle = t.title.toLowerCase();
+        return trackTitle == baseName ||
+            trackTitle.contains(baseName) ||
+            baseName.contains(trackTitle);
+      }).firstOrNull;
+
+      if (matchingTrack != null) {
+        final lyricsData = LyricsParser.parse(content, filename);
+        await repo.updateLyrics(matchingTrack.id, lyricsData.toJsonString());
+        matched++;
+      } else {
+        notMatched++;
+      }
+    }
+
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          'Batch import complete: $matched matched, $notMatched not matched',
+        ),
+      ),
+    );
   }
 }

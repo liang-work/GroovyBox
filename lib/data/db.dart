@@ -11,6 +11,7 @@ class Tracks extends Table {
   IntColumn get duration => integer().nullable()(); // Duration in milliseconds
   TextColumn get path => text().unique()();
   TextColumn get artUri => text().nullable()(); // Path to local cover art
+  TextColumn get lyrics => text().nullable()(); // JSON formatted lyrics
   DateTimeColumn get addedAt => dateTime().withDefault(currentDateAndTime)();
 }
 
@@ -33,7 +34,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
 
   @override
-  int get schemaVersion => 3; // Bump version
+  int get schemaVersion => 4; // Bump version for lyrics column
 
   @override
   MigrationStrategy get migration {
@@ -48,6 +49,9 @@ class AppDatabase extends _$AppDatabase {
         if (from < 3) {
           await m.createTable(playlists);
           await m.createTable(playlistEntries);
+        }
+        if (from < 4) {
+          await m.addColumn(tracks, tracks.lyrics);
         }
       },
     );

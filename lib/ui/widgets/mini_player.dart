@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:gap/gap.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:media_kit/media_kit.dart';
@@ -36,7 +37,7 @@ class MiniPlayer extends HookConsumerWidget {
         final metadataAsync = ref.watch(trackMetadataProvider(filePath));
 
         Widget content = Container(
-          height: 80, // Increased height for slider
+          height: 72,
           width: double.infinity,
           decoration: BoxDecoration(
             color: Theme.of(context).colorScheme.surfaceContainerHighest,
@@ -82,8 +83,10 @@ class MiniPlayer extends HookConsumerWidget {
                             thumbShape: const RoundSliderThumbShape(
                               enabledThumbRadius: 6,
                             ),
+                            trackShape: const RectangularSliderTrackShape(),
                           ),
                           child: Slider(
+                            padding: EdgeInsets.zero,
                             value: currentValue,
                             min: 0,
                             max: max > 0 ? max : 1.0,
@@ -106,25 +109,23 @@ class MiniPlayer extends HookConsumerWidget {
                 child: Row(
                   children: [
                     // Cover Art (Small)
-                    Padding(
-                      padding: const EdgeInsets.all(8.0),
-                      child: AspectRatio(
-                        aspectRatio: 1,
-                        child: metadataAsync.when(
-                          data: (meta) => meta.artBytes != null
-                              ? Image.memory(meta.artBytes!, fit: BoxFit.cover)
-                              : Container(
-                                  color: Colors.grey[800],
-                                  child: const Icon(
-                                    Icons.music_note,
-                                    color: Colors.white54,
-                                  ),
+                    AspectRatio(
+                      aspectRatio: 1,
+                      child: metadataAsync.when(
+                        data: (meta) => meta.artBytes != null
+                            ? Image.memory(meta.artBytes!, fit: BoxFit.cover)
+                            : Container(
+                                color: Colors.grey[800],
+                                child: const Icon(
+                                  Icons.music_note,
+                                  color: Colors.white54,
                                 ),
-                          loading: () => Container(color: Colors.grey[800]),
-                          error: (_, __) => Container(color: Colors.grey[800]),
-                        ),
+                              ),
+                        loading: () => Container(color: Colors.grey[800]),
+                        error: (_, _) => Container(color: Colors.grey[800]),
                       ),
                     ),
+                    const Gap(8),
                     Expanded(
                       child: Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 12.0),
@@ -142,7 +143,7 @@ class MiniPlayer extends HookConsumerWidget {
                                 overflow: TextOverflow.ellipsis,
                               ),
                               loading: () => const Text('Loading...'),
-                              error: (_, __) =>
+                              error: (_, _) =>
                                   Text(Uri.parse(media.uri).pathSegments.last),
                             ),
                             metadataAsync.when(
@@ -153,7 +154,7 @@ class MiniPlayer extends HookConsumerWidget {
                                 overflow: TextOverflow.ellipsis,
                               ),
                               loading: () => const SizedBox.shrink(),
-                              error: (_, __) => const SizedBox.shrink(),
+                              error: (_, _) => const SizedBox.shrink(),
                             ),
                           ],
                         ),
@@ -163,13 +164,31 @@ class MiniPlayer extends HookConsumerWidget {
                       stream: player.stream.playing,
                       builder: (context, snapshot) {
                         final playing = snapshot.data ?? false;
-                        return IconButton(
-                          icon: Icon(playing ? Icons.pause : Icons.play_arrow),
-                          onPressed: playing ? player.pause : player.play,
+                        return Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          child: IconButton.filled(
+                            color: Theme.of(
+                              context,
+                            ).colorScheme.primaryContainer,
+                            icon: AnimatedSwitcher(
+                              duration: const Duration(milliseconds: 100),
+                              transitionBuilder:
+                                  (Widget child, Animation<double> animation) {
+                                    return ScaleTransition(
+                                      scale: animation,
+                                      child: child,
+                                    );
+                                  },
+                              child: Icon(
+                                playing ? Icons.pause : Icons.play_arrow,
+                                key: ValueKey<bool>(playing),
+                              ),
+                            ),
+                            onPressed: playing ? player.pause : player.play,
+                          ),
                         );
                       },
                     ),
-                    const SizedBox(width: 8),
                   ],
                 ),
               ),
