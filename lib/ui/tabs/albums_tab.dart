@@ -1,7 +1,9 @@
 import 'dart:io';
+import 'package:animations/animations.dart';
 import 'package:flutter/material.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import '../../data/playlist_repository.dart';
+import '../screens/album_detail_screen.dart';
 
 class AlbumsTab extends HookConsumerWidget {
   const AlbumsTab({super.key});
@@ -32,17 +34,17 @@ class AlbumsTab extends HookConsumerWidget {
           itemCount: albums.length,
           itemBuilder: (context, index) {
             final album = albums[index];
-            return Card(
-              clipBehavior: Clip.antiAlias,
-              child: InkWell(
-                onTap: () {
-                  // Navigate to Album details (list of tracks)
-                  // For now just show snackbar or simple push
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Open ${album.album}')),
-                  );
-                },
-                child: Column(
+            return OpenContainer(
+              openBuilder: (context, action) {
+                return AlbumDetailScreen(album: album);
+              },
+              closedColor: Theme.of(context).cardColor,
+              closedShape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              closedElevation: 0,
+              closedBuilder: (context, action) {
+                return Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     Expanded(
@@ -78,8 +80,8 @@ class AlbumsTab extends HookConsumerWidget {
                       ),
                     ),
                   ],
-                ),
-              ),
+                );
+              },
             );
           },
         );

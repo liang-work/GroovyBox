@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
+import 'package:gap/gap.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 
 import '../../data/track_repository.dart';
@@ -75,6 +76,7 @@ class LibraryScreen extends HookConsumerWidget {
                       );
                     },
                   ),
+                  const Gap(8),
                 ],
               )
             : AppBar(
@@ -107,6 +109,7 @@ class LibraryScreen extends HookConsumerWidget {
                       }
                     },
                   ),
+                  const Gap(8),
                 ],
               ),
         body: TabBarView(

@@ -19,6 +19,10 @@ class AudioHandler {
     await _player.open(Media(path));
   }
 
+  Future<void> openPlaylist(List<Media> medias, {int initialIndex = 0}) async {
+    await _player.open(Playlist(medias, index: initialIndex), play: true);
+  }
+
   void dispose() {
     _player.dispose();
   }
