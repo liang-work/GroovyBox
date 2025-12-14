@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:drift/drift.dart' as drift;
 import 'package:groovybox/data/db.dart' as db;
 import 'package:groovybox/logic/lyrics_parser.dart';
 import 'package:groovybox/logic/metadata_service.dart';
 import 'package:groovybox/providers/audio_provider.dart';
 import 'package:groovybox/providers/db_provider.dart';
+import 'package:groovybox/providers/lrc_fetcher_provider.dart';
 import 'package:groovybox/ui/widgets/mini_player.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
@@ -296,16 +298,71 @@ class _PlayerLyrics extends HookConsumerWidget {
         ? ref.watch(_trackByPathProvider(trackPath!))
         : const AsyncValue<db.Track?>.data(null);
 
+    final metadataAsync = trackPath != null
+        ? ref.watch(trackMetadataProvider(trackPath!))
+        : const AsyncValue<TrackMetadata?>.data(null);
+
+    final lyricsFetcher = ref.watch(lyricsFetcherProvider);
+    final musixmatchProviderInstance = ref.watch(musixmatchProvider);
+    final neteaseProviderInstance = ref.watch(neteaseProvider);
+
     return trackAsync.when(
       loading: () => const Center(child: CircularProgressIndicator()),
       error: (e, _) => Center(child: Text('Error: $e')),
       data: (track) {
         if (track == null || track.lyrics == null) {
-          return const Center(
-            child: Text(
-              'No Lyrics Available',
-              style: TextStyle(fontStyle: FontStyle.italic),
-            ),
+          // Show fetch lyrics UI
+          return Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(
+                'No Lyrics Available',
+                style: TextStyle(fontStyle: FontStyle.italic, fontSize: 18),
+              ),
+              const SizedBox(height: 16),
+              ElevatedButton.icon(
+                icon: const Icon(Icons.download),
+                label: const Text('Fetch Lyrics'),
+                onPressed: track != null && trackPath != null
+                    ? () => _showFetchLyricsDialog(
+                        context,
+                        ref,
+                        track,
+                        trackPath!,
+                        metadataAsync.value,
+                        musixmatchProviderInstance,
+                        neteaseProviderInstance,
+                      )
+                    : null,
+              ),
+              if (lyricsFetcher.isLoading)
+                Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: LinearProgressIndicator(),
+                ),
+              if (lyricsFetcher.error != null)
+                Padding(
+                  padding: const EdgeInsets.all(8.0),
+                  child: Text(
+                    lyricsFetcher.error!,
+                    style: TextStyle(color: Colors.red, fontSize: 12),
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+              if (lyricsFetcher.successMessage != null)
+                Padding(
+                  padding: const EdgeInsets.all(8.0),
+                  child: Text(
+                    lyricsFetcher.successMessage!,
+                    style: TextStyle(
+                      color: Colors.green,
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+            ],
           );
         }
 
@@ -313,28 +370,242 @@ class _PlayerLyrics extends HookConsumerWidget {
           final lyricsData = LyricsData.fromJsonString(track.lyrics!);
 
           if (lyricsData.type == 'timed') {
-            return _TimedLyricsView(lyrics: lyricsData, player: player);
+            return Stack(
+              children: [
+                _TimedLyricsView(lyrics: lyricsData, player: player),
+                _LyricsRefreshButton(trackPath: trackPath!),
+              ],
+            );
           } else {
             // Plain text lyrics
-            return ListView.builder(
-              padding: const EdgeInsets.all(16),
-              itemCount: lyricsData.lines.length,
-              itemBuilder: (context, index) {
-                return Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 4),
-                  child: Text(
-                    lyricsData.lines[index].text,
-                    style: Theme.of(context).textTheme.bodyLarge,
-                    textAlign: TextAlign.center,
-                  ),
-                );
-              },
+            return Stack(
+              children: [
+                ListView.builder(
+                  padding: const EdgeInsets.all(16),
+                  itemCount: lyricsData.lines.length,
+                  itemBuilder: (context, index) {
+                    return Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 4),
+                      child: Text(
+                        lyricsData.lines[index].text,
+                        style: Theme.of(context).textTheme.bodyLarge,
+                        textAlign: TextAlign.center,
+                      ),
+                    );
+                  },
+                ),
+                _LyricsRefreshButton(trackPath: trackPath!),
+              ],
             );
           }
         } catch (e) {
           return Center(child: Text('Error parsing lyrics: $e'));
         }
       },
+    );
+  }
+
+  void _showFetchLyricsDialog(
+    BuildContext context,
+    WidgetRef ref,
+    db.Track track,
+    String trackPath,
+    dynamic metadataObj,
+    musixmatchProvider,
+    neteaseProvider,
+  ) {
+    final metadata = metadataObj as TrackMetadata?;
+    final searchTerm =
+        '${metadata?.title ?? track.title} ${metadata?.artist ?? track.artist}'
+            .trim();
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Fetch Lyrics'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text('Search term: $searchTerm'),
+            const SizedBox(height: 16),
+            Text('Choose a provider:'),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                _ProviderButton(
+                  name: 'Musixmatch',
+                  onPressed: () async {
+                    Navigator.of(context).pop();
+                    await ref
+                        .read(lyricsFetcherProvider.notifier)
+                        .fetchLyricsForTrack(
+                          trackId: track.id,
+                          searchTerm: searchTerm,
+                          provider: musixmatchProvider,
+                          trackPath: trackPath,
+                        );
+                  },
+                ),
+                const SizedBox(width: 8),
+                _ProviderButton(
+                  name: 'NetEase',
+                  onPressed: () async {
+                    Navigator.of(context).pop();
+                    await ref
+                        .read(lyricsFetcherProvider.notifier)
+                        .fetchLyricsForTrack(
+                          trackId: track.id,
+                          searchTerm: searchTerm,
+                          provider: neteaseProvider,
+                          trackPath: trackPath,
+                        );
+                  },
+                ),
+              ],
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Cancel'),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ProviderButton extends StatelessWidget {
+  final String name;
+  final VoidCallback onPressed;
+
+  const _ProviderButton({required this.name, required this.onPressed});
+
+  @override
+  Widget build(BuildContext context) {
+    return Expanded(
+      child: ElevatedButton(onPressed: onPressed, child: Text(name)),
+    );
+  }
+}
+
+class _LyricsRefreshButton extends HookConsumerWidget {
+  final String trackPath;
+
+  const _LyricsRefreshButton({required this.trackPath});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final trackAsync = ref.watch(_trackByPathProvider(trackPath));
+    final metadataAsync = ref.watch(trackMetadataProvider(trackPath));
+    final musixmatchProviderInstance = ref.watch(musixmatchProvider);
+    final neteaseProviderInstance = ref.watch(neteaseProvider);
+
+    return Positioned(
+      top: MediaQuery.of(context).padding.top + 16,
+      right: 16,
+      child: IconButton(
+        icon: const Icon(Icons.refresh),
+        iconSize: 24,
+        tooltip: 'Refresh Lyrics',
+        onPressed: () => _showLyricsRefreshDialog(
+          context,
+          ref,
+          trackAsync,
+          metadataAsync,
+          musixmatchProviderInstance,
+          neteaseProviderInstance,
+        ),
+        padding: EdgeInsets.zero,
+      ),
+    );
+  }
+
+  void _showLyricsRefreshDialog(
+    BuildContext context,
+    WidgetRef ref,
+    AsyncValue<db.Track?> trackAsync,
+    AsyncValue<TrackMetadata> metadataAsync,
+    musixmatchProvider,
+    neteaseProvider,
+  ) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Refresh Lyrics'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text('Choose an action:'),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                Expanded(
+                  child: ElevatedButton.icon(
+                    icon: const Icon(Icons.refresh),
+                    label: const Text('Re-fetch'),
+                    onPressed: trackAsync.maybeWhen(
+                      data: (track) => track != null
+                          ? () async {
+                              Navigator.of(context).pop();
+                              final metadata = metadataAsync.value;
+                              final searchTerm =
+                                  '${metadata?.title ?? track.title} ${metadata?.artist ?? track.artist}'
+                                      .trim();
+                              await ref
+                                  .read(lyricsFetcherProvider.notifier)
+                                  .fetchLyricsForTrack(
+                                    trackId: track.id,
+                                    searchTerm: searchTerm,
+                                    provider:
+                                        musixmatchProvider, // Default to Musixmatch
+                                    trackPath: trackPath,
+                                  );
+                            }
+                          : null,
+                      orElse: () => null,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: ElevatedButton.icon(
+                    icon: const Icon(Icons.clear),
+                    label: const Text('Clear'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.red,
+                      foregroundColor: Colors.white,
+                    ),
+                    onPressed: trackAsync.maybeWhen(
+                      data: (track) => track != null
+                          ? () async {
+                              Navigator.of(context).pop();
+                              final database = ref.read(databaseProvider);
+                              await (database.update(
+                                database.tracks,
+                              )..where((t) => t.id.equals(track.id))).write(
+                                db.TracksCompanion(
+                                  lyrics: const drift.Value.absent(),
+                                ),
+                              );
+                            }
+                          : null,
+                      orElse: () => null,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Cancel'),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -504,7 +775,7 @@ class _TimedLyricsView extends HookWidget {
                           ).colorScheme.onSurface.withOpacity(0.7),
                   ),
                   textAlign: TextAlign.center,
-                  child: Text(line.text, textAlign: TextAlign.center),
+                  child: Text(line.text),
                 ),
               ),
             );
