@@ -162,6 +162,7 @@ class MiniPlayer extends HookConsumerWidget {
                     ),
                     StreamBuilder<bool>(
                       stream: player.stream.playing,
+                      initialData: player.state.playing,
                       builder: (context, snapshot) {
                         final playing = snapshot.data ?? false;
                         return Padding(

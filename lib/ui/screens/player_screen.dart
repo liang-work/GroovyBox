@@ -545,6 +545,7 @@ class _PlayerControls extends HookWidget {
             IconButton(
               icon: StreamBuilder<bool>(
                 stream: player.stream.shuffle,
+                initialData: player.state.shuffle,
                 builder: (context, snapshot) {
                   final shuffle = snapshot.data ?? false;
                   return Icon(
@@ -569,12 +570,24 @@ class _PlayerControls extends HookWidget {
             // Play/Pause
             StreamBuilder<bool>(
               stream: player.stream.playing,
+              initialData: player.state.playing,
               builder: (context, snapshot) {
                 final playing = snapshot.data ?? false;
                 return IconButton.filled(
-                  icon: Icon(
-                    playing ? Icons.pause : Icons.play_arrow,
-                    size: 48,
+                  icon: AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 100),
+                    transitionBuilder:
+                        (Widget child, Animation<double> animation) {
+                          return ScaleTransition(
+                            scale: animation,
+                            child: child,
+                          );
+                        },
+                    child: Icon(
+                      playing ? Icons.pause : Icons.play_arrow,
+                      key: ValueKey<bool>(playing),
+                      size: 48,
+                    ),
                   ),
                   onPressed: playing ? player.pause : player.play,
                   iconSize: 48,
@@ -592,6 +605,7 @@ class _PlayerControls extends HookWidget {
             IconButton(
               icon: StreamBuilder<PlaylistMode>(
                 stream: player.stream.playlistMode,
+                initialData: player.state.playlistMode,
                 builder: (context, snapshot) {
                   final mode = snapshot.data ?? PlaylistMode.none;
                   IconData icon;
