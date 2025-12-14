@@ -45,7 +45,7 @@ class PlayerScreen extends HookConsumerWidget {
                   if (isMobile) {
                     return Padding(
                       padding: EdgeInsets.only(
-                        top: MediaQuery.of(context).padding.top + 48,
+                        top: MediaQuery.of(context).padding.top + 64,
                       ),
                       child: _MobileLayout(
                         player: player,
@@ -69,20 +69,21 @@ class PlayerScreen extends HookConsumerWidget {
           ),
           // IconButton
           Positioned(
-            top: MediaQuery.of(context).padding.top + 8,
-            left: 8,
+            top: MediaQuery.of(context).padding.top + 16,
+            left: 16,
             child: IconButton(
               icon: const Icon(Icons.keyboard_arrow_down),
               onPressed: () => Navigator.of(context).pop(),
               padding: EdgeInsets.zero,
+              iconSize: 24,
             ),
           ),
           // TabBar (if mobile)
           if (isMobile)
             Positioned(
-              top: MediaQuery.of(context).padding.top + 8,
-              left: 50,
-              right: 50,
+              top: MediaQuery.of(context).padding.top + 14,
+              left: 54,
+              right: 54,
               child: TabBar(
                 controller: tabController,
                 tabAlignment: TabAlignment.fill,
@@ -175,49 +176,60 @@ class _DesktopLayout extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
+    return Stack(
       children: [
         // Left Side: Cover + Controls
-        Expanded(
-          flex: 1,
-          child: Center(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 480),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Expanded(
-                    child: Padding(
-                      padding: const EdgeInsets.all(32.0),
-                      child: Center(
-                        child: ConstrainedBox(
-                          constraints: const BoxConstraints(maxWidth: 400),
-                          child: AspectRatio(
-                            aspectRatio: 1,
-                            child: _PlayerCoverArt(
-                              metadataAsync: metadataAsync,
+        Positioned.fill(
+          child: Row(
+            children: [
+              Expanded(
+                child: Center(
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 480),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Expanded(
+                          child: Padding(
+                            padding: const EdgeInsets.all(32.0),
+                            child: Center(
+                              child: ConstrainedBox(
+                                constraints: const BoxConstraints(
+                                  maxWidth: 400,
+                                ),
+                                child: AspectRatio(
+                                  aspectRatio: 1,
+                                  child: _PlayerCoverArt(
+                                    metadataAsync: metadataAsync,
+                                  ),
+                                ),
+                              ),
                             ),
                           ),
                         ),
-                      ),
+                        _PlayerControls(
+                          player: player,
+                          metadataAsync: metadataAsync,
+                          media: media,
+                        ),
+                        const SizedBox(height: 32),
+                      ],
                     ),
                   ),
-                  _PlayerControls(
-                    player: player,
-                    metadataAsync: metadataAsync,
-                    media: media,
-                  ),
-                  const SizedBox(height: 32),
-                ],
+                ),
               ),
-            ),
+              Expanded(child: const SizedBox.shrink()),
+            ],
           ),
         ),
-        // Right Side: Lyrics
-        Expanded(
-          flex: 1,
+        // Overlaid Lyrics on the right
+        Positioned(
+          right: 0,
+          top: 0,
+          bottom: 0,
+          width: MediaQuery.sizeOf(context).width * 0.6,
           child: Padding(
-            padding: EdgeInsets.all(32.0),
+            padding: const EdgeInsets.symmetric(horizontal: 32),
             child: _PlayerLyrics(trackPath: trackPath, player: player),
           ),
         ),
@@ -347,8 +359,14 @@ class _TimedLyricsView extends HookWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDesktop = MediaQuery.sizeOf(context).width > 640;
+
     final listController = useMemoized(() => ListController(), []);
     final scrollController = useScrollController();
+    final wheelScrollController = useMemoized(
+      () => FixedExtentScrollController(),
+      [],
+    );
     final previousIndex = useState(-1);
 
     return StreamBuilder<Duration>(
@@ -372,14 +390,84 @@ class _TimedLyricsView extends HookWidget {
         if (currentIndex != previousIndex.value) {
           WidgetsBinding.instance.addPostFrameCallback((_) {
             previousIndex.value = currentIndex;
-            listController.animateToItem(
-              index: currentIndex,
-              scrollController: scrollController,
-              alignment: 0.5,
-              duration: (_) => const Duration(milliseconds: 300),
-              curve: (_) => Curves.easeOutCubic,
-            );
+            if (isDesktop) {
+              if (wheelScrollController.hasClients) {
+                wheelScrollController.animateToItem(
+                  currentIndex,
+                  duration: const Duration(milliseconds: 400),
+                  curve: Curves.easeOutCubic,
+                );
+              }
+            } else {
+              listController.animateToItem(
+                index: currentIndex,
+                scrollController: scrollController,
+                alignment: 0.5,
+                duration: (_) => const Duration(milliseconds: 300),
+                curve: (_) => Curves.easeOutCubic,
+              );
+            }
           });
+        }
+
+        if (isDesktop) {
+          return ListWheelScrollView.useDelegate(
+            controller: wheelScrollController,
+            itemExtent: 50,
+            perspective: 0.002,
+            offAxisFraction: 1.5,
+            squeeze: 1.0,
+            diameterRatio: 2,
+            physics: const FixedExtentScrollPhysics(),
+            childDelegate: ListWheelChildBuilderDelegate(
+              childCount: lyrics.lines.length,
+              builder: (context, index) {
+                final line = lyrics.lines[index];
+                final isActive = index == currentIndex;
+
+                return Align(
+                  alignment: Alignment.centerRight,
+                  child: ConstrainedBox(
+                    constraints: BoxConstraints(
+                      maxWidth: MediaQuery.sizeOf(context).width * 0.4,
+                    ),
+                    child: InkWell(
+                      onTap: () {
+                        if (line.timeMs != null) {
+                          player.seek(Duration(milliseconds: line.timeMs!));
+                        }
+                      },
+                      child: Container(
+                        alignment: Alignment.centerLeft,
+                        padding: const EdgeInsets.symmetric(horizontal: 32),
+                        child: AnimatedDefaultTextStyle(
+                          duration: const Duration(milliseconds: 200),
+                          style: Theme.of(context).textTheme.bodyLarge!
+                              .copyWith(
+                                fontSize: isActive ? 18 : 16,
+                                fontWeight: isActive
+                                    ? FontWeight.bold
+                                    : FontWeight.normal,
+                                color: isActive
+                                    ? Theme.of(context).colorScheme.primary
+                                    : Theme.of(
+                                        context,
+                                      ).colorScheme.onSurface.withOpacity(0.7),
+                              ),
+                          textAlign: TextAlign.left,
+                          child: Text(
+                            line.text,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                );
+              },
+            ),
+          );
         }
 
         return SuperListView.builder(
@@ -414,7 +502,7 @@ class _TimedLyricsView extends HookWidget {
                         ? Theme.of(context).colorScheme.primary
                         : Theme.of(
                             context,
-                          ).colorScheme.onSurface.withValues(alpha: 0.7),
+                          ).colorScheme.onSurface.withOpacity(0.7),
                   ),
                   textAlign: TextAlign.center,
                   child: Text(line.text, textAlign: TextAlign.center),
@@ -459,7 +547,7 @@ class _PlayerControls extends HookWidget {
                 overflow: TextOverflow.ellipsis,
               ),
               loading: () => const SizedBox(height: 32),
-              error: (_, __) => Text(Uri.parse(media.uri).pathSegments.last),
+              error: (_, _) => Text(Uri.parse(media.uri).pathSegments.last),
             ),
             const SizedBox(height: 8),
             metadataAsync.when(
