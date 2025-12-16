@@ -458,6 +458,7 @@ class LibraryScreen extends HookConsumerWidget {
       builder: (context) => AlertDialog(
         title: const Text('Edit Track'),
         content: Column(
+          spacing: 16,
           mainAxisSize: MainAxisSize.min,
           children: [
             TextField(

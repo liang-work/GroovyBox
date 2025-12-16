@@ -23,25 +23,25 @@ class PlayerScreen extends HookConsumerWidget {
     final tabController = useTabController(initialLength: 2);
     final isMobile = MediaQuery.sizeOf(context).width <= 640;
 
-    return Scaffold(
-      body: Stack(
-        children: [
-          // Main content (StreamBuilder)
-          StreamBuilder<Playlist>(
-            stream: player.stream.playlist,
-            initialData: player.state.playlist,
-            builder: (context, snapshot) {
-              final index = snapshot.data?.index ?? 0;
-              final medias = snapshot.data?.medias ?? [];
-              if (medias.isEmpty || index < 0 || index >= medias.length) {
-                return const Center(child: Text('No media selected'));
-              }
-              final media = medias[index];
-              final path = Uri.decodeFull(Uri.parse(media.uri).path);
+    return StreamBuilder<Playlist>(
+      stream: player.stream.playlist,
+      initialData: player.state.playlist,
+      builder: (context, snapshot) {
+        final index = snapshot.data?.index ?? 0;
+        final medias = snapshot.data?.medias ?? [];
+        if (medias.isEmpty || index < 0 || index >= medias.length) {
+          return const Center(child: Text('No media selected'));
+        }
+        final media = medias[index];
 
-              final metadataAsync = ref.watch(trackMetadataProvider(path));
+        final path = Uri.decodeFull(Uri.parse(media.uri).path);
+        final metadataAsync = ref.watch(trackMetadataProvider(path));
 
-              return Builder(
+        return Scaffold(
+          body: Stack(
+            children: [
+              // Main content (StreamBuilder)
+              Builder(
                 builder: (context) {
                   if (isMobile) {
                     return Padding(
@@ -65,41 +65,45 @@ class PlayerScreen extends HookConsumerWidget {
                     );
                   }
                 },
-              );
-            },
-          ),
-          // IconButton
-          Positioned(
-            top: MediaQuery.of(context).padding.top + 16,
-            left: 16,
-            child: IconButton(
-              icon: const Icon(Icons.keyboard_arrow_down),
-              onPressed: () => Navigator.of(context).pop(),
-              padding: EdgeInsets.zero,
-              iconSize: 24,
-            ),
-          ),
-          // TabBar (if mobile)
-          if (isMobile)
-            Positioned(
-              top: MediaQuery.of(context).padding.top + 14,
-              left: 54,
-              right: 54,
-              child: TabBar(
-                controller: tabController,
-                tabAlignment: TabAlignment.fill,
-                tabs: const [
-                  Tab(text: 'Cover'),
-                  Tab(text: 'Lyrics'),
-                ],
-                dividerHeight: 0,
-                indicatorColor: Colors.transparent,
-                overlayColor: WidgetStatePropertyAll(Colors.transparent),
-                splashFactory: NoSplash.splashFactory,
               ),
-            ),
-        ],
-      ),
+              // IconButton
+              Positioned(
+                top: MediaQuery.of(context).padding.top + 16,
+                left: 16,
+                child: IconButton(
+                  icon: const Icon(Icons.keyboard_arrow_down),
+                  onPressed: () => Navigator.of(context).pop(),
+                  padding: EdgeInsets.zero,
+                  iconSize: 24,
+                ),
+              ),
+              // TabBar (if mobile)
+              if (isMobile)
+                Positioned(
+                  top: MediaQuery.of(context).padding.top + 14,
+                  left: 54,
+                  right: 54,
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 24),
+                    child: TabBar(
+                      controller: tabController,
+                      tabAlignment: TabAlignment.fill,
+                      tabs: const [
+                        Tab(text: 'Cover'),
+                        Tab(text: 'Lyrics'),
+                      ],
+                      dividerHeight: 0,
+                      indicatorColor: Colors.transparent,
+                      overlayColor: WidgetStatePropertyAll(Colors.transparent),
+                      splashFactory: NoSplash.splashFactory,
+                    ),
+                  ),
+                ),
+              _LyricsRefreshButton(trackPath: path),
+            ],
+          ),
+        );
+      },
     );
   }
 }
@@ -370,36 +374,26 @@ class _PlayerLyrics extends HookConsumerWidget {
           final lyricsData = LyricsData.fromJsonString(track.lyrics!);
 
           if (lyricsData.type == 'timed') {
-            return Stack(
-              children: [
-                _TimedLyricsView(
-                  lyrics: lyricsData,
-                  player: player,
-                  trackPath: trackPath!,
-                ),
-                _LyricsRefreshButton(trackPath: trackPath!),
-              ],
+            return _TimedLyricsView(
+              lyrics: lyricsData,
+              player: player,
+              trackPath: trackPath!,
             );
           } else {
             // Plain text lyrics
-            return Stack(
-              children: [
-                ListView.builder(
-                  padding: const EdgeInsets.all(16),
-                  itemCount: lyricsData.lines.length,
-                  itemBuilder: (context, index) {
-                    return Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 4),
-                      child: Text(
-                        lyricsData.lines[index].text,
-                        style: Theme.of(context).textTheme.bodyLarge,
-                        textAlign: TextAlign.center,
-                      ),
-                    );
-                  },
-                ),
-                _LyricsRefreshButton(trackPath: trackPath!),
-              ],
+            return ListView.builder(
+              padding: const EdgeInsets.all(16),
+              itemCount: lyricsData.lines.length,
+              itemBuilder: (context, index) {
+                return Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 4),
+                  child: Text(
+                    lyricsData.lines[index].text,
+                    style: Theme.of(context).textTheme.bodyLarge,
+                    textAlign: TextAlign.center,
+                  ),
+                );
+              },
             );
           }
         } catch (e) {
