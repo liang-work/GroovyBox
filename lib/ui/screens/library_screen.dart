@@ -46,6 +46,7 @@ class LibraryScreen extends HookConsumerWidget {
     // Let's assume we use StreamBuilder for now to avoid creating another file/provider on the fly.
     final repo = ref.watch(trackRepositoryProvider.notifier);
     final selectedTrackIds = useState<Set<int>>({});
+    final searchQuery = useState<String>('');
     final isSelectionMode = selectedTrackIds.value.isNotEmpty;
 
     void toggleSelection(int id) {
@@ -180,135 +181,192 @@ class LibraryScreen extends HookConsumerWidget {
                   return const Center(child: Text('No tracks yet. Add some!'));
                 }
 
-                return ListView.builder(
-                  padding: EdgeInsets.only(
-                    bottom: 72 + MediaQuery.paddingOf(context).bottom,
-                  ),
-                  itemCount: tracks.length,
-                  itemBuilder: (context, index) {
-                    final track = tracks[index];
-                    final isSelected = selectedTrackIds.value.contains(
-                      track.id,
-                    );
-
-                    if (isSelectionMode) {
-                      return ListTile(
-                        selected: isSelected,
-                        selectedTileColor: Colors.white10,
-                        leading: Checkbox(
-                          value: isSelected,
-                          onChanged: (_) => toggleSelection(track.id),
-                        ),
-                        title: Text(
-                          track.title,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        subtitle: Text(
-                          '${track.artist ?? 'Unknown Artist'} • ${_formatDuration(track.duration)}',
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        onTap: () => toggleSelection(track.id),
-                      );
+                List<Track> filteredTracks;
+                if (searchQuery.value.isEmpty) {
+                  filteredTracks = tracks;
+                } else {
+                  final query = searchQuery.value.toLowerCase();
+                  filteredTracks = tracks.where((track) {
+                    if (track.title.toLowerCase().contains(query)) return true;
+                    if (track.artist?.toLowerCase().contains(query) ?? false)
+                      return true;
+                    if (track.album?.toLowerCase().contains(query) ?? false)
+                      return true;
+                    if (track.lyrics != null) {
+                      try {
+                        final lyricsData = LyricsData.fromJsonString(
+                          track.lyrics!,
+                        );
+                        for (final line in lyricsData.lines) {
+                          if (line.text.toLowerCase().contains(query))
+                            return true;
+                        }
+                      } catch (e) {
+                        // Ignore parsing errors
+                      }
                     }
+                    return false;
+                  }).toList();
+                }
 
-                    return Dismissible(
-                      key: Key('track_${track.id}'),
-                      direction: DismissDirection.endToStart,
-                      background: Container(
-                        color: Colors.red,
-                        alignment: Alignment.centerRight,
-                        padding: const EdgeInsets.only(right: 20),
-                        child: const Icon(Icons.delete, color: Colors.white),
+                if (filteredTracks.isEmpty && searchQuery.value.isNotEmpty) {
+                  return const Center(
+                    child: Text('No tracks match your search.'),
+                  );
+                }
+
+                return Column(
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.all(16.0),
+                      child: TextField(
+                        onChanged: (value) => searchQuery.value = value,
+                        decoration: const InputDecoration(
+                          hintText: 'Search tracks...',
+                          prefixIcon: Icon(Icons.search),
+                        ),
                       ),
-                      confirmDismiss: (direction) async {
-                        return await showDialog(
-                          context: context,
-                          builder: (context) {
-                            return AlertDialog(
-                              title: const Text('Delete Track?'),
-                              content: Text(
-                                'Are you sure you want to delete "${track.title}"? This cannot be undone.',
+                    ),
+                    Expanded(
+                      child: ListView.builder(
+                        padding: EdgeInsets.only(
+                          bottom: 72 + MediaQuery.paddingOf(context).bottom,
+                        ),
+                        itemCount: filteredTracks.length,
+                        itemBuilder: (context, index) {
+                          final track = filteredTracks[index];
+                          final isSelected = selectedTrackIds.value.contains(
+                            track.id,
+                          );
+
+                          if (isSelectionMode) {
+                            return ListTile(
+                              selected: isSelected,
+                              selectedTileColor: Colors.white10,
+                              leading: Checkbox(
+                                value: isSelected,
+                                onChanged: (_) => toggleSelection(track.id),
                               ),
-                              actions: [
-                                TextButton(
-                                  onPressed: () =>
-                                      Navigator.of(context).pop(false),
-                                  child: const Text('Cancel'),
-                                ),
-                                TextButton(
-                                  onPressed: () =>
-                                      Navigator.of(context).pop(true),
-                                  style: TextButton.styleFrom(
-                                    foregroundColor: Colors.red,
-                                  ),
-                                  child: const Text('Delete'),
-                                ),
-                              ],
+                              title: Text(
+                                track.title,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              subtitle: Text(
+                                '${track.artist ?? 'Unknown Artist'} • ${_formatDuration(track.duration)}',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              onTap: () => toggleSelection(track.id),
                             );
-                          },
-                        );
-                      },
-                      onDismissed: (direction) {
-                        ref
-                            .read(trackRepositoryProvider.notifier)
-                            .deleteTrack(track.id);
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text('Deleted "${track.title}"')),
-                        );
-                      },
-                      child: ListTile(
-                        leading: AspectRatio(
-                          aspectRatio: 1,
-                          child: Container(
-                            decoration: BoxDecoration(
-                              color: Colors.grey[800],
-                              borderRadius: BorderRadius.circular(8),
-                              image: track.artUri != null
-                                  ? DecorationImage(
-                                      image: FileImage(File(track.artUri!)),
-                                      fit: BoxFit.cover,
-                                    )
-                                  : null,
-                            ),
-                            child: track.artUri == null
-                                ? const Icon(
-                                    Icons.music_note,
-                                    color: Colors.white54,
-                                  )
-                                : null,
-                          ),
-                        ),
-                        title: Text(
-                          track.title,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        subtitle: Text(
-                          '${track.artist ?? 'Unknown Artist'} • ${_formatDuration(track.duration)}',
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        trailing: isSelectionMode
-                            ? null
-                            : IconButton(
-                                icon: const Icon(Icons.more_vert),
-                                onPressed: () {
-                                  _showTrackOptions(context, ref, track);
-                                },
+                          }
+
+                          return Dismissible(
+                            key: Key('track_${track.id}'),
+                            direction: DismissDirection.endToStart,
+                            background: Container(
+                              color: Colors.red,
+                              alignment: Alignment.centerRight,
+                              padding: const EdgeInsets.only(right: 20),
+                              child: const Icon(
+                                Icons.delete,
+                                color: Colors.white,
                               ),
-                        onTap: () {
-                          final audio = ref.read(audioHandlerProvider);
-                          audio.playTrack(track);
-                        },
-                        onLongPress: () {
-                          // Enter selection mode
-                          toggleSelection(track.id);
+                            ),
+                            confirmDismiss: (direction) async {
+                              return await showDialog(
+                                context: context,
+                                builder: (context) {
+                                  return AlertDialog(
+                                    title: const Text('Delete Track?'),
+                                    content: Text(
+                                      'Are you sure you want to delete "${track.title}"? This cannot be undone.',
+                                    ),
+                                    actions: [
+                                      TextButton(
+                                        onPressed: () =>
+                                            Navigator.of(context).pop(false),
+                                        child: const Text('Cancel'),
+                                      ),
+                                      TextButton(
+                                        onPressed: () =>
+                                            Navigator.of(context).pop(true),
+                                        style: TextButton.styleFrom(
+                                          foregroundColor: Colors.red,
+                                        ),
+                                        child: const Text('Delete'),
+                                      ),
+                                    ],
+                                  );
+                                },
+                              );
+                            },
+                            onDismissed: (direction) {
+                              ref
+                                  .read(trackRepositoryProvider.notifier)
+                                  .deleteTrack(track.id);
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text('Deleted "${track.title}"'),
+                                ),
+                              );
+                            },
+                            child: ListTile(
+                              leading: AspectRatio(
+                                aspectRatio: 1,
+                                child: Container(
+                                  decoration: BoxDecoration(
+                                    color: Colors.grey[800],
+                                    borderRadius: BorderRadius.circular(8),
+                                    image: track.artUri != null
+                                        ? DecorationImage(
+                                            image: FileImage(
+                                              File(track.artUri!),
+                                            ),
+                                            fit: BoxFit.cover,
+                                          )
+                                        : null,
+                                  ),
+                                  child: track.artUri == null
+                                      ? const Icon(
+                                          Icons.music_note,
+                                          color: Colors.white54,
+                                        )
+                                      : null,
+                                ),
+                              ),
+                              title: Text(
+                                track.title,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              subtitle: Text(
+                                '${track.artist ?? 'Unknown Artist'} • ${_formatDuration(track.duration)}',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              trailing: isSelectionMode
+                                  ? null
+                                  : IconButton(
+                                      icon: const Icon(Icons.more_vert),
+                                      onPressed: () {
+                                        _showTrackOptions(context, ref, track);
+                                      },
+                                    ),
+                              onTap: () {
+                                final audio = ref.read(audioHandlerProvider);
+                                audio.playTrack(track);
+                              },
+                              onLongPress: () {
+                                // Enter selection mode
+                                toggleSelection(track.id);
+                              },
+                            ),
+                          );
                         },
                       ),
-                    );
-                  },
+                    ),
+                  ],
                 );
               },
             ),
