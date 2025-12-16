@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:drift/drift.dart' as drift;
 import 'package:groovybox/data/db.dart' as db;
 import 'package:groovybox/logic/lyrics_parser.dart';
@@ -37,70 +38,94 @@ class PlayerScreen extends HookConsumerWidget {
         final path = Uri.decodeFull(Uri.parse(media.uri).path);
         final metadataAsync = ref.watch(trackMetadataProvider(path));
 
-        return Scaffold(
-          body: Stack(
-            children: [
-              // Main content (StreamBuilder)
-              Builder(
-                builder: (context) {
-                  if (isMobile) {
-                    return Padding(
-                      padding: EdgeInsets.only(
-                        top: MediaQuery.of(context).padding.top + 64,
-                      ),
-                      child: _MobileLayout(
+        return Focus(
+          autofocus: true,
+          onKeyEvent: (node, event) {
+            if (event is KeyDownEvent) {
+              if (event.logicalKey == LogicalKeyboardKey.space) {
+                if (player.state.playing) {
+                  player.pause();
+                } else {
+                  player.play();
+                }
+                return KeyEventResult.handled;
+              } else if (event.logicalKey == LogicalKeyboardKey.bracketLeft) {
+                player.previous();
+                return KeyEventResult.handled;
+              } else if (event.logicalKey == LogicalKeyboardKey.bracketRight) {
+                player.next();
+                return KeyEventResult.handled;
+              }
+            }
+            return KeyEventResult.ignored;
+          },
+          child: Scaffold(
+            body: Stack(
+              children: [
+                // Main content (StreamBuilder)
+                Builder(
+                  builder: (context) {
+                    if (isMobile) {
+                      return Padding(
+                        padding: EdgeInsets.only(
+                          top: MediaQuery.of(context).padding.top + 64,
+                        ),
+                        child: _MobileLayout(
+                          player: player,
+                          tabController: tabController,
+                          metadataAsync: metadataAsync,
+                          media: media,
+                          trackPath: path,
+                        ),
+                      );
+                    } else {
+                      return _DesktopLayout(
                         player: player,
-                        tabController: tabController,
                         metadataAsync: metadataAsync,
                         media: media,
                         trackPath: path,
-                      ),
-                    );
-                  } else {
-                    return _DesktopLayout(
-                      player: player,
-                      metadataAsync: metadataAsync,
-                      media: media,
-                      trackPath: path,
-                    );
-                  }
-                },
-              ),
-              // IconButton
-              Positioned(
-                top: MediaQuery.of(context).padding.top + 16,
-                left: 16,
-                child: IconButton(
-                  icon: const Icon(Icons.keyboard_arrow_down),
-                  onPressed: () => Navigator.of(context).pop(),
-                  padding: EdgeInsets.zero,
-                  iconSize: 24,
+                      );
+                    }
+                  },
                 ),
-              ),
-              // TabBar (if mobile)
-              if (isMobile)
+                // IconButton
                 Positioned(
-                  top: MediaQuery.of(context).padding.top + 14,
-                  left: 54,
-                  right: 54,
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 24),
-                    child: TabBar(
-                      controller: tabController,
-                      tabAlignment: TabAlignment.fill,
-                      tabs: const [
-                        Tab(text: 'Cover'),
-                        Tab(text: 'Lyrics'),
-                      ],
-                      dividerHeight: 0,
-                      indicatorColor: Colors.transparent,
-                      overlayColor: WidgetStatePropertyAll(Colors.transparent),
-                      splashFactory: NoSplash.splashFactory,
-                    ),
+                  top: MediaQuery.of(context).padding.top + 16,
+                  left: 16,
+                  child: IconButton(
+                    icon: const Icon(Icons.keyboard_arrow_down),
+                    onPressed: () => Navigator.of(context).pop(),
+                    padding: EdgeInsets.zero,
+                    iconSize: 24,
                   ),
                 ),
-              _LyricsRefreshButton(trackPath: path),
-            ],
+                // TabBar (if mobile)
+                if (isMobile)
+                  Positioned(
+                    top: MediaQuery.of(context).padding.top + 14,
+                    left: 54,
+                    right: 54,
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 24),
+                      child: TabBar(
+                        controller: tabController,
+                        tabAlignment: TabAlignment.fill,
+                        tabs: const [
+                          Tab(text: 'Cover'),
+                          Tab(text: 'Lyrics'),
+                        ],
+                        dividerHeight: 0,
+                        indicatorColor: Colors.transparent,
+                        overlayColor: WidgetStatePropertyAll(
+                          Colors.transparent,
+                        ),
+                        splashFactory: NoSplash.splashFactory,
+                      ),
+                    ),
+                  ),
+                _LyricsRefreshButton(trackPath: path),
+              ],
+            ),
           ),
         );
       },
@@ -251,29 +276,38 @@ class _PlayerCoverArt extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return metadataAsync.when(
-      data: (meta) => Container(
-        decoration: BoxDecoration(
-          color: Colors.grey[800],
-          borderRadius: BorderRadius.circular(24),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.3),
-              blurRadius: 20,
-              offset: const Offset(0, 10),
+      data: (meta) => Center(
+        child: AspectRatio(
+          aspectRatio: 1,
+          child: Container(
+            decoration: BoxDecoration(
+              color: Colors.grey[800],
+              borderRadius: BorderRadius.circular(24),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.3),
+                  blurRadius: 20,
+                  offset: const Offset(0, 10),
+                ),
+              ],
+              image: meta.artBytes != null
+                  ? DecorationImage(
+                      image: MemoryImage(meta.artBytes!),
+                      fit: BoxFit.cover,
+                    )
+                  : null,
             ),
-          ],
-          image: meta.artBytes != null
-              ? DecorationImage(
-                  image: MemoryImage(meta.artBytes!),
-                  fit: BoxFit.cover,
-                )
-              : null,
+            child: meta.artBytes == null
+                ? const Center(
+                    child: Icon(
+                      Icons.music_note,
+                      size: 80,
+                      color: Colors.white54,
+                    ),
+                  )
+                : null,
+          ),
         ),
-        child: meta.artBytes == null
-            ? const Center(
-                child: Icon(Icons.music_note, size: 80, color: Colors.white54),
-              )
-            : null,
       ),
       loading: () => const Center(child: CircularProgressIndicator()),
       error: (_, _) => Container(
@@ -994,7 +1028,7 @@ class _PlayerControls extends HookWidget {
                 ),
               ),
               loading: () => const SizedBox(height: 24),
-              error: (_, __) => const SizedBox.shrink(),
+              error: (_, _) => const SizedBox.shrink(),
             ),
           ],
         ),
