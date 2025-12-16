@@ -1,11 +1,14 @@
 import 'package:audio_service/audio_service.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:media_kit/media_kit.dart' as media_kit;
 import 'package:groovybox/data/db.dart';
+import 'package:groovybox/providers/theme_provider.dart';
 
 class AudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
   final media_kit.Player _player;
   List<MediaItem> _queue = [];
   int _queueIndex = 0;
+  ProviderContainer? _container;
 
   AudioHandler() : _player = media_kit.Player() {
     // Configure for audio
@@ -29,10 +32,40 @@ class AudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
         final currentIndex = playlist.index;
         if (currentIndex >= 0 && currentIndex < _queue.length) {
           _queueIndex = currentIndex;
-          mediaItem.add(_queue[_queueIndex]);
+          final currentItem = _queue[_queueIndex];
+          mediaItem.add(currentItem);
+          _updateThemeFromCurrentTrack(currentItem);
         }
       }
     });
+  }
+
+  // Method to set the provider container for theme updates
+  void setProviderContainer(ProviderContainer container) {
+    _container = container;
+  }
+
+  // Update theme color based on current track's album art
+  void _updateThemeFromCurrentTrack(MediaItem mediaItem) {
+    if (_container == null) return;
+
+    final artUri = mediaItem.artUri;
+    if (artUri != null &&
+        artUri.scheme == 'file' &&
+        artUri.path.isNotEmpty &&
+        !artUri.path.contains('..') && // Prevent directory traversal
+        (artUri.path.endsWith('.jpg') ||
+            artUri.path.endsWith('.jpeg') ||
+            artUri.path.endsWith('.png') ||
+            artUri.path.endsWith('.bmp') ||
+            artUri.path.endsWith('.webp'))) {
+      final seedColorNotifier = _container!.read(seedColorProvider.notifier);
+      seedColorNotifier.updateFromAlbumArt(artUri.path);
+    } else {
+      // Reset to default color if no valid album art
+      final seedColorNotifier = _container!.read(seedColorProvider.notifier);
+      seedColorNotifier.resetToDefault();
+    }
   }
 
   media_kit.Player get player => _player;

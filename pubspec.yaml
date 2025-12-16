@@ -52,6 +52,7 @@ dependencies:
   super_sliver_list: ^0.4.1
   http: ^1.0.0
   audio_service: ^0.18.18
+  palette_generator: ^0.3.3+4
 
 dev_dependencies:
   flutter_test:
