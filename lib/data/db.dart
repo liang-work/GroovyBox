@@ -12,6 +12,9 @@ class Tracks extends Table {
   TextColumn get path => text().unique()();
   TextColumn get artUri => text().nullable()(); // Path to local cover art
   TextColumn get lyrics => text().nullable()(); // JSON formatted lyrics
+  IntColumn get lyricsOffset => integer().withDefault(
+    const Constant(0),
+  )(); // Offset in milliseconds for lyrics timing
   DateTimeColumn get addedAt => dateTime().withDefault(currentDateAndTime)();
 }
 
@@ -34,7 +37,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
 
   @override
-  int get schemaVersion => 4; // Bump version for lyrics column
+  int get schemaVersion => 5; // Bump version for lyricsOffset column
 
   @override
   MigrationStrategy get migration {
@@ -52,6 +55,9 @@ class AppDatabase extends _$AppDatabase {
         }
         if (from < 4) {
           await m.addColumn(tracks, tracks.lyrics);
+        }
+        if (from < 5) {
+          await m.addColumn(tracks, tracks.lyricsOffset);
         }
       },
     );

@@ -372,7 +372,11 @@ class _PlayerLyrics extends HookConsumerWidget {
           if (lyricsData.type == 'timed') {
             return Stack(
               children: [
-                _TimedLyricsView(lyrics: lyricsData, player: player),
+                _TimedLyricsView(
+                  lyrics: lyricsData,
+                  player: player,
+                  trackPath: trackPath!,
+                ),
                 _LyricsRefreshButton(trackPath: trackPath!),
               ],
             );
@@ -603,67 +607,95 @@ class _LyricsRefreshButton extends HookConsumerWidget {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Refresh Lyrics'),
+        title: const Text('Lyrics Options'),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             const Text('Choose an action:'),
             const SizedBox(height: 16),
-            Row(
+            Column(
               children: [
-                Expanded(
+                Row(
+                  children: [
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        icon: const Icon(Icons.refresh),
+                        label: const Text('Re-fetch'),
+                        onPressed: trackAsync.maybeWhen(
+                          data: (track) => track != null
+                              ? () {
+                                  Navigator.of(context).pop();
+                                  final metadata = metadataAsync.value;
+                                  _showFetchLyricsDialog(
+                                    context,
+                                    ref,
+                                    track,
+                                    trackPath,
+                                    metadata,
+                                    musixmatchProvider,
+                                    neteaseProvider,
+                                  );
+                                }
+                              : null,
+                          orElse: () => null,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        icon: const Icon(Icons.clear),
+                        label: const Text('Clear'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.red,
+                          foregroundColor: Colors.white,
+                        ),
+                        onPressed: trackAsync.maybeWhen(
+                          data: (track) => track != null
+                              ? () async {
+                                  Navigator.of(context).pop();
+                                  debugPrint(
+                                    'Clearing lyrics for track ${track.id}',
+                                  );
+                                  final database = ref.read(databaseProvider);
+                                  await (database.update(
+                                    database.tracks,
+                                  )..where((t) => t.id.equals(track.id))).write(
+                                    db.TracksCompanion(
+                                      lyrics: const drift.Value.absent(),
+                                    ),
+                                  );
+                                  debugPrint('Cleared lyrics from database');
+                                  // Invalidate the track provider to refresh the UI
+                                  ref.invalidate(
+                                    trackByPathProvider(trackPath),
+                                  );
+                                  debugPrint(
+                                    'Invalidated track provider for $trackPath',
+                                  );
+                                }
+                              : null,
+                          orElse: () => null,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                SizedBox(
+                  width: double.infinity,
                   child: ElevatedButton.icon(
-                    icon: const Icon(Icons.refresh),
-                    label: const Text('Re-fetch'),
+                    icon: const Icon(Icons.tune),
+                    label: const Text('Adjust Timing'),
                     onPressed: trackAsync.maybeWhen(
                       data: (track) => track != null
                           ? () {
                               Navigator.of(context).pop();
-                              final metadata = metadataAsync.value;
-                              _showFetchLyricsDialog(
+                              _showLyricsOffsetDialog(
                                 context,
                                 ref,
                                 track,
                                 trackPath,
-                                metadata,
-                                musixmatchProvider,
-                                neteaseProvider,
-                              );
-                            }
-                          : null,
-                      orElse: () => null,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: ElevatedButton.icon(
-                    icon: const Icon(Icons.clear),
-                    label: const Text('Clear'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.red,
-                      foregroundColor: Colors.white,
-                    ),
-                    onPressed: trackAsync.maybeWhen(
-                      data: (track) => track != null
-                          ? () async {
-                              Navigator.of(context).pop();
-                              debugPrint(
-                                'Clearing lyrics for track ${track.id}',
-                              );
-                              final database = ref.read(databaseProvider);
-                              await (database.update(
-                                database.tracks,
-                              )..where((t) => t.id.equals(track.id))).write(
-                                db.TracksCompanion(
-                                  lyrics: const drift.Value.absent(),
-                                ),
-                              );
-                              debugPrint('Cleared lyrics from database');
-                              // Invalidate the track provider to refresh the UI
-                              ref.invalidate(trackByPathProvider(trackPath));
-                              debugPrint(
-                                'Invalidated track provider for $trackPath',
                               );
                             }
                           : null,
@@ -684,27 +716,77 @@ class _LyricsRefreshButton extends HookConsumerWidget {
       ),
     );
   }
+
+  void _showLyricsOffsetDialog(
+    BuildContext context,
+    WidgetRef ref,
+    db.Track track,
+    String trackPath,
+  ) {
+    final offsetController = TextEditingController(
+      text: track.lyricsOffset.toString(),
+    );
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Adjust Lyrics Timing'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text(
+              'Enter offset in milliseconds.\nPositive values delay lyrics, negative values advance them.',
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: offsetController,
+              decoration: const InputDecoration(
+                labelText: 'Offset (ms)',
+                border: OutlineInputBorder(),
+              ),
+              keyboardType: TextInputType.number,
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () async {
+              final offset = int.tryParse(offsetController.text) ?? 0;
+              Navigator.of(context).pop();
+
+              final database = ref.read(databaseProvider);
+              await (database.update(database.tracks)
+                    ..where((t) => t.id.equals(track.id)))
+                  .write(db.TracksCompanion(lyricsOffset: drift.Value(offset)));
+
+              // Invalidate the track provider to refresh the UI
+              ref.invalidate(trackByPathProvider(trackPath));
+            },
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
-// Provider to fetch a single track by path
-final trackByPathProvider = FutureProvider.family<db.Track?, String>((
-  ref,
-  trackPath,
-) async {
-  final database = ref.watch(databaseProvider);
-  return (database.select(
-    database.tracks,
-  )..where((t) => t.path.equals(trackPath))).getSingleOrNull();
-});
-
-class _TimedLyricsView extends HookWidget {
+class _TimedLyricsView extends HookConsumerWidget {
   final LyricsData lyrics;
   final Player player;
+  final String trackPath;
 
-  const _TimedLyricsView({required this.lyrics, required this.player});
+  const _TimedLyricsView({
+    required this.lyrics,
+    required this.player,
+    required this.trackPath,
+  });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final isDesktop = MediaQuery.sizeOf(context).width > 640;
 
     final listController = useMemoized(() => ListController(), []);
@@ -715,145 +797,159 @@ class _TimedLyricsView extends HookWidget {
     );
     final previousIndex = useState(-1);
 
-    return StreamBuilder<Duration>(
-      stream: player.stream.position,
-      initialData: player.state.position,
-      builder: (context, snapshot) {
-        final position = snapshot.data ?? Duration.zero;
-        final positionMs = position.inMilliseconds;
+    // Get track data to access lyrics offset
+    final trackAsync = ref.watch(trackByPathProvider(trackPath));
 
-        // Find current line index
-        int currentIndex = 0;
-        for (int i = 0; i < lyrics.lines.length; i++) {
-          if ((lyrics.lines[i].timeMs ?? 0) <= positionMs) {
-            currentIndex = i;
-          } else {
-            break;
-          }
-        }
+    return trackAsync.when(
+      loading: () => const Center(child: CircularProgressIndicator()),
+      error: (e, _) => Center(child: Text('Error: $e')),
+      data: (track) {
+        final lyricsOffset = track?.lyricsOffset ?? 0;
 
-        // Auto-scroll when current line changes
-        if (currentIndex != previousIndex.value) {
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            previousIndex.value = currentIndex;
-            if (isDesktop) {
-              if (wheelScrollController.hasClients) {
-                wheelScrollController.animateToItem(
-                  currentIndex,
-                  duration: const Duration(milliseconds: 400),
-                  curve: Curves.easeOutCubic,
-                );
+        return StreamBuilder<Duration>(
+          stream: player.stream.position,
+          initialData: player.state.position,
+          builder: (context, snapshot) {
+            final position = snapshot.data ?? Duration.zero;
+            final positionMs = position.inMilliseconds + lyricsOffset;
+
+            // Find current line index
+            int currentIndex = 0;
+            for (int i = 0; i < lyrics.lines.length; i++) {
+              if ((lyrics.lines[i].timeMs ?? 0) <= positionMs) {
+                currentIndex = i;
+              } else {
+                break;
               }
-            } else {
-              listController.animateToItem(
-                index: currentIndex,
-                scrollController: scrollController,
-                alignment: 0.5,
-                duration: (_) => const Duration(milliseconds: 300),
-                curve: (_) => Curves.easeOutCubic,
-              );
             }
-          });
-        }
 
-        if (isDesktop) {
-          return ListWheelScrollView.useDelegate(
-            controller: wheelScrollController,
-            itemExtent: 50,
-            perspective: 0.002,
-            offAxisFraction: 1.5,
-            squeeze: 1.0,
-            diameterRatio: 2,
-            physics: const FixedExtentScrollPhysics(),
-            childDelegate: ListWheelChildBuilderDelegate(
-              childCount: lyrics.lines.length,
-              builder: (context, index) {
-                final line = lyrics.lines[index];
-                final isActive = index == currentIndex;
+            // Auto-scroll when current line changes
+            if (currentIndex != previousIndex.value) {
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                previousIndex.value = currentIndex;
+                if (isDesktop) {
+                  if (wheelScrollController.hasClients) {
+                    wheelScrollController.animateToItem(
+                      currentIndex,
+                      duration: const Duration(milliseconds: 400),
+                      curve: Curves.easeOutCubic,
+                    );
+                  }
+                } else {
+                  listController.animateToItem(
+                    index: currentIndex,
+                    scrollController: scrollController,
+                    alignment: 0.5,
+                    duration: (_) => const Duration(milliseconds: 300),
+                    curve: (_) => Curves.easeOutCubic,
+                  );
+                }
+              });
+            }
 
-                return Align(
-                  alignment: Alignment.centerRight,
-                  child: ConstrainedBox(
-                    constraints: BoxConstraints(
-                      maxWidth: MediaQuery.sizeOf(context).width * 0.4,
-                    ),
-                    child: InkWell(
-                      onTap: () {
-                        if (line.timeMs != null) {
-                          player.seek(Duration(milliseconds: line.timeMs!));
-                        }
-                      },
-                      child: Container(
-                        alignment: Alignment.centerLeft,
-                        padding: const EdgeInsets.symmetric(horizontal: 32),
-                        child: AnimatedDefaultTextStyle(
-                          duration: const Duration(milliseconds: 200),
-                          style: Theme.of(context).textTheme.bodyLarge!
-                              .copyWith(
-                                fontSize: isActive ? 18 : 16,
-                                fontWeight: isActive
-                                    ? FontWeight.bold
-                                    : FontWeight.normal,
-                                color: isActive
-                                    ? Theme.of(context).colorScheme.primary
-                                    : Theme.of(
-                                        context,
-                                      ).colorScheme.onSurface.withOpacity(0.7),
+            if (isDesktop) {
+              return ListWheelScrollView.useDelegate(
+                controller: wheelScrollController,
+                itemExtent: 50,
+                perspective: 0.002,
+                offAxisFraction: 1.5,
+                squeeze: 1.0,
+                diameterRatio: 2,
+                physics: const FixedExtentScrollPhysics(),
+                childDelegate: ListWheelChildBuilderDelegate(
+                  childCount: lyrics.lines.length,
+                  builder: (context, index) {
+                    final line = lyrics.lines[index];
+                    final isActive = index == currentIndex;
+
+                    return Align(
+                      alignment: Alignment.centerRight,
+                      child: ConstrainedBox(
+                        constraints: BoxConstraints(
+                          maxWidth: MediaQuery.sizeOf(context).width * 0.4,
+                        ),
+                        child: InkWell(
+                          onTap: () {
+                            if (line.timeMs != null) {
+                              player.seek(Duration(milliseconds: line.timeMs!));
+                            }
+                          },
+                          child: Container(
+                            alignment: Alignment.centerLeft,
+                            padding: const EdgeInsets.symmetric(horizontal: 32),
+                            child: AnimatedDefaultTextStyle(
+                              duration: const Duration(milliseconds: 200),
+                              style: Theme.of(context).textTheme.bodyLarge!
+                                  .copyWith(
+                                    fontSize: isActive ? 18 : 16,
+                                    fontWeight: isActive
+                                        ? FontWeight.bold
+                                        : FontWeight.normal,
+                                    color: isActive
+                                        ? Theme.of(context).colorScheme.primary
+                                        : Theme.of(context)
+                                              .colorScheme
+                                              .onSurface
+                                              .withOpacity(0.7),
+                                  ),
+                              textAlign: TextAlign.left,
+                              child: Text(
+                                line.text,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
                               ),
-                          textAlign: TextAlign.left,
-                          child: Text(
-                            line.text,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
+                            ),
                           ),
                         ),
                       ),
+                    );
+                  },
+                ),
+              );
+            }
+
+            return SuperListView.builder(
+              padding: EdgeInsets.only(
+                top: 0.25 * MediaQuery.sizeOf(context).height,
+                bottom: 0.25 * MediaQuery.sizeOf(context).height,
+              ),
+              listController: listController,
+              controller: scrollController,
+              itemCount: lyrics.lines.length,
+              itemBuilder: (context, index) {
+                final line = lyrics.lines[index];
+                final isActive = index == currentIndex;
+
+                return InkWell(
+                  onTap: () {
+                    if (line.timeMs != null) {
+                      player.seek(Duration(milliseconds: line.timeMs!));
+                    }
+                  },
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      vertical: 8,
+                      horizontal: 16,
+                    ),
+                    child: AnimatedDefaultTextStyle(
+                      duration: const Duration(milliseconds: 200),
+                      style: Theme.of(context).textTheme.bodyLarge!.copyWith(
+                        fontSize: isActive ? 20 : 16,
+                        fontWeight: isActive
+                            ? FontWeight.bold
+                            : FontWeight.normal,
+                        color: isActive
+                            ? Theme.of(context).colorScheme.primary
+                            : Theme.of(
+                                context,
+                              ).colorScheme.onSurface.withOpacity(0.7),
+                      ),
+                      textAlign: TextAlign.center,
+                      child: Text(line.text),
                     ),
                   ),
                 );
               },
-            ),
-          );
-        }
-
-        return SuperListView.builder(
-          padding: EdgeInsets.only(
-            top: 0.25 * MediaQuery.sizeOf(context).height,
-            bottom: 0.25 * MediaQuery.sizeOf(context).height,
-          ),
-          listController: listController,
-          controller: scrollController,
-          itemCount: lyrics.lines.length,
-          itemBuilder: (context, index) {
-            final line = lyrics.lines[index];
-            final isActive = index == currentIndex;
-
-            return InkWell(
-              onTap: () {
-                if (line.timeMs != null) {
-                  player.seek(Duration(milliseconds: line.timeMs!));
-                }
-              },
-              child: Padding(
-                padding: const EdgeInsets.symmetric(
-                  vertical: 8,
-                  horizontal: 16,
-                ),
-                child: AnimatedDefaultTextStyle(
-                  duration: const Duration(milliseconds: 200),
-                  style: Theme.of(context).textTheme.bodyLarge!.copyWith(
-                    fontSize: isActive ? 20 : 16,
-                    fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
-                    color: isActive
-                        ? Theme.of(context).colorScheme.primary
-                        : Theme.of(
-                            context,
-                          ).colorScheme.onSurface.withOpacity(0.7),
-                  ),
-                  textAlign: TextAlign.center,
-                  child: Text(line.text),
-                ),
-              ),
             );
           },
         );
@@ -954,11 +1050,11 @@ class _PlayerControls extends HookWidget {
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           Text(
-                            _formatDuration(
+                            formatDuration(
                               Duration(milliseconds: currentValue.toInt()),
                             ),
                           ),
-                          Text(_formatDuration(totalDuration)),
+                          Text(formatDuration(totalDuration)),
                         ],
                       ),
                     ),
@@ -1117,9 +1213,20 @@ class _PlayerControls extends HookWidget {
     );
   }
 
-  String _formatDuration(Duration d) {
+  String formatDuration(Duration d) {
     final minutes = d.inMinutes;
     final seconds = d.inSeconds % 60;
     return '$minutes:${seconds.toString().padLeft(2, '0')}';
   }
 }
+
+// Provider to fetch a single track by path
+final trackByPathProvider = FutureProvider.family<db.Track?, String>((
+  ref,
+  trackPath,
+) async {
+  final database = ref.watch(databaseProvider);
+  return (database.select(
+    database.tracks,
+  )..where((t) => t.path.equals(trackPath))).getSingleOrNull();
+});
