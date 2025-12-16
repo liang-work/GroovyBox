@@ -1,8 +1,9 @@
 import 'package:audio_service/audio_service.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:media_kit/media_kit.dart' as media_kit;
 import 'package:groovybox/data/db.dart';
 import 'package:groovybox/providers/theme_provider.dart';
+import 'package:groovybox/logic/metadata_service.dart';
 
 class AudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
   final media_kit.Player _player;
@@ -46,23 +47,18 @@ class AudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
   }
 
   // Update theme color based on current track's album art
-  void _updateThemeFromCurrentTrack(MediaItem mediaItem) {
+  void _updateThemeFromCurrentTrack(MediaItem mediaItem) async {
     if (_container == null) return;
 
-    final artUri = mediaItem.artUri;
-    if (artUri != null &&
-        artUri.scheme == 'file' &&
-        artUri.path.isNotEmpty &&
-        !artUri.path.contains('..') && // Prevent directory traversal
-        (artUri.path.endsWith('.jpg') ||
-            artUri.path.endsWith('.jpeg') ||
-            artUri.path.endsWith('.png') ||
-            artUri.path.endsWith('.bmp') ||
-            artUri.path.endsWith('.webp'))) {
+    try {
+      // Get metadata for the current track to access artBytes
+      final metadataService = _container!.read(metadataServiceProvider);
+      final metadata = await metadataService.getMetadata(mediaItem.id);
+
       final seedColorNotifier = _container!.read(seedColorProvider.notifier);
-      seedColorNotifier.updateFromAlbumArt(artUri.path);
-    } else {
-      // Reset to default color if no valid album art
+      seedColorNotifier.updateFromAlbumArtBytes(metadata.artBytes);
+    } catch (e) {
+      // If metadata retrieval fails, reset to default color
       final seedColorNotifier = _container!.read(seedColorProvider.notifier);
       seedColorNotifier.resetToDefault();
     }

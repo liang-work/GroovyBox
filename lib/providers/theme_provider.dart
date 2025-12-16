@@ -1,4 +1,4 @@
-import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:palette_generator/palette_generator.dart';
@@ -94,32 +94,16 @@ class SeedColorNotifier extends _$SeedColorNotifier {
     state = color;
   }
 
-  void updateFromAlbumArt(String? imagePath) async {
-    if (imagePath == null || imagePath.isEmpty) {
+  void updateFromAlbumArtBytes(Uint8List? artBytes) async {
+    if (artBytes == null || artBytes.isEmpty) {
       // Reset to default color if no album art
       state = defaultSeedColor;
       return;
     }
 
     try {
-      // Validate that the file exists before attempting to load it
-      final file = File(imagePath);
-      if (!await file.exists()) {
-        // File doesn't exist, reset to default color
-        state = defaultSeedColor;
-        return;
-      }
-
-      // Additional validation: check if file is readable and not empty
-      final fileStat = await file.stat();
-      if (fileStat.size == 0) {
-        // Empty file, reset to default color
-        state = defaultSeedColor;
-        return;
-      }
-
       final paletteGenerator = await PaletteGenerator.fromImageProvider(
-        FileImage(file),
+        MemoryImage(artBytes),
         size: const Size(200, 200),
         maximumColorCount: 20, // Increase color count for better extraction
       );
@@ -140,11 +124,19 @@ class SeedColorNotifier extends _$SeedColorNotifier {
       // Ensure we have a valid color, otherwise use default
       state = extractedColor ?? defaultSeedColor;
     } catch (e) {
-      // Log the error for debugging (in a real app, you'd use proper logging)
-      // debugPrint('Failed to extract color from album art: $e');
       // If color extraction fails, reset to default color
       state = defaultSeedColor;
     }
+  }
+
+  // Keep the old method for backward compatibility, but mark as deprecated
+  @Deprecated(
+    'Use updateFromAlbumArtBytes instead. File path based color extraction is unreliable.',
+  )
+  void updateFromAlbumArt(String? imagePath) async {
+    // This method is deprecated, but kept for compatibility
+    // It will always reset to default since we now use artBytes
+    state = defaultSeedColor;
   }
 
   void resetToDefault() {
