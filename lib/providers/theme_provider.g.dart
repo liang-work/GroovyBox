@@ -94,7 +94,7 @@ final class SeedColorNotifierProvider
   }
 }
 
-String _$seedColorNotifierHash() => r'7c7893af5be42f3771a268159e7a5e2597bebc4e';
+String _$seedColorNotifierHash() => r'3954f171d23ec7bcf3357928a278a8212c835908';
 
 abstract class _$SeedColorNotifier extends $Notifier<Color> {
   Color build();
