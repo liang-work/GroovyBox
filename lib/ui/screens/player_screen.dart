@@ -1,3 +1,5 @@
+import 'dart:ui';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:drift/drift.dart' as drift;
@@ -38,6 +40,37 @@ class PlayerScreen extends HookConsumerWidget {
         final path = Uri.decodeFull(Uri.parse(media.uri).path);
         final metadataAsync = ref.watch(trackMetadataProvider(path));
 
+        // Build blurred background if cover art is available
+        Widget? background;
+        metadataAsync.when(
+          data: (meta) {
+            if (meta.artBytes != null) {
+              background = Positioned.fill(
+                child: Stack(
+                  children: [
+                    Container(
+                      decoration: BoxDecoration(
+                        image: DecorationImage(
+                          image: MemoryImage(meta.artBytes!),
+                          fit: BoxFit.cover,
+                        ),
+                      ),
+                    ),
+                    BackdropFilter(
+                      filter: ImageFilter.blur(sigmaX: 50, sigmaY: 50),
+                      child: Container(color: Colors.black.withOpacity(0.6)),
+                    ),
+                  ],
+                ),
+              );
+            } else {
+              background = null;
+            }
+          },
+          loading: () => background = null,
+          error: (_, __) => background = null,
+        );
+
         return Focus(
           autofocus: true,
           onKeyEvent: (node, event) {
@@ -62,6 +95,7 @@ class PlayerScreen extends HookConsumerWidget {
           child: Scaffold(
             body: Stack(
               children: [
+                ...background != null ? [background!] : [],
                 // Main content (StreamBuilder)
                 Builder(
                   builder: (context) {
