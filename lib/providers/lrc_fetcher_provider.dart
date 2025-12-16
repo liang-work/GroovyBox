@@ -1,8 +1,10 @@
+import 'package:flutter/foundation.dart';
 import 'package:groovybox/data/db.dart' as db;
 import 'package:drift/drift.dart' as drift;
 import 'package:groovybox/logic/lrc_providers.dart';
 import 'package:groovybox/logic/lyrics_parser.dart';
 import 'package:groovybox/providers/db_provider.dart';
+import 'package:groovybox/ui/screens/player_screen.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
@@ -18,14 +20,18 @@ class LyricsFetcher extends _$LyricsFetcher {
   Future<void> fetchLyricsForTrack({
     required int trackId,
     required String searchTerm,
-    required LRCProvider provider,
+    required LrcProvider provider,
     required String trackPath,
   }) async {
+    debugPrint(
+      'Fetching lyrics for track $trackId with search term: $searchTerm',
+    );
     state = state.copyWith(isLoading: true, error: null);
 
     try {
       final lyrics = await provider.getLrc(searchTerm);
       if (lyrics == null) {
+        debugPrint('No lyrics found from ${provider.name}');
         state = state.copyWith(
           isLoading: false,
           error: 'No lyrics found from ${provider.name}',
@@ -52,17 +58,26 @@ class LyricsFetcher extends _$LyricsFetcher {
               ..where((t) => t.id.equals(trackId)))
             .write(db.TracksCompanion(lyrics: drift.Value(lyricsJson)));
 
+        debugPrint('Updated database with lyrics for track $trackId');
+
+        // Invalidate the track provider to refresh the UI
+        ref.invalidate(trackByPathProvider(trackPath));
+
+        debugPrint('Invalidated track provider for $trackPath');
+
         state = state.copyWith(
           isLoading: false,
           successMessage: 'Lyrics fetched from ${provider.name}',
         );
       } else {
+        debugPrint('Failed to parse lyrics');
         state = state.copyWith(
           isLoading: false,
           error: 'Failed to parse lyrics',
         );
       }
     } catch (e) {
+      debugPrint('Error fetching lyrics: $e');
       state = state.copyWith(
         isLoading: false,
         error: 'Error fetching lyrics: $e',

@@ -295,7 +295,7 @@ class _PlayerLyrics extends HookConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     // Watch for track data (including lyrics) by path
     final trackAsync = trackPath != null
-        ? ref.watch(_trackByPathProvider(trackPath!))
+        ? ref.watch(trackByPathProvider(trackPath!))
         : const AsyncValue<db.Track?>.data(null);
 
     final metadataAsync = trackPath != null
@@ -497,7 +497,7 @@ class _LyricsRefreshButton extends HookConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final trackAsync = ref.watch(_trackByPathProvider(trackPath));
+    final trackAsync = ref.watch(trackByPathProvider(trackPath));
     final metadataAsync = ref.watch(trackMetadataProvider(trackPath));
     final musixmatchProviderInstance = ref.watch(musixmatchProvider);
     final neteaseProviderInstance = ref.watch(neteaseProvider);
@@ -518,6 +518,76 @@ class _LyricsRefreshButton extends HookConsumerWidget {
           neteaseProviderInstance,
         ),
         padding: EdgeInsets.zero,
+      ),
+    );
+  }
+
+  void _showFetchLyricsDialog(
+    BuildContext context,
+    WidgetRef ref,
+    db.Track track,
+    String trackPath,
+    dynamic metadataObj,
+    musixmatchProvider,
+    neteaseProvider,
+  ) {
+    final metadata = metadataObj as TrackMetadata?;
+    final searchTerm =
+        '${metadata?.title ?? track.title} ${metadata?.artist ?? track.artist}'
+            .trim();
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Fetch Lyrics'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text('Search term: $searchTerm'),
+            const SizedBox(height: 16),
+            Text('Choose a provider:'),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                _ProviderButton(
+                  name: 'Musixmatch',
+                  onPressed: () async {
+                    Navigator.of(context).pop();
+                    await ref
+                        .read(lyricsFetcherProvider.notifier)
+                        .fetchLyricsForTrack(
+                          trackId: track.id,
+                          searchTerm: searchTerm,
+                          provider: musixmatchProvider,
+                          trackPath: trackPath,
+                        );
+                  },
+                ),
+                const SizedBox(width: 8),
+                _ProviderButton(
+                  name: 'NetEase',
+                  onPressed: () async {
+                    Navigator.of(context).pop();
+                    await ref
+                        .read(lyricsFetcherProvider.notifier)
+                        .fetchLyricsForTrack(
+                          trackId: track.id,
+                          searchTerm: searchTerm,
+                          provider: neteaseProvider,
+                          trackPath: trackPath,
+                        );
+                  },
+                ),
+              ],
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Cancel'),
+          ),
+        ],
       ),
     );
   }
@@ -547,21 +617,18 @@ class _LyricsRefreshButton extends HookConsumerWidget {
                     label: const Text('Re-fetch'),
                     onPressed: trackAsync.maybeWhen(
                       data: (track) => track != null
-                          ? () async {
+                          ? () {
                               Navigator.of(context).pop();
                               final metadata = metadataAsync.value;
-                              final searchTerm =
-                                  '${metadata?.title ?? track.title} ${metadata?.artist ?? track.artist}'
-                                      .trim();
-                              await ref
-                                  .read(lyricsFetcherProvider.notifier)
-                                  .fetchLyricsForTrack(
-                                    trackId: track.id,
-                                    searchTerm: searchTerm,
-                                    provider:
-                                        musixmatchProvider, // Default to Musixmatch
-                                    trackPath: trackPath,
-                                  );
+                              _showFetchLyricsDialog(
+                                context,
+                                ref,
+                                track,
+                                trackPath,
+                                metadata,
+                                musixmatchProvider,
+                                neteaseProvider,
+                              );
                             }
                           : null,
                       orElse: () => null,
@@ -581,6 +648,9 @@ class _LyricsRefreshButton extends HookConsumerWidget {
                       data: (track) => track != null
                           ? () async {
                               Navigator.of(context).pop();
+                              debugPrint(
+                                'Clearing lyrics for track ${track.id}',
+                              );
                               final database = ref.read(databaseProvider);
                               await (database.update(
                                 database.tracks,
@@ -588,6 +658,12 @@ class _LyricsRefreshButton extends HookConsumerWidget {
                                 db.TracksCompanion(
                                   lyrics: const drift.Value.absent(),
                                 ),
+                              );
+                              debugPrint('Cleared lyrics from database');
+                              // Invalidate the track provider to refresh the UI
+                              ref.invalidate(trackByPathProvider(trackPath));
+                              debugPrint(
+                                'Invalidated track provider for $trackPath',
                               );
                             }
                           : null,
@@ -611,7 +687,7 @@ class _LyricsRefreshButton extends HookConsumerWidget {
 }
 
 // Provider to fetch a single track by path
-final _trackByPathProvider = FutureProvider.family<db.Track?, String>((
+final trackByPathProvider = FutureProvider.family<db.Track?, String>((
   ref,
   trackPath,
 ) async {

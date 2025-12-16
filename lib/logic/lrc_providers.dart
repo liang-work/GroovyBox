@@ -15,10 +15,10 @@ class Lyrics {
 }
 
 /// Abstract base class for LRC providers
-abstract class LRCProvider {
+abstract class LrcProvider {
   late final http.Client session;
 
-  LRCProvider() {
+  LrcProvider() {
     session = http.Client();
   }
 
@@ -29,7 +29,7 @@ abstract class LRCProvider {
 }
 
 /// Musixmatch LRC provider
-class MusixmatchProvider extends LRCProvider {
+class MusixmatchProvider extends LrcProvider {
   static const String rootUrl = "https://apic-desktop.musixmatch.com/ws/1.1/";
 
   final String? lang;
@@ -38,6 +38,7 @@ class MusixmatchProvider extends LRCProvider {
 
   MusixmatchProvider({this.lang, this.enhanced = false});
 
+  @override
   String get name => 'Musixmatch';
 
   Future<http.Response> _get(
@@ -178,7 +179,7 @@ class MusixmatchProvider extends LRCProvider {
 }
 
 /// NetEase provider
-class NetEaseProvider extends LRCProvider {
+class NetEaseProvider extends LrcProvider {
   static const String apiEndpointMetadata =
       "https://music.163.com/api/search/pc";
   static const String apiEndpointLyrics =
@@ -211,7 +212,7 @@ class NetEaseProvider extends LRCProvider {
       headers: {"cookie": cookie},
     );
     final data = jsonDecode(response.body);
-    final lrc = Lyrics(plain: data["lrc"]["lyric"]);
+    final lrc = Lyrics(synced: data["lrc"]["lyric"]);
     return lrc;
   }
 

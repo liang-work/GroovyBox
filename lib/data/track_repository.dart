@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_media_metadata/flutter_media_metadata.dart';
 import 'package:groovybox/providers/db_provider.dart';
 import 'package:path/path.dart' as p;
@@ -69,7 +70,7 @@ class TrackRepository extends _$TrackRepository {
               mode: InsertMode.insertOrIgnore,
             );
       } catch (e) {
-        print('Error importing file $path: $e');
+        debugPrint('Error importing file $path: $e');
         // Continue to next file
       }
     }
@@ -112,7 +113,7 @@ class TrackRepository extends _$TrackRepository {
       try {
         await file.delete();
       } catch (e) {
-        print("Error deleting file: $e");
+        debugPrint("Error deleting file: $e");
       }
     }
 
@@ -123,7 +124,7 @@ class TrackRepository extends _$TrackRepository {
         try {
           await artFile.delete();
         } catch (e) {
-          print("Error deleting art: $e");
+          debugPrint("Error deleting art: $e");
         }
       }
     }
