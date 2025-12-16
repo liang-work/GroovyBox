@@ -3,9 +3,15 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 part 'audio_provider.g.dart';
 
+// This should be set after AudioService.init in main.dart
+late AudioHandler _audioHandler;
+
 @Riverpod(keepAlive: true)
 AudioHandler audioHandler(Ref ref) {
-  final handler = AudioHandler();
-  ref.onDispose(() => handler.dispose());
-  return handler;
+  return _audioHandler;
+}
+
+// Function to set the audio handler after initialization
+void setAudioHandler(AudioHandler handler) {
+  _audioHandler = handler;
 }

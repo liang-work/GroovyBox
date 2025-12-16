@@ -51,6 +51,7 @@ dependencies:
   styled_widget: ^0.4.1
   super_sliver_list: ^0.4.1
   http: ^1.0.0
+  audio_service: ^0.18.18
 
 dev_dependencies:
   flutter_test:

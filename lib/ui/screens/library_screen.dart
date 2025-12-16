@@ -300,8 +300,7 @@ class LibraryScreen extends HookConsumerWidget {
                               ),
                         onTap: () {
                           final audio = ref.read(audioHandlerProvider);
-                          audio.setSource(track.path);
-                          audio.play();
+                          audio.playTrack(track);
                         },
                         onLongPress: () {
                           // Enter selection mode

@@ -4,7 +4,6 @@ import 'package:groovybox/data/db.dart';
 import 'package:groovybox/data/playlist_repository.dart';
 import 'package:groovybox/providers/audio_provider.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
-import 'package:media_kit/media_kit.dart' hide Track;
 
 class AlbumDetailScreen extends HookConsumerWidget {
   final AlbumData album;
@@ -102,8 +101,7 @@ class AlbumDetailScreen extends HookConsumerWidget {
 
   void _playAlbum(WidgetRef ref, List<Track> tracks, {int initialIndex = 0}) {
     final audioHandler = ref.read(audioHandlerProvider);
-    final medias = tracks.map((t) => Media(t.path)).toList();
-    audioHandler.openPlaylist(medias, initialIndex: initialIndex);
+    audioHandler.playTracks(tracks, initialIndex: initialIndex);
   }
 
   String _formatDuration(int? durationMs) {

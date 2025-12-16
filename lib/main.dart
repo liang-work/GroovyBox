@@ -1,11 +1,30 @@
 import 'package:flutter/material.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:media_kit/media_kit.dart';
+import 'package:audio_service/audio_service.dart' as audio_service;
+import 'logic/audio_handler.dart';
+import 'providers/audio_provider.dart';
 import 'ui/shell.dart';
 
-void main() {
+late AudioHandler _audioHandler;
+
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   MediaKit.ensureInitialized();
+
+  // Initialize AudioService
+  _audioHandler = await audio_service.AudioService.init(
+    builder: () => AudioHandler(),
+    config: const audio_service.AudioServiceConfig(
+      androidNotificationChannelId: 'dev.solsynth.groovybox.channel.audio',
+      androidNotificationChannelName: 'GroovyBox Audio',
+      androidNotificationOngoing: true,
+    ),
+  );
+
+  // Set the audio handler for the provider
+  setAudioHandler(_audioHandler);
+
   runApp(const ProviderScope(child: MyApp()));
 }
 
