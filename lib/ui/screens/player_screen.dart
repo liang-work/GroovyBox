@@ -68,7 +68,7 @@ class PlayerScreen extends HookConsumerWidget {
             }
           },
           loading: () => background = null,
-          error: (_, __) => background = null,
+          error: (_, _) => background = null,
         );
 
         return Focus(
@@ -93,72 +93,74 @@ class PlayerScreen extends HookConsumerWidget {
             return KeyEventResult.ignored;
           },
           child: Scaffold(
-            body: Stack(
-              children: [
-                ...background != null ? [background!] : [],
-                // Main content (StreamBuilder)
-                Builder(
-                  builder: (context) {
-                    if (isMobile) {
-                      return Padding(
-                        padding: EdgeInsets.only(
-                          top: MediaQuery.of(context).padding.top + 64,
-                        ),
-                        child: _MobileLayout(
+            body: ClipRect(
+              child: Stack(
+                children: [
+                  ...background != null ? [background!] : [],
+                  // Main content (StreamBuilder)
+                  Builder(
+                    builder: (context) {
+                      if (isMobile) {
+                        return Padding(
+                          padding: EdgeInsets.only(
+                            top: MediaQuery.of(context).padding.top + 64,
+                          ),
+                          child: _MobileLayout(
+                            player: player,
+                            tabController: tabController,
+                            metadataAsync: metadataAsync,
+                            media: media,
+                            trackPath: path,
+                          ),
+                        );
+                      } else {
+                        return _DesktopLayout(
                           player: player,
-                          tabController: tabController,
                           metadataAsync: metadataAsync,
                           media: media,
                           trackPath: path,
-                        ),
-                      );
-                    } else {
-                      return _DesktopLayout(
-                        player: player,
-                        metadataAsync: metadataAsync,
-                        media: media,
-                        trackPath: path,
-                      );
-                    }
-                  },
-                ),
-                // IconButton
-                Positioned(
-                  top: MediaQuery.of(context).padding.top + 16,
-                  left: 16,
-                  child: IconButton(
-                    icon: const Icon(Icons.keyboard_arrow_down),
-                    onPressed: () => Navigator.of(context).pop(),
-                    padding: EdgeInsets.zero,
-                    iconSize: 24,
+                        );
+                      }
+                    },
                   ),
-                ),
-                // TabBar (if mobile)
-                if (isMobile)
+                  // IconButton
                   Positioned(
-                    top: MediaQuery.of(context).padding.top + 14,
-                    left: 54,
-                    right: 54,
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 24),
-                      child: TabBar(
-                        controller: tabController,
-                        tabAlignment: TabAlignment.fill,
-                        tabs: const [
-                          Tab(text: 'Cover'),
-                          Tab(text: 'Lyrics'),
-                        ],
-                        dividerHeight: 0,
-                        indicatorColor: Colors.transparent,
-                        overlayColor: WidgetStatePropertyAll(
-                          Colors.transparent,
-                        ),
-                        splashFactory: NoSplash.splashFactory,
-                      ),
+                    top: MediaQuery.of(context).padding.top + 16,
+                    left: 16,
+                    child: IconButton(
+                      icon: const Icon(Icons.keyboard_arrow_down),
+                      onPressed: () => Navigator.of(context).pop(),
+                      padding: EdgeInsets.zero,
+                      iconSize: 24,
                     ),
                   ),
-                _LyricsRefreshButton(trackPath: path),
-              ],
+                  // TabBar (if mobile)
+                  if (isMobile)
+                    Positioned(
+                      top: MediaQuery.of(context).padding.top + 14,
+                      left: 54,
+                      right: 54,
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 24),
+                        child: TabBar(
+                          controller: tabController,
+                          tabAlignment: TabAlignment.fill,
+                          tabs: const [
+                            Tab(text: 'Cover'),
+                            Tab(text: 'Lyrics'),
+                          ],
+                          dividerHeight: 0,
+                          indicatorColor: Colors.transparent,
+                          overlayColor: WidgetStatePropertyAll(
+                            Colors.transparent,
+                          ),
+                          splashFactory: NoSplash.splashFactory,
+                        ),
+                      ),
+                    ),
+                  _LyricsRefreshButton(trackPath: path),
+                ],
+              ),
             ),
           ),
         );
