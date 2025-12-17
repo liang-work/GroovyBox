@@ -39,11 +39,11 @@ class AlbumsTab extends HookConsumerWidget {
               openBuilder: (context, action) {
                 return AlbumDetailScreen(album: album);
               },
-              closedColor: Theme.of(context).cardColor,
+              closedColor: Theme.of(context).colorScheme.surfaceContainer,
               closedShape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(12),
               ),
-              closedElevation: 0,
+              closedElevation: 4,
               closedBuilder: (context, action) {
                 return Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
