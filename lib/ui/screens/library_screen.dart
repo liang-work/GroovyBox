@@ -304,6 +304,7 @@ class LibraryScreen extends HookConsumerWidget {
                             }
 
                             // Import lyrics if any
+                            if (!context.mounted) return;
                             if (lyricsPaths.isNotEmpty) {
                               await _batchImportLyricsFromPaths(
                                 context,
@@ -366,10 +367,12 @@ class LibraryScreen extends HookConsumerWidget {
           final query = searchQuery.value.toLowerCase();
           filteredTracks = tracks.where((track) {
             if (track.title.toLowerCase().contains(query)) return true;
-            if (track.artist?.toLowerCase().contains(query) ?? false)
+            if (track.artist?.toLowerCase().contains(query) ?? false) {
               return true;
-            if (track.album?.toLowerCase().contains(query) ?? false)
+            }
+            if (track.album?.toLowerCase().contains(query) ?? false) {
               return true;
+            }
             if (track.lyrics != null) {
               try {
                 final lyricsData = LyricsData.fromJsonString(track.lyrics!);

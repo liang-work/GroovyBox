@@ -1,10 +1,16 @@
+import 'dart:io';
 import 'dart:math' as math;
 import 'dart:ui';
 
+import 'package:file_picker/file_picker.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:drift/drift.dart' as drift;
+import 'package:gap/gap.dart';
 import 'package:groovybox/data/db.dart' as db;
+import 'package:groovybox/data/track_repository.dart';
+import 'package:groovybox/logic/lrc_providers.dart';
 import 'package:groovybox/logic/lyrics_parser.dart';
 import 'package:groovybox/logic/metadata_service.dart';
 import 'package:groovybox/providers/audio_provider.dart';
@@ -63,7 +69,9 @@ class PlayerScreen extends HookConsumerWidget {
                     ),
                     BackdropFilter(
                       filter: ImageFilter.blur(sigmaX: 50, sigmaY: 50),
-                      child: Container(color: Colors.black.withOpacity(0.6)),
+                      child: Container(
+                        color: Colors.black.withValues(alpha: 0.6),
+                      ),
                     ),
                   ],
                 ),
@@ -177,6 +185,7 @@ class _MobileLayout extends StatelessWidget {
           player: player,
           metadataAsync: metadataAsync,
           media: media,
+          trackPath: trackPath,
         ),
         ViewMode.lyrics => _LyricsView(
           key: const ValueKey('lyrics'),
@@ -239,6 +248,7 @@ class _DesktopLayout extends StatelessWidget {
                   player: player,
                   metadataAsync: metadataAsync,
                   media: media,
+                  trackPath: trackPath,
                 ),
                 const SizedBox(height: 32),
               ],
@@ -286,6 +296,7 @@ class _DesktopLayout extends StatelessWidget {
                               player: player,
                               metadataAsync: metadataAsync,
                               media: media,
+                              trackPath: trackPath,
                             ),
                             const SizedBox(height: 32),
                           ],
@@ -303,18 +314,9 @@ class _DesktopLayout extends StatelessWidget {
               top: 0,
               bottom: 0,
               width: MediaQuery.sizeOf(context).width * 0.6,
-              child: Stack(
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 32),
-                    child: _PlayerLyrics(trackPath: trackPath, player: player),
-                  ),
-                  Positioned(
-                    top: 16,
-                    right: 16,
-                    child: _LyricsRefreshButton(trackPath: trackPath),
-                  ),
-                ],
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 32),
+                child: _PlayerLyrics(trackPath: trackPath, player: player),
               ),
             ),
           ],
@@ -360,6 +362,7 @@ class _DesktopLayout extends StatelessWidget {
                               player: player,
                               metadataAsync: metadataAsync,
                               media: media,
+                              trackPath: trackPath,
                             ),
                             const SizedBox(height: 32),
                           ],
@@ -390,12 +393,14 @@ class _CoverView extends StatelessWidget {
   final Player player;
   final AsyncValue<TrackMetadata> metadataAsync;
   final Media media;
+  final String trackPath;
 
   const _CoverView({
     super.key,
     required this.player,
     required this.metadataAsync,
     required this.media,
+    required this.trackPath,
   });
 
   @override
@@ -416,6 +421,7 @@ class _CoverView extends StatelessWidget {
             player: player,
             metadataAsync: metadataAsync,
             media: media,
+            trackPath: trackPath,
           ),
           const SizedBox(height: 24),
         ],
@@ -661,27 +667,75 @@ class _PlayerLyrics extends HookConsumerWidget {
     musixmatchProvider,
     neteaseProvider,
   ) {
+    showDialog(
+      context: context,
+      builder: (context) => _FetchLyricsDialog(
+        track: track,
+        trackPath: trackPath,
+        metadataObj: metadataObj,
+        ref: ref,
+        musixmatchProvider: musixmatchProvider,
+        neteaseProvider: neteaseProvider,
+      ),
+    );
+  }
+}
+
+class _FetchLyricsDialog extends StatelessWidget {
+  final db.Track track;
+  final String trackPath;
+  final dynamic metadataObj;
+  final WidgetRef ref;
+  final LrcProvider musixmatchProvider;
+  final LrcProvider neteaseProvider;
+
+  const _FetchLyricsDialog({
+    required this.track,
+    required this.trackPath,
+    required this.metadataObj,
+    required this.ref,
+    required this.musixmatchProvider,
+    required this.neteaseProvider,
+  });
+
+  @override
+  Widget build(BuildContext context) {
     final metadata = metadataObj as TrackMetadata?;
     final searchTerm =
         '${metadata?.title ?? track.title} ${metadata?.artist ?? track.artist}'
             .trim();
 
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Fetch Lyrics'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text('Search term: $searchTerm'),
-            const SizedBox(height: 16),
-            Text('Choose a provider:'),
-            const SizedBox(height: 8),
-            Row(
+    return AlertDialog(
+      title: const Text('Fetch Lyrics'),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        spacing: 12,
+        children: [
+          RichText(
+            text: TextSpan(
               children: [
-                _ProviderButton(
-                  name: 'Musixmatch',
-                  onPressed: () async {
+                const TextSpan(text: 'Search lyrics with '),
+                TextSpan(
+                  text: searchTerm,
+                  style: const TextStyle(fontWeight: FontWeight.bold),
+                ),
+              ],
+            ),
+          ),
+          Text('Where do you want to search lyrics from?'),
+          Card(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                ListTile(
+                  dense: true,
+                  leading: const Icon(Icons.library_music),
+                  title: const Text('Musixmatch'),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: const BorderRadius.all(Radius.circular(12)),
+                  ),
+                  onTap: () async {
                     Navigator.of(context).pop();
                     await ref
                         .read(lyricsFetcherProvider.notifier)
@@ -693,10 +747,14 @@ class _PlayerLyrics extends HookConsumerWidget {
                         );
                   },
                 ),
-                const SizedBox(width: 8),
-                _ProviderButton(
-                  name: 'NetEase',
-                  onPressed: () async {
+                ListTile(
+                  dense: true,
+                  leading: const Icon(Icons.music_video),
+                  title: const Text('NetEase'),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: const BorderRadius.all(Radius.circular(12)),
+                  ),
+                  onTap: () async {
                     Navigator.of(context).pop();
                     await ref
                         .read(lyricsFetcherProvider.notifier)
@@ -708,39 +766,73 @@ class _PlayerLyrics extends HookConsumerWidget {
                         );
                   },
                 ),
+                ListTile(
+                  dense: true,
+                  leading: const Icon(Icons.file_upload),
+                  title: const Text('Manual Import'),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: const BorderRadius.all(Radius.circular(12)),
+                  ),
+                  onTap: () async {
+                    Navigator.of(context).pop();
+                    await _importLyricsForTrack(context, ref, track, trackPath);
+                  },
+                ),
               ],
             ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Cancel'),
           ),
         ],
       ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Cancel'),
+        ),
+      ],
     );
+  }
+
+  Future<void> _importLyricsForTrack(
+    BuildContext context,
+    WidgetRef ref,
+    db.Track track,
+    String trackPath,
+  ) async {
+    final result = await FilePicker.platform.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: ['lrc', 'srt', 'txt'],
+      allowMultiple: false,
+    );
+
+    if (result != null && result.files.isNotEmpty) {
+      final file = File(result.files.first.path!);
+      final content = await file.readAsString();
+      final filename = result.files.first.name;
+
+      final lyricsData = LyricsParser.parse(content, filename);
+      final lyricsJson = lyricsData.toJsonString();
+
+      await ref
+          .read(trackRepositoryProvider.notifier)
+          .updateLyrics(track.id, lyricsJson);
+
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Imported ${lyricsData.lines.length} lyrics lines for "${track.title}"',
+          ),
+        ),
+      );
+    }
   }
 }
 
-class _ProviderButton extends StatelessWidget {
-  final String name;
-  final VoidCallback onPressed;
-
-  const _ProviderButton({required this.name, required this.onPressed});
-
-  @override
-  Widget build(BuildContext context) {
-    return Expanded(
-      child: ElevatedButton(onPressed: onPressed, child: Text(name)),
-    );
-  }
-}
-
-class _LyricsRefreshButton extends HookConsumerWidget {
+class _LyricsAdjustButton extends HookConsumerWidget {
   final String trackPath;
+  final Player player;
 
-  const _LyricsRefreshButton({required this.trackPath});
+  const _LyricsAdjustButton({required this.trackPath, required this.player});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -750,9 +842,9 @@ class _LyricsRefreshButton extends HookConsumerWidget {
     final neteaseProviderInstance = ref.watch(neteaseProvider);
 
     return IconButton(
-      icon: const Icon(Icons.refresh),
+      icon: const Icon(Icons.settings_applications),
       iconSize: 24,
-      tooltip: 'Refresh Lyrics',
+      tooltip: 'Adjust Lyrics',
       onPressed: () => _showLyricsRefreshDialog(
         context,
         ref,
@@ -774,63 +866,15 @@ class _LyricsRefreshButton extends HookConsumerWidget {
     musixmatchProvider,
     neteaseProvider,
   ) {
-    final metadata = metadataObj as TrackMetadata?;
-    final searchTerm =
-        '${metadata?.title ?? track.title} ${metadata?.artist ?? track.artist}'
-            .trim();
-
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Fetch Lyrics'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text('Search term: $searchTerm'),
-            const SizedBox(height: 16),
-            Text('Choose a provider:'),
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                _ProviderButton(
-                  name: 'Musixmatch',
-                  onPressed: () async {
-                    Navigator.of(context).pop();
-                    await ref
-                        .read(lyricsFetcherProvider.notifier)
-                        .fetchLyricsForTrack(
-                          trackId: track.id,
-                          searchTerm: searchTerm,
-                          provider: musixmatchProvider,
-                          trackPath: trackPath,
-                        );
-                  },
-                ),
-                const SizedBox(width: 8),
-                _ProviderButton(
-                  name: 'NetEase',
-                  onPressed: () async {
-                    Navigator.of(context).pop();
-                    await ref
-                        .read(lyricsFetcherProvider.notifier)
-                        .fetchLyricsForTrack(
-                          trackId: track.id,
-                          searchTerm: searchTerm,
-                          provider: neteaseProvider,
-                          trackPath: trackPath,
-                        );
-                  },
-                ),
-              ],
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Cancel'),
-          ),
-        ],
+      builder: (context) => _FetchLyricsDialog(
+        track: track,
+        trackPath: trackPath,
+        metadataObj: metadataObj,
+        ref: ref,
+        musixmatchProvider: musixmatchProvider,
+        neteaseProvider: neteaseProvider,
       ),
     );
   }
@@ -848,13 +892,14 @@ class _LyricsRefreshButton extends HookConsumerWidget {
       builder: (context) => AlertDialog(
         title: const Text('Lyrics Options'),
         content: Column(
+          spacing: 8,
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Text('Choose an action:'),
-            const SizedBox(height: 16),
             Column(
+              spacing: 8,
               children: [
                 Row(
+                  spacing: 8,
                   children: [
                     Expanded(
                       child: ElevatedButton.icon(
@@ -880,7 +925,6 @@ class _LyricsRefreshButton extends HookConsumerWidget {
                         ),
                       ),
                     ),
-                    const SizedBox(width: 8),
                     Expanded(
                       child: ElevatedButton.icon(
                         icon: const Icon(Icons.clear),
@@ -920,12 +964,33 @@ class _LyricsRefreshButton extends HookConsumerWidget {
                     ),
                   ],
                 ),
-                const SizedBox(height: 12),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    icon: const Icon(Icons.sync),
+                    label: const Text('Live Sync Lyrics'),
+                    onPressed: trackAsync.maybeWhen(
+                      data: (track) => track != null
+                          ? () {
+                              Navigator.of(context).pop();
+                              _showLiveLyricsSyncDialog(
+                                context,
+                                ref,
+                                track,
+                                trackPath,
+                                player,
+                              );
+                            }
+                          : null,
+                      orElse: () => null,
+                    ),
+                  ),
+                ),
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton.icon(
                     icon: const Icon(Icons.tune),
-                    label: const Text('Adjust Timing'),
+                    label: const Text('Manual Offset'),
                     onPressed: trackAsync.maybeWhen(
                       data: (track) => track != null
                           ? () {
@@ -979,10 +1044,7 @@ class _LyricsRefreshButton extends HookConsumerWidget {
             const SizedBox(height: 16),
             TextField(
               controller: offsetController,
-              decoration: const InputDecoration(
-                labelText: 'Offset (ms)',
-                border: OutlineInputBorder(),
-              ),
+              decoration: const InputDecoration(labelText: 'Offset (ms)'),
               keyboardType: TextInputType.number,
             ),
           ],
@@ -1008,6 +1070,24 @@ class _LyricsRefreshButton extends HookConsumerWidget {
             child: const Text('Save'),
           ),
         ],
+      ),
+    );
+  }
+
+  void _showLiveLyricsSyncDialog(
+    BuildContext context,
+    WidgetRef ref,
+    db.Track track,
+    String trackPath,
+    Player player,
+  ) {
+    showDialog(
+      context: context,
+      useSafeArea: false,
+      builder: (dialogContext) => _LiveLyricsSyncDialog(
+        track: track,
+        trackPath: trackPath,
+        player: player,
       ),
     );
   }
@@ -1158,7 +1238,7 @@ class _QueueView extends HookConsumerWidget {
                               size: 20,
                               color: Theme.of(
                                 context,
-                              ).colorScheme.onSurface.withOpacity(0.5),
+                              ).colorScheme.onSurface.withValues(alpha: 0.5),
                             ),
                             const SizedBox(width: 8),
                             Text(
@@ -1273,6 +1353,8 @@ class _TimedLyricsView extends HookConsumerWidget {
               });
             }
 
+            final totalDurationMs = player.state.duration.inMilliseconds;
+
             if (isDesktop) {
               return ListWheelScrollView.useDelegate(
                 controller: wheelScrollController,
@@ -1287,6 +1369,20 @@ class _TimedLyricsView extends HookConsumerWidget {
                   builder: (context, index) {
                     final line = lyrics.lines[index];
                     final isActive = index == currentIndex;
+
+                    // Calculate progress within the current line for fill effect
+                    double progress = 0.0;
+                    if (isActive) {
+                      final startTime = line.timeMs ?? 0;
+                      final endTime = index < lyrics.lines.length - 1
+                          ? (lyrics.lines[index + 1].timeMs ?? startTime)
+                          : totalDurationMs;
+                      if (endTime > startTime) {
+                        progress =
+                            ((positionMs - startTime) / (endTime - startTime))
+                                .clamp(0.0, 1.0);
+                      }
+                    }
 
                     return Align(
                       alignment: Alignment.centerRight,
@@ -1316,14 +1412,41 @@ class _TimedLyricsView extends HookConsumerWidget {
                                         : Theme.of(context)
                                               .colorScheme
                                               .onSurface
-                                              .withOpacity(0.7),
+                                              .withValues(alpha: 0.7),
                                   ),
                               textAlign: TextAlign.left,
-                              child: Text(
-                                line.text,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
+                              child: () {
+                                final displayText = line.text;
+
+                                return isActive &&
+                                        progress > 0.0 &&
+                                        progress < 1.0
+                                    ? ShaderMask(
+                                        shaderCallback: (bounds) =>
+                                            LinearGradient(
+                                              colors: [
+                                                Theme.of(
+                                                  context,
+                                                ).colorScheme.primary,
+                                                Theme.of(context)
+                                                    .colorScheme
+                                                    .onSurface
+                                                    .withValues(alpha: 0.7),
+                                              ],
+                                              stops: [progress, progress],
+                                            ).createShader(bounds),
+                                        child: Text(
+                                          displayText,
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      )
+                                    : Text(
+                                        displayText,
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                      );
+                              }(),
                             ),
                           ),
                         ),
@@ -1345,6 +1468,20 @@ class _TimedLyricsView extends HookConsumerWidget {
               itemBuilder: (context, index) {
                 final line = lyrics.lines[index];
                 final isActive = index == currentIndex;
+
+                // Calculate progress within the current line for fill effect
+                double progress = 0.0;
+                if (isActive) {
+                  final startTime = line.timeMs ?? 0;
+                  final endTime = index < lyrics.lines.length - 1
+                      ? (lyrics.lines[index + 1].timeMs ?? startTime)
+                      : totalDurationMs;
+                  if (endTime > startTime) {
+                    progress =
+                        ((positionMs - startTime) / (endTime - startTime))
+                            .clamp(0.0, 1.0);
+                  }
+                }
 
                 return InkWell(
                   onTap: () {
@@ -1368,10 +1505,26 @@ class _TimedLyricsView extends HookConsumerWidget {
                             ? Theme.of(context).colorScheme.primary
                             : Theme.of(
                                 context,
-                              ).colorScheme.onSurface.withOpacity(0.7),
+                              ).colorScheme.onSurface.withValues(alpha: 0.7),
                       ),
                       textAlign: TextAlign.center,
-                      child: Text(line.text),
+                      child: () {
+                        final displayText = line.text;
+
+                        return isActive && progress > 0.0 && progress < 1.0
+                            ? ShaderMask(
+                                shaderCallback: (bounds) => LinearGradient(
+                                  colors: [
+                                    Theme.of(context).colorScheme.primary,
+                                    Theme.of(context).colorScheme.onSurface
+                                        .withValues(alpha: 0.7),
+                                  ],
+                                  stops: [progress, progress],
+                                ).createShader(bounds),
+                                child: Text(displayText),
+                              )
+                            : Text(displayText);
+                      }(),
                     ),
                   ),
                 );
@@ -1388,11 +1541,13 @@ class _PlayerControls extends HookWidget {
   final Player player;
   final AsyncValue<TrackMetadata> metadataAsync;
   final Media media;
+  final String trackPath;
 
   const _PlayerControls({
     required this.player,
     required this.metadataAsync,
     required this.media,
+    required this.trackPath,
   });
 
   @override
@@ -1604,35 +1759,43 @@ class _PlayerControls extends HookWidget {
         // Volume Slider
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 24.0),
-          child: StreamBuilder<double>(
-            stream: player.stream.volume,
-            builder: (context, snapshot) {
-              final volume = snapshot.data ?? 100.0;
-              return Row(
-                children: [
-                  Icon(
-                    volume == 0
-                        ? Icons.volume_off
-                        : volume < 50
-                        ? Icons.volume_down
-                        : Icons.volume_up,
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  ),
-                  Expanded(
-                    child: Slider(
-                      value: volume,
-                      min: 0,
-                      max: 100,
-                      divisions: 100,
-                      label: volume.round().toString(),
-                      onChanged: (value) {
-                        player.setVolume(value);
-                      },
-                    ),
-                  ),
-                ],
-              );
-            },
+          child: Row(
+            spacing: 16,
+            children: [
+              _LyricsAdjustButton(trackPath: trackPath, player: player),
+              Expanded(
+                child: StreamBuilder<double>(
+                  stream: player.stream.volume,
+                  builder: (context, snapshot) {
+                    final volume = snapshot.data ?? 100.0;
+                    return Row(
+                      children: [
+                        Icon(
+                          volume == 0
+                              ? Icons.volume_off
+                              : volume < 50
+                              ? Icons.volume_down
+                              : Icons.volume_up,
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        ),
+                        Expanded(
+                          child: Slider(
+                            value: volume,
+                            min: 0,
+                            max: 100,
+                            divisions: 100,
+                            label: volume.round().toString(),
+                            onChanged: (value) {
+                              player.setVolume(value);
+                            },
+                          ),
+                        ),
+                      ],
+                    );
+                  },
+                ),
+              ),
+            ],
           ),
         ),
       ],
@@ -1656,3 +1819,363 @@ final trackByPathProvider = FutureProvider.family<db.Track?, String>((
     database.tracks,
   )..where((t) => t.path.equals(trackPath))).getSingleOrNull();
 });
+
+// Dialog for live lyrics synchronization
+class _LiveLyricsSyncDialog extends HookConsumerWidget {
+  final db.Track track;
+  final String trackPath;
+  final Player player;
+
+  const _LiveLyricsSyncDialog({
+    required this.track,
+    required this.trackPath,
+    required this.player,
+  });
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final tempOffset = useState(track.lyricsOffset);
+
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Live Lyrics Sync'),
+        leading: IconButton(
+          icon: const Icon(Icons.close),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.check),
+            onPressed: () async {
+              // Store context before async operation
+              final navigator = Navigator.of(context);
+
+              // Save the adjusted offset
+              final database = ref.read(databaseProvider);
+              await (database.update(
+                database.tracks,
+              )..where((t) => t.id.equals(track.id))).write(
+                db.TracksCompanion(lyricsOffset: drift.Value(tempOffset.value)),
+              );
+
+              // Invalidate the track provider to refresh the UI
+              ref.invalidate(trackByPathProvider(trackPath));
+
+              navigator.pop();
+            },
+            tooltip: 'Save',
+          ),
+          const Gap(8),
+        ],
+      ),
+      body: Center(
+        child: ConstrainedBox(
+          constraints: BoxConstraints(
+            maxWidth: math.max(480, MediaQuery.sizeOf(context).width * 0.4),
+          ),
+          child: Column(
+            children: [
+              // Current offset display
+              Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Text('Offset: '),
+                    Text(
+                      '${tempOffset.value}ms',
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              // Offset adjustment buttons
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                child: Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  alignment: WrapAlignment.center,
+                  runAlignment: WrapAlignment.center,
+                  children: [
+                    ElevatedButton.icon(
+                      icon: const Icon(Icons.fast_rewind),
+                      label: const Text('-100ms'),
+                      onPressed: () =>
+                          tempOffset.value = (tempOffset.value - 100),
+                    ),
+                    ElevatedButton.icon(
+                      icon: const Icon(Icons.skip_previous),
+                      label: const Text('-10ms'),
+                      onPressed: () =>
+                          tempOffset.value = (tempOffset.value - 10),
+                    ),
+                    ElevatedButton.icon(
+                      icon: const Icon(Icons.refresh),
+                      label: const Text('Reset'),
+                      onPressed: () => tempOffset.value = 0,
+                    ),
+                    ElevatedButton.icon(
+                      icon: const Icon(Icons.skip_next),
+                      label: const Text('+10ms'),
+                      onPressed: () =>
+                          tempOffset.value = (tempOffset.value + 10),
+                    ),
+                    ElevatedButton.icon(
+                      icon: const Icon(Icons.fast_forward),
+                      label: const Text('+100ms'),
+                      onPressed: () =>
+                          tempOffset.value = (tempOffset.value + 100),
+                    ),
+                  ],
+                ),
+              ),
+
+              // Fine adjustment slider
+              Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  children: [
+                    const Text('Fine Adjustment'),
+                    Slider(
+                      value: tempOffset.value.toDouble().clamp(-5000.0, 5000.0),
+                      min: -5000,
+                      max: 5000,
+                      divisions: 100,
+                      label: '${tempOffset.value}ms',
+                      onChanged: (value) => tempOffset.value = value.toInt(),
+                    ),
+                  ],
+                ),
+              ),
+
+              // Player controls
+              Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    IconButton(
+                      icon: const Icon(Icons.skip_previous, size: 32),
+                      onPressed: player.previous,
+                    ),
+                    const SizedBox(width: 16),
+                    StreamBuilder<bool>(
+                      stream: player.stream.playing,
+                      initialData: player.state.playing,
+                      builder: (context, snapshot) {
+                        final playing = snapshot.data ?? false;
+                        return IconButton.filled(
+                          icon: Icon(
+                            playing ? Icons.pause : Icons.play_arrow,
+                            size: 48,
+                          ),
+                          onPressed: playing ? player.pause : player.play,
+                          iconSize: 48,
+                        );
+                      },
+                    ),
+                    const SizedBox(width: 16),
+                    IconButton(
+                      icon: const Icon(Icons.skip_next, size: 32),
+                      onPressed: player.next,
+                    ),
+                  ],
+                ),
+              ),
+
+              // Progress bar
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                child: StreamBuilder<Duration>(
+                  stream: player.stream.position,
+                  initialData: player.state.position,
+                  builder: (context, snapshot) {
+                    final position = snapshot.data ?? Duration.zero;
+                    return StreamBuilder<Duration>(
+                      stream: player.stream.duration,
+                      initialData: player.state.duration,
+                      builder: (context, durationSnapshot) {
+                        final totalDuration =
+                            durationSnapshot.data ?? Duration.zero;
+                        final max = totalDuration.inMilliseconds.toDouble();
+                        final positionValue = position.inMilliseconds
+                            .toDouble()
+                            .clamp(0.0, max > 0 ? max : 0.0);
+
+                        return Column(
+                          children: [
+                            Slider(
+                              value: positionValue,
+                              min: 0,
+                              max: max > 0 ? max : 1.0,
+                              onChanged: (val) => player.seek(
+                                Duration(milliseconds: val.toInt()),
+                              ),
+                            ),
+                            Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 24.0,
+                              ),
+                              child: Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Text(
+                                    _formatDuration(
+                                      Duration(
+                                        milliseconds: positionValue.toInt(),
+                                      ),
+                                    ),
+                                  ),
+                                  Text(_formatDuration(totalDuration)),
+                                ],
+                              ),
+                            ),
+                          ],
+                        );
+                      },
+                    );
+                  },
+                ),
+              ),
+
+              // Lyrics preview with live offset
+              Expanded(
+                child: _LiveLyricsPreview(
+                  track: track,
+                  player: player,
+                  tempOffset: tempOffset.value,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  String _formatDuration(Duration d) {
+    final minutes = d.inMinutes;
+    final seconds = d.inSeconds % 60;
+    return '$minutes:${seconds.toString().padLeft(2, '0')}';
+  }
+}
+
+// Widget for live lyrics preview with temporary offset
+class _LiveLyricsPreview extends HookConsumerWidget {
+  final db.Track track;
+  final Player player;
+  final int tempOffset;
+
+  const _LiveLyricsPreview({
+    required this.track,
+    required this.player,
+    required this.tempOffset,
+  });
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    try {
+      final lyricsData = LyricsData.fromJsonString(track.lyrics!);
+
+      if (lyricsData.type != 'timed') {
+        return const Center(child: Text('Only timed lyrics can be synced'));
+      }
+
+      return StreamBuilder<Duration>(
+        stream: player.stream.position,
+        initialData: player.state.position,
+        builder: (context, snapshot) {
+          final position = snapshot.data ?? Duration.zero;
+          final positionMs = position.inMilliseconds + tempOffset;
+
+          // Find current line index
+          int currentIndex = 0;
+          for (int i = 0; i < lyricsData.lines.length; i++) {
+            if ((lyricsData.lines[i].timeMs ?? 0) <= positionMs) {
+              currentIndex = i;
+            } else {
+              break;
+            }
+          }
+
+          return ListView.builder(
+            padding: const EdgeInsets.all(16),
+            itemCount: lyricsData.lines.length,
+            itemBuilder: (context, index) {
+              final line = lyricsData.lines[index];
+              final isActive = index == currentIndex;
+
+              // Calculate progress within the current line for fill effect
+              double progress = 0.0;
+              if (isActive) {
+                final startTime = line.timeMs ?? 0;
+                final endTime = index < lyricsData.lines.length - 1
+                    ? (lyricsData.lines[index + 1].timeMs ?? startTime)
+                    : player.state.duration.inMilliseconds;
+                if (endTime > startTime) {
+                  progress = ((positionMs - startTime) / (endTime - startTime))
+                      .clamp(0.0, 1.0);
+                }
+              }
+
+              return Padding(
+                padding: const EdgeInsets.symmetric(vertical: 4),
+                child: AnimatedDefaultTextStyle(
+                  duration: const Duration(milliseconds: 200),
+                  style: Theme.of(context).textTheme.bodyLarge!.copyWith(
+                    fontSize: isActive ? 18 : 16,
+                    fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
+                    color: isActive
+                        ? Theme.of(context).colorScheme.primary
+                        : Theme.of(
+                            context,
+                          ).colorScheme.onSurface.withValues(alpha: 0.7),
+                  ),
+                  textAlign: TextAlign.center,
+                  child: () {
+                    final displayText = kDebugMode
+                        ? '[${_formatTimestamp(line.timeMs ?? 0)}] ${line.text}'
+                        : line.text;
+
+                    return isActive && progress > 0.0 && progress < 1.0
+                        ? ShaderMask(
+                            shaderCallback: (bounds) => LinearGradient(
+                              colors: [
+                                Theme.of(context).colorScheme.primary,
+                                Theme.of(
+                                  context,
+                                ).colorScheme.onSurface.withValues(alpha: 0.7),
+                              ],
+                              stops: [progress, progress],
+                            ).createShader(bounds),
+                            child: Text(displayText),
+                          )
+                        : Text(displayText);
+                  }(),
+                ),
+              );
+            },
+          );
+        },
+      );
+    } catch (e) {
+      return Center(child: Text('Error loading lyrics: $e'));
+    }
+  }
+}
+
+// Helper function to format milliseconds as timestamp
+String _formatTimestamp(int milliseconds) {
+  final duration = Duration(milliseconds: milliseconds);
+  final minutes = duration.inMinutes;
+  final seconds = duration.inSeconds % 60;
+  final millisecondsPart =
+      (duration.inMilliseconds % 1000) ~/ 10; // Show centiseconds
+  return '${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}.${millisecondsPart.toString().padLeft(2, '0')}';
+}

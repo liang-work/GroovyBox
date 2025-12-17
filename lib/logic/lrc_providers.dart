@@ -160,9 +160,9 @@ class MusixmatchProvider extends LrcProvider {
     final statusCode = jsonDecode(r.body)["message"]["header"]["status_code"];
     if (statusCode != 200) return null;
     final body = jsonDecode(r.body)["message"]["body"];
-    if (body == null || !(body is Map)) return null;
+    if (body == null || body is! Map) return null;
     final tracks = body["track_list"];
-    if (tracks == null || !(tracks is List) || tracks.isEmpty) return null;
+    if (tracks == null || tracks is! List || tracks.isEmpty) return null;
 
     // Simple "best match" - first track
     final track = tracks.firstWhere((t) => true, orElse: () => null);
