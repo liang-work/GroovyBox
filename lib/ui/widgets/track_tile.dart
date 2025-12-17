@@ -34,7 +34,6 @@ class TrackTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      margin: const EdgeInsets.only(bottom: 8),
       decoration: BoxDecoration(
         color: isPlaying
             ? Theme.of(context).colorScheme.primary.withOpacity(0.2)

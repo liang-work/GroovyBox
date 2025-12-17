@@ -1172,6 +1172,7 @@ class _QueueView extends HookConsumerWidget {
               return ReorderableListView.builder(
                 padding: const EdgeInsets.all(16),
                 itemCount: playlist.medias.length,
+                buildDefaultDragHandles: false,
                 onReorder: (oldIndex, newIndex) {
                   if (oldIndex < newIndex) {
                     newIndex -= 1;
@@ -1201,6 +1202,10 @@ class _QueueView extends HookConsumerWidget {
                       ),
                       onDismissed: (direction) => player.remove(index),
                       child: TrackTile(
+                        leading: Text(
+                          (index + 1).toString().padLeft(2, '0'),
+                          style: TextStyle(fontSize: 14),
+                        ).padding(right: 8),
                         track: db.Track(
                           id: -1,
                           path: trackPath,
@@ -1220,54 +1225,56 @@ class _QueueView extends HookConsumerWidget {
                         padding: const EdgeInsets.symmetric(horizontal: 16),
                       ),
                     ),
-                    data: (track) => Dismissible(
-                      key: Key('queue_item_$index'),
-                      direction: DismissDirection.endToStart,
-                      background: Container(
-                        color: Colors.red,
-                        alignment: Alignment.centerRight,
-                        padding: const EdgeInsets.only(right: 20),
-                        child: const Icon(Icons.delete, color: Colors.white),
-                      ),
-                      onDismissed: (direction) => player.remove(index),
-                      child: TrackTile(
-                        leading: Row(
-                          children: [
-                            Icon(
-                              Icons.drag_handle,
-                              size: 20,
-                              color: Theme.of(
-                                context,
-                              ).colorScheme.onSurface.withValues(alpha: 0.5),
+                    data: (track) =>
+                        ReorderableDelayedDragStartListener(
+                          index: index,
+                          child: Dismissible(
+                            key: Key('queue_item_$index'),
+                            direction: DismissDirection.endToStart,
+                            background: Container(
+                              color: Colors.red,
+                              alignment: Alignment.centerRight,
+                              padding: const EdgeInsets.only(right: 20),
+                              child: const Icon(
+                                Icons.delete,
+                                color: Colors.white,
+                              ),
                             ),
-                            const SizedBox(width: 8),
-                            Text(
-                              (index + 1).toString().padLeft(2, '0'),
-                              style: TextStyle(fontSize: 14),
+                            onDismissed: (direction) => player.remove(index),
+                            child: TrackTile(
+                              leading: Text(
+                                (index + 1).toString().padLeft(2, '0'),
+                                style: TextStyle(fontSize: 14),
+                              ).padding(right: 8),
+                              track:
+                                  track ??
+                                  db.Track(
+                                    id: -1,
+                                    path: trackPath,
+                                    title: Uri.parse(
+                                      media.uri,
+                                    ).pathSegments.last,
+                                    artist:
+                                        media.extras?['artist'] as String? ??
+                                        'Unknown Artist',
+                                    album: media.extras?['album'] as String?,
+                                    duration: null,
+                                    artUri: null,
+                                    lyrics: null,
+                                    lyricsOffset: 0,
+                                    addedAt: DateTime.now(),
+                                  ),
+                              isPlaying: isCurrent,
+                              onTap: () => player.jump(index),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                              ),
                             ),
-                          ],
-                        ).padding(right: 4),
-                        track:
-                            track ??
-                            db.Track(
-                              id: -1,
-                              path: trackPath,
-                              title: Uri.parse(media.uri).pathSegments.last,
-                              artist:
-                                  media.extras?['artist'] as String? ??
-                                  'Unknown Artist',
-                              album: media.extras?['album'] as String?,
-                              duration: null,
-                              artUri: null,
-                              lyrics: null,
-                              lyricsOffset: 0,
-                              addedAt: DateTime.now(),
-                            ),
-                        isPlaying: isCurrent,
-                        onTap: () => player.jump(index),
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
-                      ),
-                    ),
+                          ),
+                        ).clipRRect(
+                          all: 8,
+                          key: Key('queue_item_error_${index}_rect'),
+                        ),
                   );
                 },
               );
