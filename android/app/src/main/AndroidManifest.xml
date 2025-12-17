@@ -7,7 +7,7 @@
     <application
         android:label="groovybox"
         android:name="${applicationName}"
-        android:icon="@mipmap/ic_launcher">
+        android:icon="@mipmap/launcher_icon">
         <activity android:name="com.ryanheise.audioservice.AudioServiceActivity"></activity>
 
         <service android:name="com.ryanheise.audioservice.AudioService"
