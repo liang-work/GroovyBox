@@ -23,8 +23,8 @@ class PlayerScreen extends HookConsumerWidget {
     final audioHandler = ref.watch(audioHandlerProvider);
     final player = audioHandler.player;
 
-    final tabController = useTabController(initialLength: 2);
-    final isMobile = MediaQuery.sizeOf(context).width <= 640;
+    final showLyrics = useState(true);
+    final isMobile = MediaQuery.sizeOf(context).width <= 800;
 
     return StreamBuilder<Playlist>(
       stream: player.stream.playlist,
@@ -107,7 +107,7 @@ class PlayerScreen extends HookConsumerWidget {
                           ),
                           child: _MobileLayout(
                             player: player,
-                            tabController: tabController,
+                            showLyrics: showLyrics,
                             metadataAsync: metadataAsync,
                             media: media,
                             trackPath: path,
@@ -116,6 +116,7 @@ class PlayerScreen extends HookConsumerWidget {
                       } else {
                         return _DesktopLayout(
                           player: player,
+                          showLyrics: showLyrics,
                           metadataAsync: metadataAsync,
                           media: media,
                           trackPath: path,
@@ -134,31 +135,8 @@ class PlayerScreen extends HookConsumerWidget {
                       iconSize: 24,
                     ),
                   ),
-                  // TabBar (if mobile)
-                  if (isMobile)
-                    Positioned(
-                      top: MediaQuery.of(context).padding.top + 14,
-                      left: 54,
-                      right: 54,
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 24),
-                        child: TabBar(
-                          controller: tabController,
-                          tabAlignment: TabAlignment.fill,
-                          tabs: const [
-                            Tab(text: 'Cover'),
-                            Tab(text: 'Lyrics'),
-                          ],
-                          dividerHeight: 0,
-                          indicatorColor: Colors.transparent,
-                          overlayColor: WidgetStatePropertyAll(
-                            Colors.transparent,
-                          ),
-                          splashFactory: NoSplash.splashFactory,
-                        ),
-                      ),
-                    ),
-                  _LyricsRefreshButton(trackPath: path),
+
+                  _LyricsToggleButton(showLyrics: showLyrics),
                 ],
               ),
             ),
@@ -171,14 +149,14 @@ class PlayerScreen extends HookConsumerWidget {
 
 class _MobileLayout extends StatelessWidget {
   final Player player;
-  final TabController tabController;
+  final ValueNotifier<bool> showLyrics;
   final AsyncValue<TrackMetadata> metadataAsync;
   final Media media;
   final String trackPath;
 
   const _MobileLayout({
     required this.player,
-    required this.tabController,
+    required this.showLyrics,
     required this.metadataAsync,
     required this.media,
     required this.trackPath,
@@ -186,55 +164,34 @@ class _MobileLayout extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return TabBarView(
-      controller: tabController,
-      children: [
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 40),
-          child: Column(
-            children: [
-              Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.all(32.0),
-                  child: Center(
-                    child: _PlayerCoverArt(metadataAsync: metadataAsync),
-                  ),
-                ),
-              ),
-              _PlayerControls(
-                player: player,
-                metadataAsync: metadataAsync,
-                media: media,
-              ),
-              const SizedBox(height: 24),
-            ],
-          ),
-        ),
-        // Lyrics Tab with Mini Player
-        Column(
-          children: [
-            Expanded(
-              child: Padding(
-                padding: EdgeInsets.all(16.0),
-                child: _PlayerLyrics(trackPath: trackPath, player: player),
-              ),
+    return AnimatedSwitcher(
+      duration: const Duration(milliseconds: 300),
+      child: showLyrics.value
+          ? _LyricsView(
+              key: const ValueKey('lyrics'),
+              trackPath: trackPath,
+              player: player,
+            )
+          : _CoverView(
+              key: const ValueKey('cover'),
+              player: player,
+              metadataAsync: metadataAsync,
+              media: media,
             ),
-            MiniPlayer(enableTapToOpen: false),
-          ],
-        ),
-      ],
     );
   }
 }
 
 class _DesktopLayout extends StatelessWidget {
   final Player player;
+  final ValueNotifier<bool> showLyrics;
   final AsyncValue<TrackMetadata> metadataAsync;
   final Media media;
   final String trackPath;
 
   const _DesktopLayout({
     required this.player,
+    required this.showLyrics,
     required this.metadataAsync,
     required this.media,
     required this.trackPath,
@@ -242,63 +199,173 @@ class _DesktopLayout extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Stack(
-      children: [
-        // Left Side: Cover + Controls
-        Positioned.fill(
-          child: Row(
-            children: [
-              Expanded(
-                child: Center(
-                  child: ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 480),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Expanded(
-                          child: Padding(
-                            padding: const EdgeInsets.all(32.0),
-                            child: Center(
-                              child: ConstrainedBox(
-                                constraints: const BoxConstraints(
-                                  maxWidth: 400,
-                                ),
-                                child: AspectRatio(
-                                  aspectRatio: 1,
-                                  child: _PlayerCoverArt(
-                                    metadataAsync: metadataAsync,
+    return AnimatedSwitcher(
+      duration: const Duration(milliseconds: 300),
+      child: showLyrics.value
+          ? Stack(
+              key: const ValueKey('lyrics_shown'),
+              children: [
+                // Left Side: Cover + Controls
+                Positioned.fill(
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Center(
+                          child: ConstrainedBox(
+                            constraints: const BoxConstraints(maxWidth: 480),
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Expanded(
+                                  child: Padding(
+                                    padding: const EdgeInsets.all(32.0),
+                                    child: Center(
+                                      child: ConstrainedBox(
+                                        constraints: const BoxConstraints(
+                                          maxWidth: 400,
+                                        ),
+                                        child: AspectRatio(
+                                          aspectRatio: 1,
+                                          child: _PlayerCoverArt(
+                                            metadataAsync: metadataAsync,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
                                   ),
                                 ),
+                                _PlayerControls(
+                                  player: player,
+                                  metadataAsync: metadataAsync,
+                                  media: media,
+                                ),
+                                const SizedBox(height: 32),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                      Expanded(child: const SizedBox.shrink()),
+                    ],
+                  ),
+                ),
+                // Overlaid Lyrics on the right
+                Positioned(
+                  right: 0,
+                  top: 0,
+                  bottom: 0,
+                  width: MediaQuery.sizeOf(context).width * 0.6,
+                  child: Stack(
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 32),
+                        child: _PlayerLyrics(
+                          trackPath: trackPath,
+                          player: player,
+                        ),
+                      ),
+                      Positioned(
+                        top: 16,
+                        right: 16,
+                        child: _LyricsRefreshButton(trackPath: trackPath),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            )
+          : Center(
+              key: const ValueKey('lyrics_hidden'),
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 480),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Expanded(
+                      child: Padding(
+                        padding: const EdgeInsets.all(32.0),
+                        child: Center(
+                          child: ConstrainedBox(
+                            constraints: const BoxConstraints(maxWidth: 400),
+                            child: AspectRatio(
+                              aspectRatio: 1,
+                              child: _PlayerCoverArt(
+                                metadataAsync: metadataAsync,
                               ),
                             ),
                           ),
                         ),
-                        _PlayerControls(
-                          player: player,
-                          metadataAsync: metadataAsync,
-                          media: media,
-                        ),
-                        const SizedBox(height: 32),
-                      ],
+                      ),
                     ),
-                  ),
+                    _PlayerControls(
+                      player: player,
+                      metadataAsync: metadataAsync,
+                      media: media,
+                    ),
+                    const SizedBox(height: 32),
+                  ],
                 ),
               ),
-              Expanded(child: const SizedBox.shrink()),
-            ],
+            ),
+    );
+  }
+}
+
+class _CoverView extends StatelessWidget {
+  final Player player;
+  final AsyncValue<TrackMetadata> metadataAsync;
+  final Media media;
+
+  const _CoverView({
+    super.key,
+    required this.player,
+    required this.metadataAsync,
+    required this.media,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 40),
+      child: Column(
+        children: [
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.all(32.0),
+              child: Center(
+                child: _PlayerCoverArt(metadataAsync: metadataAsync),
+              ),
+            ),
           ),
-        ),
-        // Overlaid Lyrics on the right
-        Positioned(
-          right: 0,
-          top: 0,
-          bottom: 0,
-          width: MediaQuery.sizeOf(context).width * 0.6,
+          _PlayerControls(
+            player: player,
+            metadataAsync: metadataAsync,
+            media: media,
+          ),
+          const SizedBox(height: 24),
+        ],
+      ),
+    );
+  }
+}
+
+class _LyricsView extends StatelessWidget {
+  final String trackPath;
+  final Player player;
+
+  const _LyricsView({super.key, required this.trackPath, required this.player});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        Expanded(
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 32),
+            padding: const EdgeInsets.all(16.0),
             child: _PlayerLyrics(trackPath: trackPath, player: player),
           ),
         ),
+        MiniPlayer(enableTapToOpen: false),
       ],
     );
   }
@@ -451,20 +518,57 @@ class _PlayerLyrics extends HookConsumerWidget {
             );
           } else {
             // Plain text lyrics
-            return ListView.builder(
-              padding: const EdgeInsets.all(16),
-              itemCount: lyricsData.lines.length,
-              itemBuilder: (context, index) {
-                return Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 4),
-                  child: Text(
-                    lyricsData.lines[index].text,
-                    style: Theme.of(context).textTheme.bodyLarge,
-                    textAlign: TextAlign.center,
-                  ),
-                );
-              },
-            );
+            final isDesktop = MediaQuery.sizeOf(context).width > 800;
+            if (isDesktop) {
+              return ListWheelScrollView.useDelegate(
+                itemExtent: 50,
+                perspective: 0.002,
+                offAxisFraction: 1.5,
+                squeeze: 1.0,
+                diameterRatio: 2,
+                physics: const FixedExtentScrollPhysics(),
+                childDelegate: ListWheelChildBuilderDelegate(
+                  childCount: lyricsData.lines.length,
+                  builder: (context, index) {
+                    final line = lyricsData.lines[index];
+                    return Align(
+                      alignment: Alignment.centerRight,
+                      child: ConstrainedBox(
+                        constraints: BoxConstraints(
+                          maxWidth: MediaQuery.sizeOf(context).width * 0.4,
+                        ),
+                        child: Container(
+                          alignment: Alignment.centerLeft,
+                          padding: const EdgeInsets.symmetric(horizontal: 32),
+                          child: Text(
+                            line.text,
+                            style: Theme.of(context).textTheme.bodyLarge,
+                            textAlign: TextAlign.left,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              );
+            } else {
+              return ListView.builder(
+                padding: const EdgeInsets.all(16),
+                itemCount: lyricsData.lines.length,
+                itemBuilder: (context, index) {
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 4),
+                    child: Text(
+                      lyricsData.lines[index].text,
+                      style: Theme.of(context).textTheme.bodyLarge,
+                      textAlign: TextAlign.center,
+                    ),
+                  );
+                },
+              );
+            }
           }
         } catch (e) {
           return Center(child: Text('Error parsing lyrics: $e'));
@@ -570,23 +674,19 @@ class _LyricsRefreshButton extends HookConsumerWidget {
     final musixmatchProviderInstance = ref.watch(musixmatchProvider);
     final neteaseProviderInstance = ref.watch(neteaseProvider);
 
-    return Positioned(
-      top: MediaQuery.of(context).padding.top + 16,
-      right: 16,
-      child: IconButton(
-        icon: const Icon(Icons.refresh),
-        iconSize: 24,
-        tooltip: 'Refresh Lyrics',
-        onPressed: () => _showLyricsRefreshDialog(
-          context,
-          ref,
-          trackAsync,
-          metadataAsync,
-          musixmatchProviderInstance,
-          neteaseProviderInstance,
-        ),
-        padding: EdgeInsets.zero,
+    return IconButton(
+      icon: const Icon(Icons.refresh),
+      iconSize: 24,
+      tooltip: 'Refresh Lyrics',
+      onPressed: () => _showLyricsRefreshDialog(
+        context,
+        ref,
+        trackAsync,
+        metadataAsync,
+        musixmatchProviderInstance,
+        neteaseProviderInstance,
       ),
+      padding: EdgeInsets.zero,
     );
   }
 
@@ -838,6 +938,27 @@ class _LyricsRefreshButton extends HookConsumerWidget {
   }
 }
 
+class _LyricsToggleButton extends StatelessWidget {
+  final ValueNotifier<bool> showLyrics;
+
+  const _LyricsToggleButton({required this.showLyrics});
+
+  @override
+  Widget build(BuildContext context) {
+    return Positioned(
+      top: MediaQuery.of(context).padding.top + 16,
+      right: 16,
+      child: IconButton(
+        icon: Icon(showLyrics.value ? Icons.visibility_off : Icons.visibility),
+        iconSize: 24,
+        tooltip: showLyrics.value ? 'Hide Lyrics' : 'Show Lyrics',
+        onPressed: () => showLyrics.value = !showLyrics.value,
+        padding: EdgeInsets.zero,
+      ),
+    );
+  }
+}
+
 class _TimedLyricsView extends HookConsumerWidget {
   final LyricsData lyrics;
   final Player player;
@@ -851,7 +972,7 @@ class _TimedLyricsView extends HookConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final isDesktop = MediaQuery.sizeOf(context).width > 640;
+    final isDesktop = MediaQuery.sizeOf(context).width > 800;
 
     final listController = useMemoized(() => ListController(), []);
     final scrollController = useScrollController();
