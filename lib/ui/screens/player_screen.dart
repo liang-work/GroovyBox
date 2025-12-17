@@ -1,3 +1,4 @@
+import 'dart:math' as math;
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
@@ -214,7 +215,9 @@ class _DesktopLayout extends StatelessWidget {
         ViewMode.cover => Center(
           key: const ValueKey('cover'),
           child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 480),
+            constraints: BoxConstraints(
+              maxWidth: math.min(480, MediaQuery.sizeOf(context).width * 0.4),
+            ),
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
@@ -252,7 +255,12 @@ class _DesktopLayout extends StatelessWidget {
                   Expanded(
                     child: Center(
                       child: ConstrainedBox(
-                        constraints: const BoxConstraints(maxWidth: 480),
+                        constraints: BoxConstraints(
+                          maxWidth: math.min(
+                            480,
+                            MediaQuery.sizeOf(context).width * 0.4,
+                          ),
+                        ),
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
@@ -321,7 +329,12 @@ class _DesktopLayout extends StatelessWidget {
                   Expanded(
                     child: Center(
                       child: ConstrainedBox(
-                        constraints: const BoxConstraints(maxWidth: 480),
+                        constraints: BoxConstraints(
+                          maxWidth: math.min(
+                            480,
+                            MediaQuery.sizeOf(context).width * 0.4,
+                          ),
+                        ),
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
@@ -364,7 +377,7 @@ class _DesktopLayout extends StatelessWidget {
               top: 0,
               bottom: 0,
               width: MediaQuery.sizeOf(context).width * 0.5,
-              child: _QueueView(player: player),
+              child: _QueueView(player: player).padding(right: 64),
             ),
           ],
         ),
@@ -1076,9 +1089,15 @@ class _QueueView extends HookConsumerWidget {
                 return const Center(child: Text('No tracks in queue'));
               }
 
-              return ListView.builder(
+              return ReorderableListView.builder(
                 padding: const EdgeInsets.all(16),
                 itemCount: playlist.medias.length,
+                onReorder: (oldIndex, newIndex) {
+                  if (oldIndex < newIndex) {
+                    newIndex -= 1;
+                  }
+                  player.move(oldIndex, newIndex);
+                },
                 itemBuilder: (context, index) {
                   final media = playlist.medias[index];
                   final isCurrent = index == playlist.index;
@@ -1086,53 +1105,88 @@ class _QueueView extends HookConsumerWidget {
                   final trackAsync = ref.watch(trackByPathProvider(trackPath));
 
                   return trackAsync.when(
-                    loading: () => const SizedBox(
+                    loading: () => SizedBox(
+                      key: Key('loading_$index'),
                       height: 72,
-                      child: Center(child: CircularProgressIndicator()),
+                      child: const Center(child: CircularProgressIndicator()),
                     ),
-                    error: (error, stack) => TrackTile(
-                      track: db.Track(
-                        id: -1,
-                        path: trackPath,
-                        title: Uri.parse(media.uri).pathSegments.last,
-                        artist:
-                            media.extras?['artist'] as String? ??
-                            'Unknown Artist',
-                        album: media.extras?['album'] as String?,
-                        duration: null,
-                        artUri: null,
-                        lyrics: null,
-                        lyricsOffset: 0,
-                        addedAt: DateTime.now(),
+                    error: (error, stack) => Dismissible(
+                      key: Key('queue_item_error_$index'),
+                      direction: DismissDirection.endToStart,
+                      background: Container(
+                        color: Colors.red,
+                        alignment: Alignment.centerRight,
+                        padding: const EdgeInsets.only(right: 20),
+                        child: const Icon(Icons.delete, color: Colors.white),
                       ),
-                      isPlaying: isCurrent,
-                      onTap: () => player.jump(index),
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      onDismissed: (direction) => player.remove(index),
+                      child: TrackTile(
+                        track: db.Track(
+                          id: -1,
+                          path: trackPath,
+                          title: Uri.parse(media.uri).pathSegments.last,
+                          artist:
+                              media.extras?['artist'] as String? ??
+                              'Unknown Artist',
+                          album: media.extras?['album'] as String?,
+                          duration: null,
+                          artUri: null,
+                          lyrics: null,
+                          lyricsOffset: 0,
+                          addedAt: DateTime.now(),
+                        ),
+                        isPlaying: isCurrent,
+                        onTap: () => player.jump(index),
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                      ),
                     ),
-                    data: (track) => TrackTile(
-                      leading: Text(
-                        (index + 1).toString().padLeft(2, '0'),
-                        style: TextStyle(fontSize: 14),
-                      ).padding(right: 12),
-                      track:
-                          track ??
-                          db.Track(
-                            id: -1,
-                            path: trackPath,
-                            title: Uri.parse(media.uri).pathSegments.last,
-                            artist:
-                                media.extras?['artist'] as String? ??
-                                'Unknown Artist',
-                            album: media.extras?['album'] as String?,
-                            duration: null,
-                            artUri: null,
-                            lyrics: null,
-                            lyricsOffset: 0,
-                            addedAt: DateTime.now(),
-                          ),
-                      isPlaying: isCurrent,
-                      onTap: () => player.jump(index),
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                    data: (track) => Dismissible(
+                      key: Key('queue_item_$index'),
+                      direction: DismissDirection.endToStart,
+                      background: Container(
+                        color: Colors.red,
+                        alignment: Alignment.centerRight,
+                        padding: const EdgeInsets.only(right: 20),
+                        child: const Icon(Icons.delete, color: Colors.white),
+                      ),
+                      onDismissed: (direction) => player.remove(index),
+                      child: TrackTile(
+                        leading: Row(
+                          children: [
+                            Icon(
+                              Icons.drag_handle,
+                              size: 20,
+                              color: Theme.of(
+                                context,
+                              ).colorScheme.onSurface.withOpacity(0.5),
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              (index + 1).toString().padLeft(2, '0'),
+                              style: TextStyle(fontSize: 14),
+                            ),
+                          ],
+                        ).padding(right: 4),
+                        track:
+                            track ??
+                            db.Track(
+                              id: -1,
+                              path: trackPath,
+                              title: Uri.parse(media.uri).pathSegments.last,
+                              artist:
+                                  media.extras?['artist'] as String? ??
+                                  'Unknown Artist',
+                              album: media.extras?['album'] as String?,
+                              duration: null,
+                              artUri: null,
+                              lyrics: null,
+                              lyricsOffset: 0,
+                              addedAt: DateTime.now(),
+                            ),
+                        isPlaying: isCurrent,
+                        onTap: () => player.jump(index),
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                      ),
                     ),
                   );
                 },
