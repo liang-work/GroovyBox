@@ -10,10 +10,14 @@ import 'package:groovybox/providers/audio_provider.dart';
 import 'package:groovybox/providers/db_provider.dart';
 import 'package:groovybox/providers/lrc_fetcher_provider.dart';
 import 'package:groovybox/ui/widgets/mini_player.dart';
+import 'package:groovybox/ui/widgets/track_tile.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:media_kit/media_kit.dart';
+import 'package:styled_widget/styled_widget.dart';
 import 'package:super_sliver_list/super_sliver_list.dart';
+
+enum ViewMode { cover, lyrics, queue }
 
 class PlayerScreen extends HookConsumerWidget {
   const PlayerScreen({super.key});
@@ -23,7 +27,7 @@ class PlayerScreen extends HookConsumerWidget {
     final audioHandler = ref.watch(audioHandlerProvider);
     final player = audioHandler.player;
 
-    final showLyrics = useState(true);
+    final viewMode = useState(ViewMode.cover);
     final isMobile = MediaQuery.sizeOf(context).width <= 800;
 
     return StreamBuilder<Playlist>(
@@ -103,11 +107,11 @@ class PlayerScreen extends HookConsumerWidget {
                       if (isMobile) {
                         return Padding(
                           padding: EdgeInsets.only(
-                            top: MediaQuery.of(context).padding.top + 64,
+                            top: MediaQuery.of(context).padding.top + 40,
                           ),
                           child: _MobileLayout(
                             player: player,
-                            showLyrics: showLyrics,
+                            viewMode: viewMode,
                             metadataAsync: metadataAsync,
                             media: media,
                             trackPath: path,
@@ -116,7 +120,7 @@ class PlayerScreen extends HookConsumerWidget {
                       } else {
                         return _DesktopLayout(
                           player: player,
-                          showLyrics: showLyrics,
+                          viewMode: viewMode,
                           metadataAsync: metadataAsync,
                           media: media,
                           trackPath: path,
@@ -136,7 +140,7 @@ class PlayerScreen extends HookConsumerWidget {
                     ),
                   ),
 
-                  _LyricsToggleButton(showLyrics: showLyrics),
+                  _ViewToggleButton(viewMode: viewMode),
                 ],
               ),
             ),
@@ -149,14 +153,14 @@ class PlayerScreen extends HookConsumerWidget {
 
 class _MobileLayout extends StatelessWidget {
   final Player player;
-  final ValueNotifier<bool> showLyrics;
+  final ValueNotifier<ViewMode> viewMode;
   final AsyncValue<TrackMetadata> metadataAsync;
   final Media media;
   final String trackPath;
 
   const _MobileLayout({
     required this.player,
-    required this.showLyrics,
+    required this.viewMode,
     required this.metadataAsync,
     required this.media,
     required this.trackPath,
@@ -166,32 +170,37 @@ class _MobileLayout extends StatelessWidget {
   Widget build(BuildContext context) {
     return AnimatedSwitcher(
       duration: const Duration(milliseconds: 300),
-      child: showLyrics.value
-          ? _LyricsView(
-              key: const ValueKey('lyrics'),
-              trackPath: trackPath,
-              player: player,
-            )
-          : _CoverView(
-              key: const ValueKey('cover'),
-              player: player,
-              metadataAsync: metadataAsync,
-              media: media,
-            ),
+      child: switch (viewMode.value) {
+        ViewMode.cover => _CoverView(
+          key: const ValueKey('cover'),
+          player: player,
+          metadataAsync: metadataAsync,
+          media: media,
+        ),
+        ViewMode.lyrics => _LyricsView(
+          key: const ValueKey('lyrics'),
+          trackPath: trackPath,
+          player: player,
+        ),
+        ViewMode.queue => _QueueView(
+          key: const ValueKey('queue'),
+          player: player,
+        ),
+      },
     );
   }
 }
 
 class _DesktopLayout extends StatelessWidget {
   final Player player;
-  final ValueNotifier<bool> showLyrics;
+  final ValueNotifier<ViewMode> viewMode;
   final AsyncValue<TrackMetadata> metadataAsync;
   final Media media;
   final String trackPath;
 
   const _DesktopLayout({
     required this.player,
-    required this.showLyrics,
+    required this.viewMode,
     required this.metadataAsync,
     required this.media,
     required this.trackPath,
@@ -201,112 +210,165 @@ class _DesktopLayout extends StatelessWidget {
   Widget build(BuildContext context) {
     return AnimatedSwitcher(
       duration: const Duration(milliseconds: 300),
-      child: showLyrics.value
-          ? Stack(
-              key: const ValueKey('lyrics_shown'),
+      child: switch (viewMode.value) {
+        ViewMode.cover => Center(
+          key: const ValueKey('cover'),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 480),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                // Left Side: Cover + Controls
-                Positioned.fill(
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: Center(
-                          child: ConstrainedBox(
-                            constraints: const BoxConstraints(maxWidth: 480),
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Expanded(
-                                  child: Padding(
-                                    padding: const EdgeInsets.all(32.0),
-                                    child: Center(
-                                      child: ConstrainedBox(
-                                        constraints: const BoxConstraints(
-                                          maxWidth: 400,
-                                        ),
-                                        child: AspectRatio(
-                                          aspectRatio: 1,
-                                          child: _PlayerCoverArt(
-                                            metadataAsync: metadataAsync,
-                                          ),
-                                        ),
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.all(32.0),
+                    child: Center(
+                      child: ConstrainedBox(
+                        constraints: const BoxConstraints(maxWidth: 400),
+                        child: AspectRatio(
+                          aspectRatio: 1,
+                          child: _PlayerCoverArt(metadataAsync: metadataAsync),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                _PlayerControls(
+                  player: player,
+                  metadataAsync: metadataAsync,
+                  media: media,
+                ),
+                const SizedBox(height: 32),
+              ],
+            ),
+          ),
+        ),
+        ViewMode.lyrics => Stack(
+          key: const ValueKey('lyrics'),
+          children: [
+            // Left Side: Cover + Controls
+            Positioned.fill(
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Center(
+                      child: ConstrainedBox(
+                        constraints: const BoxConstraints(maxWidth: 480),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Expanded(
+                              child: Padding(
+                                padding: const EdgeInsets.all(32.0),
+                                child: Center(
+                                  child: ConstrainedBox(
+                                    constraints: const BoxConstraints(
+                                      maxWidth: 400,
+                                    ),
+                                    child: AspectRatio(
+                                      aspectRatio: 1,
+                                      child: _PlayerCoverArt(
+                                        metadataAsync: metadataAsync,
                                       ),
                                     ),
                                   ),
                                 ),
-                                _PlayerControls(
-                                  player: player,
-                                  metadataAsync: metadataAsync,
-                                  media: media,
-                                ),
-                                const SizedBox(height: 32),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ),
-                      Expanded(child: const SizedBox.shrink()),
-                    ],
-                  ),
-                ),
-                // Overlaid Lyrics on the right
-                Positioned(
-                  right: 0,
-                  top: 0,
-                  bottom: 0,
-                  width: MediaQuery.sizeOf(context).width * 0.6,
-                  child: Stack(
-                    children: [
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 32),
-                        child: _PlayerLyrics(
-                          trackPath: trackPath,
-                          player: player,
-                        ),
-                      ),
-                      Positioned(
-                        top: 16,
-                        right: 16,
-                        child: _LyricsRefreshButton(trackPath: trackPath),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            )
-          : Center(
-              key: const ValueKey('lyrics_hidden'),
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 480),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Expanded(
-                      child: Padding(
-                        padding: const EdgeInsets.all(32.0),
-                        child: Center(
-                          child: ConstrainedBox(
-                            constraints: const BoxConstraints(maxWidth: 400),
-                            child: AspectRatio(
-                              aspectRatio: 1,
-                              child: _PlayerCoverArt(
-                                metadataAsync: metadataAsync,
                               ),
                             ),
-                          ),
+                            _PlayerControls(
+                              player: player,
+                              metadataAsync: metadataAsync,
+                              media: media,
+                            ),
+                            const SizedBox(height: 32),
+                          ],
                         ),
                       ),
                     ),
-                    _PlayerControls(
-                      player: player,
-                      metadataAsync: metadataAsync,
-                      media: media,
-                    ),
-                    const SizedBox(height: 32),
-                  ],
-                ),
+                  ),
+                  Expanded(child: const SizedBox.shrink()),
+                ],
               ),
             ),
+            // Overlaid Lyrics on the right
+            Positioned(
+              right: 0,
+              top: 0,
+              bottom: 0,
+              width: MediaQuery.sizeOf(context).width * 0.6,
+              child: Stack(
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 32),
+                    child: _PlayerLyrics(trackPath: trackPath, player: player),
+                  ),
+                  Positioned(
+                    top: 16,
+                    right: 16,
+                    child: _LyricsRefreshButton(trackPath: trackPath),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        ViewMode.queue => Stack(
+          key: const ValueKey('queue'),
+          children: [
+            // Left Side: Cover + Controls
+            Positioned.fill(
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Center(
+                      child: ConstrainedBox(
+                        constraints: const BoxConstraints(maxWidth: 480),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Expanded(
+                              child: Padding(
+                                padding: const EdgeInsets.all(32.0),
+                                child: Center(
+                                  child: ConstrainedBox(
+                                    constraints: const BoxConstraints(
+                                      maxWidth: 400,
+                                    ),
+                                    child: AspectRatio(
+                                      aspectRatio: 1,
+                                      child: _PlayerCoverArt(
+                                        metadataAsync: metadataAsync,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                            _PlayerControls(
+                              player: player,
+                              metadataAsync: metadataAsync,
+                              media: media,
+                            ),
+                            const SizedBox(height: 32),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                  Expanded(child: const SizedBox.shrink()),
+                ],
+              ),
+            ),
+            // Overlaid Queue on the right
+            Positioned(
+              right: 0,
+              top: 0,
+              bottom: 0,
+              width: MediaQuery.sizeOf(context).width * 0.5,
+              child: _QueueView(player: player),
+            ),
+          ],
+        ),
+      },
     );
   }
 }
@@ -938,23 +1000,148 @@ class _LyricsRefreshButton extends HookConsumerWidget {
   }
 }
 
-class _LyricsToggleButton extends StatelessWidget {
-  final ValueNotifier<bool> showLyrics;
+class _ViewToggleButton extends StatelessWidget {
+  final ValueNotifier<ViewMode> viewMode;
 
-  const _LyricsToggleButton({required this.showLyrics});
+  const _ViewToggleButton({required this.viewMode});
 
   @override
   Widget build(BuildContext context) {
+    IconData getIcon() {
+      switch (viewMode.value) {
+        case ViewMode.cover:
+          return Icons.album;
+        case ViewMode.lyrics:
+          return Icons.lyrics;
+        case ViewMode.queue:
+          return Icons.queue_music;
+      }
+    }
+
+    String getTooltip() {
+      switch (viewMode.value) {
+        case ViewMode.cover:
+          return 'Show Lyrics';
+        case ViewMode.lyrics:
+          return 'Show Queue';
+        case ViewMode.queue:
+          return 'Show Cover';
+      }
+    }
+
     return Positioned(
       top: MediaQuery.of(context).padding.top + 16,
       right: 16,
       child: IconButton(
-        icon: Icon(showLyrics.value ? Icons.visibility_off : Icons.visibility),
+        icon: Icon(getIcon()),
         iconSize: 24,
-        tooltip: showLyrics.value ? 'Hide Lyrics' : 'Show Lyrics',
-        onPressed: () => showLyrics.value = !showLyrics.value,
+        tooltip: getTooltip(),
+        onPressed: () {
+          switch (viewMode.value) {
+            case ViewMode.cover:
+              viewMode.value = ViewMode.lyrics;
+              break;
+            case ViewMode.lyrics:
+              viewMode.value = ViewMode.queue;
+              break;
+            case ViewMode.queue:
+              viewMode.value = ViewMode.cover;
+              break;
+          }
+        },
         padding: EdgeInsets.zero,
       ),
+    );
+  }
+}
+
+class _QueueView extends HookConsumerWidget {
+  final Player player;
+
+  const _QueueView({super.key, required this.player});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final isMobile = MediaQuery.sizeOf(context).width <= 800;
+
+    return Column(
+      children: [
+        Expanded(
+          child: StreamBuilder<Playlist>(
+            stream: player.stream.playlist,
+            initialData: player.state.playlist,
+            builder: (context, snapshot) {
+              final playlist = snapshot.data;
+              if (playlist == null || playlist.medias.isEmpty) {
+                return const Center(child: Text('No tracks in queue'));
+              }
+
+              return ListView.builder(
+                padding: const EdgeInsets.all(16),
+                itemCount: playlist.medias.length,
+                itemBuilder: (context, index) {
+                  final media = playlist.medias[index];
+                  final isCurrent = index == playlist.index;
+                  final trackPath = Uri.decodeFull(Uri.parse(media.uri).path);
+                  final trackAsync = ref.watch(trackByPathProvider(trackPath));
+
+                  return trackAsync.when(
+                    loading: () => const SizedBox(
+                      height: 72,
+                      child: Center(child: CircularProgressIndicator()),
+                    ),
+                    error: (error, stack) => TrackTile(
+                      track: db.Track(
+                        id: -1,
+                        path: trackPath,
+                        title: Uri.parse(media.uri).pathSegments.last,
+                        artist:
+                            media.extras?['artist'] as String? ??
+                            'Unknown Artist',
+                        album: media.extras?['album'] as String?,
+                        duration: null,
+                        artUri: null,
+                        lyrics: null,
+                        lyricsOffset: 0,
+                        addedAt: DateTime.now(),
+                      ),
+                      isPlaying: isCurrent,
+                      onTap: () => player.jump(index),
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                    ),
+                    data: (track) => TrackTile(
+                      leading: Text(
+                        (index + 1).toString().padLeft(2, '0'),
+                        style: TextStyle(fontSize: 14),
+                      ).padding(right: 12),
+                      track:
+                          track ??
+                          db.Track(
+                            id: -1,
+                            path: trackPath,
+                            title: Uri.parse(media.uri).pathSegments.last,
+                            artist:
+                                media.extras?['artist'] as String? ??
+                                'Unknown Artist',
+                            album: media.extras?['album'] as String?,
+                            duration: null,
+                            artUri: null,
+                            lyrics: null,
+                            lyricsOffset: 0,
+                            addedAt: DateTime.now(),
+                          ),
+                      isPlaying: isCurrent,
+                      onTap: () => player.jump(index),
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                    ),
+                  );
+                },
+              );
+            },
+          ),
+        ),
+        if (isMobile) MiniPlayer(enableTapToOpen: false),
+      ],
     );
   }
 }
