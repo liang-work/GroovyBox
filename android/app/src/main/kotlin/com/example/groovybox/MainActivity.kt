@@ -1,4 +1,4 @@
-package dev.solsynth.groovybox
+package dev.solsynth.rhythmBox
 
 import com.ryanheise.audioservice.AudioServiceActivity
 

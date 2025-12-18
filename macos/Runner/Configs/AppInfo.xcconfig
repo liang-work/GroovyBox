@@ -8,7 +8,7 @@
 PRODUCT_NAME = GroovyBox
 
 // The application's bundle identifier
-PRODUCT_BUNDLE_IDENTIFIER = dev.solsynth.groovybox
+PRODUCT_BUNDLE_IDENTIFIER = dev.solsynth.rhythmBox
 
 // The copyright displayed in application information
 PRODUCT_COPYRIGHT = Copyright © 2025 Solsynth. All rights reserved.
