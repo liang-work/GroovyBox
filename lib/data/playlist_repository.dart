@@ -71,16 +71,22 @@ class PlaylistRepository extends _$PlaylistRepository {
 
   Stream<List<AlbumData>> watchAllAlbums() {
     final db = ref.watch(databaseProvider);
-    // Distinct albums by grouping
+    // Distinct albums by grouping - group by album name only to prevent duplicates
+    // when the same album has inconsistent artist metadata across tracks
     final query = db.selectOnly(db.tracks)
-      ..addColumns([db.tracks.album, db.tracks.artist, db.tracks.artUri])
-      ..groupBy([db.tracks.album, db.tracks.artist]);
+      ..addColumns([
+        db.tracks.album,
+        db.tracks.artist.min(), // Get the first non-null artist
+        db.tracks.artUri.min(), // Get the first non-null art URI
+      ])
+      ..where(db.tracks.album.isNotNull())
+      ..groupBy([db.tracks.album]);
 
     return query.map((row) {
       return AlbumData(
-        album: row.read(db.tracks.album) ?? 'Unknown Album',
-        artist: row.read(db.tracks.artist) ?? 'Unknown Artist',
-        artUri: row.read(db.tracks.artUri),
+        album: row.read(db.tracks.album)!,
+        artist: row.read(db.tracks.artist.min()) ?? 'Various Artists',
+        artUri: row.read(db.tracks.artUri.min()),
       );
     }).watch();
   }

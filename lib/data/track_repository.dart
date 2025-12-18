@@ -24,13 +24,28 @@ class TrackRepository extends _$TrackRepository {
   }
 
   Future<void> importFiles(List<String> filePaths) async {
+    final db = ref.read(databaseProvider);
     final settings = ref.read(settingsProvider).value;
     final importMode = settings?.importMode ?? ImportMode.copy;
 
+    // Filter out files that are already indexed
+    final existingPaths = await (db.select(
+      db.tracks,
+    )..where((t) => t.path.isIn(filePaths))).map((t) => t.path).get();
+
+    final existingPathsSet = existingPaths.toSet();
+    final newFilePaths = filePaths
+        .where((path) => !existingPathsSet.contains(path))
+        .toList();
+
+    if (newFilePaths.isEmpty) {
+      return; // All files already indexed
+    }
+
     if (importMode == ImportMode.copy) {
-      await _importFilesWithCopy(filePaths);
+      await _importFilesWithCopy(newFilePaths);
     } else {
-      await _importFilesInPlace(filePaths);
+      await _importFilesInPlace(newFilePaths);
     }
   }
 

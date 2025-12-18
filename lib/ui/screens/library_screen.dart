@@ -8,6 +8,7 @@ import 'package:groovybox/data/playlist_repository.dart';
 import 'package:groovybox/data/track_repository.dart';
 import 'package:groovybox/logic/lyrics_parser.dart';
 import 'package:groovybox/providers/audio_provider.dart';
+import 'package:groovybox/providers/watch_folder_provider.dart';
 import 'package:groovybox/ui/screens/settings_screen.dart';
 import 'package:groovybox/ui/tabs/albums_tab.dart';
 import 'package:groovybox/ui/tabs/playlists_tab.dart';
@@ -598,6 +599,14 @@ class LibraryScreen extends HookConsumerWidget {
                 },
               ),
               ListTile(
+                leading: const Icon(Icons.info_outline),
+                title: const Text('View Details'),
+                onTap: () {
+                  Navigator.pop(context);
+                  _showTrackDetails(context, ref, track);
+                },
+              ),
+              ListTile(
                 leading: const Icon(Icons.edit),
                 title: const Text('Edit Metadata'),
                 onTap: () {
@@ -705,6 +714,99 @@ class LibraryScreen extends HookConsumerWidget {
           ],
         );
       },
+    );
+  }
+
+  void _showTrackDetails(
+    BuildContext context,
+    WidgetRef ref,
+    Track track,
+  ) async {
+    // Try to get file info
+    String fileSize = 'Unknown';
+    String libraryName = 'Unknown';
+    String dateAdded = 'Unknown';
+
+    try {
+      final file = File(track.path);
+      if (await file.exists()) {
+        final stat = await file.stat();
+        final sizeInMB = (stat.size / (1024 * 1024)).toStringAsFixed(2);
+        fileSize = '${sizeInMB} MB';
+        dateAdded = stat.modified.toString().split(
+          ' ',
+        )[0]; // Just the date part
+      }
+    } catch (e) {
+      // Ignore file access errors
+    }
+
+    // Try to find which library this track belongs to
+    final watchFoldersAsync = ref.read(watchFoldersProvider);
+    watchFoldersAsync.whenData((folders) {
+      for (final folder in folders) {
+        if (track.path.startsWith(folder.path)) {
+          libraryName = folder.name;
+          break;
+        }
+      }
+    });
+
+    final screenSize = MediaQuery.of(context).size;
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Track Details'),
+        content: ConstrainedBox(
+          constraints: BoxConstraints(maxWidth: screenSize.width * 0.8),
+          child: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _buildDetailRow('Title', track.title),
+                _buildDetailRow('Artist', track.artist ?? 'Unknown'),
+                _buildDetailRow('Album', track.album ?? 'Unknown'),
+                _buildDetailRow('Duration', _formatDuration(track.duration)),
+                _buildDetailRow('File Size', fileSize),
+                _buildDetailRow('Library', libraryName),
+                _buildDetailRow('File Path', track.path),
+                _buildDetailRow('Date Added', dateAdded),
+                if (track.artUri != null)
+                  _buildDetailRow('Album Art', 'Present'),
+              ],
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Close'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDetailRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 100,
+            child: Text(
+              '$label:',
+              style: const TextStyle(fontWeight: FontWeight.bold),
+            ),
+          ),
+          Expanded(
+            child: Text(value, style: const TextStyle(color: Colors.grey)),
+          ),
+        ],
+      ),
     );
   }
 
