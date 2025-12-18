@@ -70,7 +70,9 @@ class PlayerScreen extends HookConsumerWidget {
                     BackdropFilter(
                       filter: ImageFilter.blur(sigmaX: 50, sigmaY: 50),
                       child: Container(
-                        color: Colors.black.withValues(alpha: 0.6),
+                        color: Theme.of(
+                          context,
+                        ).colorScheme.surface.withValues(alpha: 0.6),
                       ),
                     ),
                   ],
@@ -83,6 +85,8 @@ class PlayerScreen extends HookConsumerWidget {
           loading: () => background = null,
           error: (_, _) => background = null,
         );
+
+        final devicePadding = MediaQuery.paddingOf(context);
 
         return Focus(
           autofocus: true,
@@ -115,9 +119,7 @@ class PlayerScreen extends HookConsumerWidget {
                     builder: (context) {
                       if (isMobile) {
                         return Padding(
-                          padding: EdgeInsets.only(
-                            top: MediaQuery.of(context).padding.top + 40,
-                          ),
+                          padding: EdgeInsets.only(top: devicePadding.top + 40),
                           child: _MobileLayout(
                             player: player,
                             viewMode: viewMode,
@@ -148,7 +150,6 @@ class PlayerScreen extends HookConsumerWidget {
                       iconSize: 24,
                     ),
                   ),
-
                   _ViewToggleButton(viewMode: viewMode),
                 ],
               ),
@@ -186,7 +187,7 @@ class _MobileLayout extends StatelessWidget {
           metadataAsync: metadataAsync,
           media: media,
           trackPath: trackPath,
-        ),
+        ).padding(bottom: MediaQuery.paddingOf(context).bottom),
         ViewMode.lyrics => _LyricsView(
           key: const ValueKey('lyrics'),
           trackPath: trackPath,
@@ -197,6 +198,55 @@ class _MobileLayout extends StatelessWidget {
           player: player,
         ),
       },
+    );
+  }
+}
+
+class _PlayerCoverControlsPanel extends StatelessWidget {
+  final Player player;
+  final AsyncValue<TrackMetadata> metadataAsync;
+  final Media media;
+  final String trackPath;
+
+  const _PlayerCoverControlsPanel({
+    required this.player,
+    required this.metadataAsync,
+    required this.media,
+    required this.trackPath,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return ConstrainedBox(
+      constraints: BoxConstraints(
+        maxWidth: math.min(480, MediaQuery.sizeOf(context).width * 0.4),
+      ),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.all(32.0),
+              child: Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 400),
+                  child: AspectRatio(
+                    aspectRatio: 1,
+                    child: _PlayerCoverArt(metadataAsync: metadataAsync),
+                  ),
+                ),
+              ),
+            ),
+          ),
+          _PlayerControls(
+            player: player,
+            metadataAsync: metadataAsync,
+            media: media,
+            trackPath: trackPath,
+          ),
+          const SizedBox(height: 32),
+        ],
+      ),
     );
   }
 }
@@ -223,36 +273,11 @@ class _DesktopLayout extends StatelessWidget {
       child: switch (viewMode.value) {
         ViewMode.cover => Center(
           key: const ValueKey('cover'),
-          child: ConstrainedBox(
-            constraints: BoxConstraints(
-              maxWidth: math.min(480, MediaQuery.sizeOf(context).width * 0.4),
-            ),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.all(32.0),
-                    child: Center(
-                      child: ConstrainedBox(
-                        constraints: const BoxConstraints(maxWidth: 400),
-                        child: AspectRatio(
-                          aspectRatio: 1,
-                          child: _PlayerCoverArt(metadataAsync: metadataAsync),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-                _PlayerControls(
-                  player: player,
-                  metadataAsync: metadataAsync,
-                  media: media,
-                  trackPath: trackPath,
-                ),
-                const SizedBox(height: 32),
-              ],
-            ),
+          child: _PlayerCoverControlsPanel(
+            player: player,
+            metadataAsync: metadataAsync,
+            media: media,
+            trackPath: trackPath,
           ),
         ),
         ViewMode.lyrics => Stack(
@@ -264,43 +289,11 @@ class _DesktopLayout extends StatelessWidget {
                 children: [
                   Expanded(
                     child: Center(
-                      child: ConstrainedBox(
-                        constraints: BoxConstraints(
-                          maxWidth: math.min(
-                            480,
-                            MediaQuery.sizeOf(context).width * 0.4,
-                          ),
-                        ),
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Expanded(
-                              child: Padding(
-                                padding: const EdgeInsets.all(32.0),
-                                child: Center(
-                                  child: ConstrainedBox(
-                                    constraints: const BoxConstraints(
-                                      maxWidth: 400,
-                                    ),
-                                    child: AspectRatio(
-                                      aspectRatio: 1,
-                                      child: _PlayerCoverArt(
-                                        metadataAsync: metadataAsync,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ),
-                            _PlayerControls(
-                              player: player,
-                              metadataAsync: metadataAsync,
-                              media: media,
-                              trackPath: trackPath,
-                            ),
-                            const SizedBox(height: 32),
-                          ],
-                        ),
+                      child: _PlayerCoverControlsPanel(
+                        player: player,
+                        metadataAsync: metadataAsync,
+                        media: media,
+                        trackPath: trackPath,
                       ),
                     ),
                   ),
@@ -330,43 +323,11 @@ class _DesktopLayout extends StatelessWidget {
                 children: [
                   Expanded(
                     child: Center(
-                      child: ConstrainedBox(
-                        constraints: BoxConstraints(
-                          maxWidth: math.min(
-                            480,
-                            MediaQuery.sizeOf(context).width * 0.4,
-                          ),
-                        ),
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Expanded(
-                              child: Padding(
-                                padding: const EdgeInsets.all(32.0),
-                                child: Center(
-                                  child: ConstrainedBox(
-                                    constraints: const BoxConstraints(
-                                      maxWidth: 400,
-                                    ),
-                                    child: AspectRatio(
-                                      aspectRatio: 1,
-                                      child: _PlayerCoverArt(
-                                        metadataAsync: metadataAsync,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ),
-                            _PlayerControls(
-                              player: player,
-                              metadataAsync: metadataAsync,
-                              media: media,
-                              trackPath: trackPath,
-                            ),
-                            const SizedBox(height: 32),
-                          ],
-                        ),
+                      child: _PlayerCoverControlsPanel(
+                        player: player,
+                        metadataAsync: metadataAsync,
+                        media: media,
+                        trackPath: trackPath,
                       ),
                     ),
                   ),
@@ -410,12 +371,7 @@ class _CoverView extends StatelessWidget {
       child: Column(
         children: [
           Expanded(
-            child: Padding(
-              padding: const EdgeInsets.all(32.0),
-              child: Center(
-                child: _PlayerCoverArt(metadataAsync: metadataAsync),
-              ),
-            ),
+            child: Center(child: _PlayerCoverArt(metadataAsync: metadataAsync)),
           ),
           _PlayerControls(
             player: player,
@@ -465,11 +421,13 @@ class _PlayerCoverArt extends StatelessWidget {
           aspectRatio: 1,
           child: Container(
             decoration: BoxDecoration(
-              color: Colors.grey[800],
+              color: Theme.of(context).colorScheme.surfaceContainer,
               borderRadius: BorderRadius.circular(24),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.3),
+                  color: Theme.of(
+                    context,
+                  ).colorScheme.shadow.withValues(alpha: 0.3),
                   blurRadius: 20,
                   offset: const Offset(0, 10),
                 ),
@@ -482,11 +440,13 @@ class _PlayerCoverArt extends StatelessWidget {
                   : null,
             ),
             child: meta.artBytes == null
-                ? const Center(
+                ? Center(
                     child: Icon(
                       Icons.music_note,
                       size: 80,
-                      color: Colors.white54,
+                      color: Theme.of(
+                        context,
+                      ).colorScheme.onSurface.withValues(alpha: 0.7),
                     ),
                   )
                 : null,
@@ -496,11 +456,17 @@ class _PlayerCoverArt extends StatelessWidget {
       loading: () => const Center(child: CircularProgressIndicator()),
       error: (_, _) => Container(
         decoration: BoxDecoration(
-          color: Colors.grey[800],
+          color: Theme.of(context).colorScheme.surfaceVariant,
           borderRadius: BorderRadius.circular(24),
         ),
-        child: const Center(
-          child: Icon(Icons.error_outline, size: 80, color: Colors.white54),
+        child: Center(
+          child: Icon(
+            Icons.error_outline,
+            size: 80,
+            color: Theme.of(
+              context,
+            ).colorScheme.onSurface.withValues(alpha: 0.7),
+          ),
         ),
       ),
     );
@@ -714,6 +680,7 @@ class _FetchLyricsDialog extends StatelessWidget {
         children: [
           RichText(
             text: TextSpan(
+              style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
               children: [
                 const TextSpan(text: 'Search lyrics with '),
                 TextSpan(
@@ -1170,7 +1137,7 @@ class _QueueView extends HookConsumerWidget {
               }
 
               return ReorderableListView.builder(
-                padding: const EdgeInsets.all(16),
+                padding: const EdgeInsets.fromLTRB(16, 32, 16, 16),
                 itemCount: playlist.medias.length,
                 buildDefaultDragHandles: false,
                 onReorder: (oldIndex, newIndex) {
@@ -1657,6 +1624,7 @@ class _PlayerControls extends HookWidget {
 
         // Media Controls
         Row(
+          spacing: 8,
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             // Shuffle
@@ -1678,13 +1646,11 @@ class _PlayerControls extends HookWidget {
                 player.setShuffle(!player.state.shuffle);
               },
             ),
-            const SizedBox(width: 16),
             // Previous
             IconButton(
               icon: const Icon(Icons.skip_previous, size: 32),
               onPressed: player.previous,
             ),
-            const SizedBox(width: 16),
             // Play/Pause
             StreamBuilder<bool>(
               stream: player.stream.playing,
@@ -1712,13 +1678,11 @@ class _PlayerControls extends HookWidget {
                 );
               },
             ),
-            const SizedBox(width: 16),
             // Next
             IconButton(
               icon: const Icon(Icons.skip_next, size: 32),
               onPressed: player.next,
             ),
-            const SizedBox(width: 16),
             // Loop Mode
             IconButton(
               icon: StreamBuilder<PlaylistMode>(

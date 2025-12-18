@@ -53,10 +53,13 @@ class _MobileMiniPlayer extends HookConsumerWidget {
         final path = Uri.parse(media.uri).path;
         final filePath = Uri.decodeFull(path);
 
+        final devicePadding = MediaQuery.paddingOf(context);
+
         final metadataAsync = ref.watch(trackMetadataProvider(filePath));
 
         Widget content = Container(
-          height: 72,
+          height: 72 + devicePadding.bottom,
+          padding: EdgeInsets.only(bottom: devicePadding.bottom),
           width: double.infinity,
           decoration: BoxDecoration(
             color: Theme.of(context).colorScheme.surfaceContainerHighest,
@@ -268,11 +271,14 @@ class _DesktopMiniPlayer extends HookConsumerWidget {
         final path = Uri.parse(media.uri).path;
         final filePath = Uri.decodeFull(path);
 
+        final devicePadding = MediaQuery.paddingOf(context);
+
         final metadataAsync = ref.watch(trackMetadataProvider(filePath));
 
         Widget content = Container(
-          height: 72,
+          height: 72 + devicePadding.bottom,
           width: double.infinity,
+          padding: EdgeInsets.only(bottom: devicePadding.bottom),
           decoration: BoxDecoration(
             color: Theme.of(context).colorScheme.surfaceContainerHighest,
             border: Border(
