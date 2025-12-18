@@ -32,12 +32,32 @@ class PlaylistEntries extends Table {
   DateTimeColumn get addedAt => dateTime().withDefault(currentDateAndTime)();
 }
 
-@DriftDatabase(tables: [Tracks, Playlists, PlaylistEntries])
+class WatchFolders extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  TextColumn get path => text().unique()();
+  TextColumn get name => text()();
+  BoolColumn get isActive => boolean().withDefault(const Constant(true))();
+  BoolColumn get recursive => boolean().withDefault(const Constant(true))();
+  DateTimeColumn get addedAt => dateTime().withDefault(currentDateAndTime)();
+  DateTimeColumn get lastScanned => dateTime().nullable()();
+}
+
+class AppSettings extends Table {
+  TextColumn get key => text()();
+  TextColumn get value => text()();
+
+  @override
+  Set<Column> get primaryKey => {key};
+}
+
+@DriftDatabase(
+  tables: [Tracks, Playlists, PlaylistEntries, WatchFolders, AppSettings],
+)
 class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
 
   @override
-  int get schemaVersion => 5; // Bump version for lyricsOffset column
+  int get schemaVersion => 6; // Bump version for watch folders and settings
 
   @override
   MigrationStrategy get migration {
@@ -58,6 +78,11 @@ class AppDatabase extends _$AppDatabase {
         }
         if (from < 5) {
           await m.addColumn(tracks, tracks.lyricsOffset);
+        }
+        if (from < 6) {
+          // Create tables for watch folders and settings
+          await m.createTable(watchFolders);
+          await m.createTable(appSettings);
         }
       },
     );

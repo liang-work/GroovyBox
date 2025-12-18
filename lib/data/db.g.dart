@@ -1147,6 +1147,664 @@ class PlaylistEntriesCompanion extends UpdateCompanion<PlaylistEntry> {
   }
 }
 
+class $WatchFoldersTable extends WatchFolders
+    with TableInfo<$WatchFoldersTable, WatchFolder> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $WatchFoldersTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
+  );
+  static const VerificationMeta _pathMeta = const VerificationMeta('path');
+  @override
+  late final GeneratedColumn<String> path = GeneratedColumn<String>(
+    'path',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways('UNIQUE'),
+  );
+  static const VerificationMeta _nameMeta = const VerificationMeta('name');
+  @override
+  late final GeneratedColumn<String> name = GeneratedColumn<String>(
+    'name',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _isActiveMeta = const VerificationMeta(
+    'isActive',
+  );
+  @override
+  late final GeneratedColumn<bool> isActive = GeneratedColumn<bool>(
+    'is_active',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("is_active" IN (0, 1))',
+    ),
+    defaultValue: const Constant(true),
+  );
+  static const VerificationMeta _recursiveMeta = const VerificationMeta(
+    'recursive',
+  );
+  @override
+  late final GeneratedColumn<bool> recursive = GeneratedColumn<bool>(
+    'recursive',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("recursive" IN (0, 1))',
+    ),
+    defaultValue: const Constant(true),
+  );
+  static const VerificationMeta _addedAtMeta = const VerificationMeta(
+    'addedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> addedAt = GeneratedColumn<DateTime>(
+    'added_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  static const VerificationMeta _lastScannedMeta = const VerificationMeta(
+    'lastScanned',
+  );
+  @override
+  late final GeneratedColumn<DateTime> lastScanned = GeneratedColumn<DateTime>(
+    'last_scanned',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    path,
+    name,
+    isActive,
+    recursive,
+    addedAt,
+    lastScanned,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'watch_folders';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<WatchFolder> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('path')) {
+      context.handle(
+        _pathMeta,
+        path.isAcceptableOrUnknown(data['path']!, _pathMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_pathMeta);
+    }
+    if (data.containsKey('name')) {
+      context.handle(
+        _nameMeta,
+        name.isAcceptableOrUnknown(data['name']!, _nameMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_nameMeta);
+    }
+    if (data.containsKey('is_active')) {
+      context.handle(
+        _isActiveMeta,
+        isActive.isAcceptableOrUnknown(data['is_active']!, _isActiveMeta),
+      );
+    }
+    if (data.containsKey('recursive')) {
+      context.handle(
+        _recursiveMeta,
+        recursive.isAcceptableOrUnknown(data['recursive']!, _recursiveMeta),
+      );
+    }
+    if (data.containsKey('added_at')) {
+      context.handle(
+        _addedAtMeta,
+        addedAt.isAcceptableOrUnknown(data['added_at']!, _addedAtMeta),
+      );
+    }
+    if (data.containsKey('last_scanned')) {
+      context.handle(
+        _lastScannedMeta,
+        lastScanned.isAcceptableOrUnknown(
+          data['last_scanned']!,
+          _lastScannedMeta,
+        ),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  WatchFolder map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return WatchFolder(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      path: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}path'],
+      )!,
+      name: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}name'],
+      )!,
+      isActive: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}is_active'],
+      )!,
+      recursive: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}recursive'],
+      )!,
+      addedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}added_at'],
+      )!,
+      lastScanned: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}last_scanned'],
+      ),
+    );
+  }
+
+  @override
+  $WatchFoldersTable createAlias(String alias) {
+    return $WatchFoldersTable(attachedDatabase, alias);
+  }
+}
+
+class WatchFolder extends DataClass implements Insertable<WatchFolder> {
+  final int id;
+  final String path;
+  final String name;
+  final bool isActive;
+  final bool recursive;
+  final DateTime addedAt;
+  final DateTime? lastScanned;
+  const WatchFolder({
+    required this.id,
+    required this.path,
+    required this.name,
+    required this.isActive,
+    required this.recursive,
+    required this.addedAt,
+    this.lastScanned,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['path'] = Variable<String>(path);
+    map['name'] = Variable<String>(name);
+    map['is_active'] = Variable<bool>(isActive);
+    map['recursive'] = Variable<bool>(recursive);
+    map['added_at'] = Variable<DateTime>(addedAt);
+    if (!nullToAbsent || lastScanned != null) {
+      map['last_scanned'] = Variable<DateTime>(lastScanned);
+    }
+    return map;
+  }
+
+  WatchFoldersCompanion toCompanion(bool nullToAbsent) {
+    return WatchFoldersCompanion(
+      id: Value(id),
+      path: Value(path),
+      name: Value(name),
+      isActive: Value(isActive),
+      recursive: Value(recursive),
+      addedAt: Value(addedAt),
+      lastScanned: lastScanned == null && nullToAbsent
+          ? const Value.absent()
+          : Value(lastScanned),
+    );
+  }
+
+  factory WatchFolder.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return WatchFolder(
+      id: serializer.fromJson<int>(json['id']),
+      path: serializer.fromJson<String>(json['path']),
+      name: serializer.fromJson<String>(json['name']),
+      isActive: serializer.fromJson<bool>(json['isActive']),
+      recursive: serializer.fromJson<bool>(json['recursive']),
+      addedAt: serializer.fromJson<DateTime>(json['addedAt']),
+      lastScanned: serializer.fromJson<DateTime?>(json['lastScanned']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'path': serializer.toJson<String>(path),
+      'name': serializer.toJson<String>(name),
+      'isActive': serializer.toJson<bool>(isActive),
+      'recursive': serializer.toJson<bool>(recursive),
+      'addedAt': serializer.toJson<DateTime>(addedAt),
+      'lastScanned': serializer.toJson<DateTime?>(lastScanned),
+    };
+  }
+
+  WatchFolder copyWith({
+    int? id,
+    String? path,
+    String? name,
+    bool? isActive,
+    bool? recursive,
+    DateTime? addedAt,
+    Value<DateTime?> lastScanned = const Value.absent(),
+  }) => WatchFolder(
+    id: id ?? this.id,
+    path: path ?? this.path,
+    name: name ?? this.name,
+    isActive: isActive ?? this.isActive,
+    recursive: recursive ?? this.recursive,
+    addedAt: addedAt ?? this.addedAt,
+    lastScanned: lastScanned.present ? lastScanned.value : this.lastScanned,
+  );
+  WatchFolder copyWithCompanion(WatchFoldersCompanion data) {
+    return WatchFolder(
+      id: data.id.present ? data.id.value : this.id,
+      path: data.path.present ? data.path.value : this.path,
+      name: data.name.present ? data.name.value : this.name,
+      isActive: data.isActive.present ? data.isActive.value : this.isActive,
+      recursive: data.recursive.present ? data.recursive.value : this.recursive,
+      addedAt: data.addedAt.present ? data.addedAt.value : this.addedAt,
+      lastScanned: data.lastScanned.present
+          ? data.lastScanned.value
+          : this.lastScanned,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('WatchFolder(')
+          ..write('id: $id, ')
+          ..write('path: $path, ')
+          ..write('name: $name, ')
+          ..write('isActive: $isActive, ')
+          ..write('recursive: $recursive, ')
+          ..write('addedAt: $addedAt, ')
+          ..write('lastScanned: $lastScanned')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode =>
+      Object.hash(id, path, name, isActive, recursive, addedAt, lastScanned);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is WatchFolder &&
+          other.id == this.id &&
+          other.path == this.path &&
+          other.name == this.name &&
+          other.isActive == this.isActive &&
+          other.recursive == this.recursive &&
+          other.addedAt == this.addedAt &&
+          other.lastScanned == this.lastScanned);
+}
+
+class WatchFoldersCompanion extends UpdateCompanion<WatchFolder> {
+  final Value<int> id;
+  final Value<String> path;
+  final Value<String> name;
+  final Value<bool> isActive;
+  final Value<bool> recursive;
+  final Value<DateTime> addedAt;
+  final Value<DateTime?> lastScanned;
+  const WatchFoldersCompanion({
+    this.id = const Value.absent(),
+    this.path = const Value.absent(),
+    this.name = const Value.absent(),
+    this.isActive = const Value.absent(),
+    this.recursive = const Value.absent(),
+    this.addedAt = const Value.absent(),
+    this.lastScanned = const Value.absent(),
+  });
+  WatchFoldersCompanion.insert({
+    this.id = const Value.absent(),
+    required String path,
+    required String name,
+    this.isActive = const Value.absent(),
+    this.recursive = const Value.absent(),
+    this.addedAt = const Value.absent(),
+    this.lastScanned = const Value.absent(),
+  }) : path = Value(path),
+       name = Value(name);
+  static Insertable<WatchFolder> custom({
+    Expression<int>? id,
+    Expression<String>? path,
+    Expression<String>? name,
+    Expression<bool>? isActive,
+    Expression<bool>? recursive,
+    Expression<DateTime>? addedAt,
+    Expression<DateTime>? lastScanned,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (path != null) 'path': path,
+      if (name != null) 'name': name,
+      if (isActive != null) 'is_active': isActive,
+      if (recursive != null) 'recursive': recursive,
+      if (addedAt != null) 'added_at': addedAt,
+      if (lastScanned != null) 'last_scanned': lastScanned,
+    });
+  }
+
+  WatchFoldersCompanion copyWith({
+    Value<int>? id,
+    Value<String>? path,
+    Value<String>? name,
+    Value<bool>? isActive,
+    Value<bool>? recursive,
+    Value<DateTime>? addedAt,
+    Value<DateTime?>? lastScanned,
+  }) {
+    return WatchFoldersCompanion(
+      id: id ?? this.id,
+      path: path ?? this.path,
+      name: name ?? this.name,
+      isActive: isActive ?? this.isActive,
+      recursive: recursive ?? this.recursive,
+      addedAt: addedAt ?? this.addedAt,
+      lastScanned: lastScanned ?? this.lastScanned,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (path.present) {
+      map['path'] = Variable<String>(path.value);
+    }
+    if (name.present) {
+      map['name'] = Variable<String>(name.value);
+    }
+    if (isActive.present) {
+      map['is_active'] = Variable<bool>(isActive.value);
+    }
+    if (recursive.present) {
+      map['recursive'] = Variable<bool>(recursive.value);
+    }
+    if (addedAt.present) {
+      map['added_at'] = Variable<DateTime>(addedAt.value);
+    }
+    if (lastScanned.present) {
+      map['last_scanned'] = Variable<DateTime>(lastScanned.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('WatchFoldersCompanion(')
+          ..write('id: $id, ')
+          ..write('path: $path, ')
+          ..write('name: $name, ')
+          ..write('isActive: $isActive, ')
+          ..write('recursive: $recursive, ')
+          ..write('addedAt: $addedAt, ')
+          ..write('lastScanned: $lastScanned')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $AppSettingsTable extends AppSettings
+    with TableInfo<$AppSettingsTable, AppSetting> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $AppSettingsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _keyMeta = const VerificationMeta('key');
+  @override
+  late final GeneratedColumn<String> key = GeneratedColumn<String>(
+    'key',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _valueMeta = const VerificationMeta('value');
+  @override
+  late final GeneratedColumn<String> value = GeneratedColumn<String>(
+    'value',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [key, value];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'app_settings';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<AppSetting> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('key')) {
+      context.handle(
+        _keyMeta,
+        key.isAcceptableOrUnknown(data['key']!, _keyMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_keyMeta);
+    }
+    if (data.containsKey('value')) {
+      context.handle(
+        _valueMeta,
+        value.isAcceptableOrUnknown(data['value']!, _valueMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_valueMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {key};
+  @override
+  AppSetting map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return AppSetting(
+      key: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}key'],
+      )!,
+      value: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}value'],
+      )!,
+    );
+  }
+
+  @override
+  $AppSettingsTable createAlias(String alias) {
+    return $AppSettingsTable(attachedDatabase, alias);
+  }
+}
+
+class AppSetting extends DataClass implements Insertable<AppSetting> {
+  final String key;
+  final String value;
+  const AppSetting({required this.key, required this.value});
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['key'] = Variable<String>(key);
+    map['value'] = Variable<String>(value);
+    return map;
+  }
+
+  AppSettingsCompanion toCompanion(bool nullToAbsent) {
+    return AppSettingsCompanion(key: Value(key), value: Value(value));
+  }
+
+  factory AppSetting.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return AppSetting(
+      key: serializer.fromJson<String>(json['key']),
+      value: serializer.fromJson<String>(json['value']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'key': serializer.toJson<String>(key),
+      'value': serializer.toJson<String>(value),
+    };
+  }
+
+  AppSetting copyWith({String? key, String? value}) =>
+      AppSetting(key: key ?? this.key, value: value ?? this.value);
+  AppSetting copyWithCompanion(AppSettingsCompanion data) {
+    return AppSetting(
+      key: data.key.present ? data.key.value : this.key,
+      value: data.value.present ? data.value.value : this.value,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('AppSetting(')
+          ..write('key: $key, ')
+          ..write('value: $value')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(key, value);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is AppSetting &&
+          other.key == this.key &&
+          other.value == this.value);
+}
+
+class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
+  final Value<String> key;
+  final Value<String> value;
+  final Value<int> rowid;
+  const AppSettingsCompanion({
+    this.key = const Value.absent(),
+    this.value = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  AppSettingsCompanion.insert({
+    required String key,
+    required String value,
+    this.rowid = const Value.absent(),
+  }) : key = Value(key),
+       value = Value(value);
+  static Insertable<AppSetting> custom({
+    Expression<String>? key,
+    Expression<String>? value,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (key != null) 'key': key,
+      if (value != null) 'value': value,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  AppSettingsCompanion copyWith({
+    Value<String>? key,
+    Value<String>? value,
+    Value<int>? rowid,
+  }) {
+    return AppSettingsCompanion(
+      key: key ?? this.key,
+      value: value ?? this.value,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (key.present) {
+      map['key'] = Variable<String>(key.value);
+    }
+    if (value.present) {
+      map['value'] = Variable<String>(value.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('AppSettingsCompanion(')
+          ..write('key: $key, ')
+          ..write('value: $value, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -1155,6 +1813,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $PlaylistEntriesTable playlistEntries = $PlaylistEntriesTable(
     this,
   );
+  late final $WatchFoldersTable watchFolders = $WatchFoldersTable(this);
+  late final $AppSettingsTable appSettings = $AppSettingsTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -1163,6 +1823,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     tracks,
     playlists,
     playlistEntries,
+    watchFolders,
+    appSettings,
   ];
   @override
   StreamQueryUpdateRules get streamUpdateRules => const StreamQueryUpdateRules([
@@ -2222,6 +2884,379 @@ typedef $$PlaylistEntriesTableProcessedTableManager =
       PlaylistEntry,
       PrefetchHooks Function({bool playlistId, bool trackId})
     >;
+typedef $$WatchFoldersTableCreateCompanionBuilder =
+    WatchFoldersCompanion Function({
+      Value<int> id,
+      required String path,
+      required String name,
+      Value<bool> isActive,
+      Value<bool> recursive,
+      Value<DateTime> addedAt,
+      Value<DateTime?> lastScanned,
+    });
+typedef $$WatchFoldersTableUpdateCompanionBuilder =
+    WatchFoldersCompanion Function({
+      Value<int> id,
+      Value<String> path,
+      Value<String> name,
+      Value<bool> isActive,
+      Value<bool> recursive,
+      Value<DateTime> addedAt,
+      Value<DateTime?> lastScanned,
+    });
+
+class $$WatchFoldersTableFilterComposer
+    extends Composer<_$AppDatabase, $WatchFoldersTable> {
+  $$WatchFoldersTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get path => $composableBuilder(
+    column: $table.path,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get isActive => $composableBuilder(
+    column: $table.isActive,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get recursive => $composableBuilder(
+    column: $table.recursive,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get addedAt => $composableBuilder(
+    column: $table.addedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get lastScanned => $composableBuilder(
+    column: $table.lastScanned,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$WatchFoldersTableOrderingComposer
+    extends Composer<_$AppDatabase, $WatchFoldersTable> {
+  $$WatchFoldersTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get path => $composableBuilder(
+    column: $table.path,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get isActive => $composableBuilder(
+    column: $table.isActive,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get recursive => $composableBuilder(
+    column: $table.recursive,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get addedAt => $composableBuilder(
+    column: $table.addedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get lastScanned => $composableBuilder(
+    column: $table.lastScanned,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$WatchFoldersTableAnnotationComposer
+    extends Composer<_$AppDatabase, $WatchFoldersTable> {
+  $$WatchFoldersTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get path =>
+      $composableBuilder(column: $table.path, builder: (column) => column);
+
+  GeneratedColumn<String> get name =>
+      $composableBuilder(column: $table.name, builder: (column) => column);
+
+  GeneratedColumn<bool> get isActive =>
+      $composableBuilder(column: $table.isActive, builder: (column) => column);
+
+  GeneratedColumn<bool> get recursive =>
+      $composableBuilder(column: $table.recursive, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get addedAt =>
+      $composableBuilder(column: $table.addedAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get lastScanned => $composableBuilder(
+    column: $table.lastScanned,
+    builder: (column) => column,
+  );
+}
+
+class $$WatchFoldersTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $WatchFoldersTable,
+          WatchFolder,
+          $$WatchFoldersTableFilterComposer,
+          $$WatchFoldersTableOrderingComposer,
+          $$WatchFoldersTableAnnotationComposer,
+          $$WatchFoldersTableCreateCompanionBuilder,
+          $$WatchFoldersTableUpdateCompanionBuilder,
+          (
+            WatchFolder,
+            BaseReferences<_$AppDatabase, $WatchFoldersTable, WatchFolder>,
+          ),
+          WatchFolder,
+          PrefetchHooks Function()
+        > {
+  $$WatchFoldersTableTableManager(_$AppDatabase db, $WatchFoldersTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$WatchFoldersTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$WatchFoldersTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$WatchFoldersTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<String> path = const Value.absent(),
+                Value<String> name = const Value.absent(),
+                Value<bool> isActive = const Value.absent(),
+                Value<bool> recursive = const Value.absent(),
+                Value<DateTime> addedAt = const Value.absent(),
+                Value<DateTime?> lastScanned = const Value.absent(),
+              }) => WatchFoldersCompanion(
+                id: id,
+                path: path,
+                name: name,
+                isActive: isActive,
+                recursive: recursive,
+                addedAt: addedAt,
+                lastScanned: lastScanned,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                required String path,
+                required String name,
+                Value<bool> isActive = const Value.absent(),
+                Value<bool> recursive = const Value.absent(),
+                Value<DateTime> addedAt = const Value.absent(),
+                Value<DateTime?> lastScanned = const Value.absent(),
+              }) => WatchFoldersCompanion.insert(
+                id: id,
+                path: path,
+                name: name,
+                isActive: isActive,
+                recursive: recursive,
+                addedAt: addedAt,
+                lastScanned: lastScanned,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$WatchFoldersTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $WatchFoldersTable,
+      WatchFolder,
+      $$WatchFoldersTableFilterComposer,
+      $$WatchFoldersTableOrderingComposer,
+      $$WatchFoldersTableAnnotationComposer,
+      $$WatchFoldersTableCreateCompanionBuilder,
+      $$WatchFoldersTableUpdateCompanionBuilder,
+      (
+        WatchFolder,
+        BaseReferences<_$AppDatabase, $WatchFoldersTable, WatchFolder>,
+      ),
+      WatchFolder,
+      PrefetchHooks Function()
+    >;
+typedef $$AppSettingsTableCreateCompanionBuilder =
+    AppSettingsCompanion Function({
+      required String key,
+      required String value,
+      Value<int> rowid,
+    });
+typedef $$AppSettingsTableUpdateCompanionBuilder =
+    AppSettingsCompanion Function({
+      Value<String> key,
+      Value<String> value,
+      Value<int> rowid,
+    });
+
+class $$AppSettingsTableFilterComposer
+    extends Composer<_$AppDatabase, $AppSettingsTable> {
+  $$AppSettingsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get key => $composableBuilder(
+    column: $table.key,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get value => $composableBuilder(
+    column: $table.value,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$AppSettingsTableOrderingComposer
+    extends Composer<_$AppDatabase, $AppSettingsTable> {
+  $$AppSettingsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get key => $composableBuilder(
+    column: $table.key,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get value => $composableBuilder(
+    column: $table.value,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$AppSettingsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $AppSettingsTable> {
+  $$AppSettingsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get key =>
+      $composableBuilder(column: $table.key, builder: (column) => column);
+
+  GeneratedColumn<String> get value =>
+      $composableBuilder(column: $table.value, builder: (column) => column);
+}
+
+class $$AppSettingsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $AppSettingsTable,
+          AppSetting,
+          $$AppSettingsTableFilterComposer,
+          $$AppSettingsTableOrderingComposer,
+          $$AppSettingsTableAnnotationComposer,
+          $$AppSettingsTableCreateCompanionBuilder,
+          $$AppSettingsTableUpdateCompanionBuilder,
+          (
+            AppSetting,
+            BaseReferences<_$AppDatabase, $AppSettingsTable, AppSetting>,
+          ),
+          AppSetting,
+          PrefetchHooks Function()
+        > {
+  $$AppSettingsTableTableManager(_$AppDatabase db, $AppSettingsTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$AppSettingsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$AppSettingsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$AppSettingsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> key = const Value.absent(),
+                Value<String> value = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => AppSettingsCompanion(key: key, value: value, rowid: rowid),
+          createCompanionCallback:
+              ({
+                required String key,
+                required String value,
+                Value<int> rowid = const Value.absent(),
+              }) => AppSettingsCompanion.insert(
+                key: key,
+                value: value,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$AppSettingsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $AppSettingsTable,
+      AppSetting,
+      $$AppSettingsTableFilterComposer,
+      $$AppSettingsTableOrderingComposer,
+      $$AppSettingsTableAnnotationComposer,
+      $$AppSettingsTableCreateCompanionBuilder,
+      $$AppSettingsTableUpdateCompanionBuilder,
+      (
+        AppSetting,
+        BaseReferences<_$AppDatabase, $AppSettingsTable, AppSetting>,
+      ),
+      AppSetting,
+      PrefetchHooks Function()
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -2232,4 +3267,8 @@ class $AppDatabaseManager {
       $$PlaylistsTableTableManager(_db, _db.playlists);
   $$PlaylistEntriesTableTableManager get playlistEntries =>
       $$PlaylistEntriesTableTableManager(_db, _db.playlistEntries);
+  $$WatchFoldersTableTableManager get watchFolders =>
+      $$WatchFoldersTableTableManager(_db, _db.watchFolders);
+  $$AppSettingsTableTableManager get appSettings =>
+      $$AppSettingsTableTableManager(_db, _db.appSettings);
 }

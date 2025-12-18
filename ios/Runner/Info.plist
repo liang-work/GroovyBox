@@ -30,10 +30,14 @@
 	<true/>
 	<key>UIBackgroundModes</key>
 	<array>
-		<string>fetch</string>
-		<string>processing</string>
 		<string>audio</string>
+		<string>processing</string>
+		<string>fetch</string>
 	</array>
+    <key>BGTaskSchedulerPermittedIdentifiers</key>
+    <array>
+        <string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
+    </array>
 	<key>UILaunchStoryboardName</key>
 	<string>LaunchScreen</string>
 	<key>UIMainStoryboardFile</key>
@@ -51,5 +55,13 @@
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
+    <key>NSCameraUsageDescription</key>
+    <string>Grant access to Camera will allow GroovyBox add media to your library.</string>
+    <key>NSMicrophoneUsageDescription</key>
+    <string>Grant access to Microphone will allow GroovyBox record audio for your library.</string>
+    <key>NSPhotoLibraryAddUsageDescription</key>
+    <string>Grant access to Photo Library will allow GroovyBox export media for you.</string>
+    <key>NSPhotoLibraryUsageDescription</key>
+    <string>Grant access to Photo Library will allow GroovyBox add media to your library.</string>
 </dict>
 </plist>

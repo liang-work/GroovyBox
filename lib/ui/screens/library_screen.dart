@@ -8,6 +8,7 @@ import 'package:groovybox/data/playlist_repository.dart';
 import 'package:groovybox/data/track_repository.dart';
 import 'package:groovybox/logic/lyrics_parser.dart';
 import 'package:groovybox/providers/audio_provider.dart';
+import 'package:groovybox/ui/screens/settings_screen.dart';
 import 'package:groovybox/ui/tabs/albums_tab.dart';
 import 'package:groovybox/ui/tabs/playlists_tab.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
@@ -121,6 +122,16 @@ class LibraryScreen extends HookConsumerWidget {
                       )
                     : const Text('Library'),
                 actions: [
+                  IconButton(
+                    onPressed: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (context) => SettingsScreen(),
+                        ),
+                      );
+                    },
+                    icon: const Icon(Icons.settings),
+                  ),
                   IconButton(
                     icon: const Icon(Icons.add_circle_outline),
                     tooltip: 'Import Files',

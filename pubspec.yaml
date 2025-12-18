@@ -1,5 +1,5 @@
 name: groovybox
-description: "A new Flutter project."
+description: "A new local music player."
 # The following line prevents the package from being accidentally published to
 # pub.dev using `flutter pub publish`. This is preferred for private packages.
 publish_to: 'none' # Remove this line if you wish to publish to pub.dev
@@ -16,7 +16,7 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 # https://developer.apple.com/library/archive/documentation/General/Reference/InfoPlistKeyReference/Articles/CoreFoundationKeys.html
 # In Windows, build-name is used as the major, minor, and patch parts
 # of the product and file versions while build-number is used as the build suffix.
-version: 1.0.0+40
+version: 1.0.0+46
 
 environment:
   sdk: ^3.10.1
@@ -53,6 +53,8 @@ dependencies:
   http: ^1.0.0
   audio_service: ^0.18.18
   palette_generator: ^0.3.3+4
+  watcher: ^1.2.0
+  shared_preferences: ^2.3.5
 
 dev_dependencies:
   flutter_test:

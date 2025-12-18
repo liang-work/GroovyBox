@@ -33,7 +33,7 @@ final class TrackRepositoryProvider
   TrackRepository create() => TrackRepository();
 }
 
-String _$trackRepositoryHash() => r'244e5fc82fcaa34cb1276a41e4158a0eefcc7258';
+String _$trackRepositoryHash() => r'538fedbc358e305aac4517d2c517a8bdf6bbb75c';
 
 abstract class _$TrackRepository extends $AsyncNotifier<void> {
   FutureOr<void> build();
