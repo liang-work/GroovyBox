@@ -371,7 +371,12 @@ class _CoverView extends StatelessWidget {
       child: Column(
         children: [
           Expanded(
-            child: Center(child: _PlayerCoverArt(metadataAsync: metadataAsync)),
+            child: Padding(
+              padding: const EdgeInsets.only(bottom: 32),
+              child: Center(
+                child: _PlayerCoverArt(metadataAsync: metadataAsync),
+              ),
+            ),
           ),
           _PlayerControls(
             player: player,
@@ -456,7 +461,7 @@ class _PlayerCoverArt extends StatelessWidget {
       loading: () => const Center(child: CircularProgressIndicator()),
       error: (_, _) => Container(
         decoration: BoxDecoration(
-          color: Theme.of(context).colorScheme.surfaceVariant,
+          color: Theme.of(context).colorScheme.surfaceContainer,
           borderRadius: BorderRadius.circular(24),
         ),
         child: Center(

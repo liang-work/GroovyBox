@@ -732,7 +732,7 @@ class LibraryScreen extends HookConsumerWidget {
       if (await file.exists()) {
         final stat = await file.stat();
         final sizeInMB = (stat.size / (1024 * 1024)).toStringAsFixed(2);
-        fileSize = '${sizeInMB} MB';
+        fileSize = '$sizeInMB MB';
         dateAdded = stat.modified.toString().split(
           ' ',
         )[0]; // Just the date part
@@ -752,7 +752,9 @@ class LibraryScreen extends HookConsumerWidget {
       }
     });
 
-    final screenSize = MediaQuery.of(context).size;
+    if (!context.mounted) return;
+
+    final screenSize = MediaQuery.sizeOf(context);
 
     showDialog(
       context: context,

@@ -1,11 +1,11 @@
 import 'dart:io';
 import 'package:flutter/foundation.dart';
-import 'package:riverpod/riverpod.dart';
+import 'package:groovybox/data/db.dart';
+import 'package:groovybox/data/track_repository.dart';
+import 'package:groovybox/providers/db_provider.dart';
+import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:path/path.dart' as p;
 import 'package:drift/drift.dart';
-import '../data/db.dart';
-import '../data/track_repository.dart';
-import '../providers/db_provider.dart';
 
 // Simple watch folder provider using Riverpod
 final watchFoldersProvider = FutureProvider<List<WatchFolder>>((ref) async {

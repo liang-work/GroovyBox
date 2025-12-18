@@ -1,5 +1,5 @@
 import 'dart:convert';
-import 'package:http/http.dart' as http;
+import 'package:dio/dio.dart';
 import 'package:path/path.dart' as path;
 import 'package:path_provider/path_provider.dart' as path_provider;
 import 'dart:io';
@@ -16,10 +16,10 @@ class Lyrics {
 
 /// Abstract base class for LRC providers
 abstract class LrcProvider {
-  late final http.Client session;
+  late final Dio session;
 
   LrcProvider() {
-    session = http.Client();
+    session = Dio();
   }
 
   String get name;
@@ -41,7 +41,7 @@ class MusixmatchProvider extends LrcProvider {
   @override
   String get name => 'Musixmatch';
 
-  Future<http.Response> _get(
+  Future<Response> _get(
     String action,
     List<MapEntry<String, String>> query,
   ) async {
@@ -55,7 +55,7 @@ class MusixmatchProvider extends LrcProvider {
     final t = DateTime.now().millisecondsSinceEpoch.toString();
     query.add(MapEntry("t", t));
     final url = rootUrl + action;
-    return await session.get(Uri.parse(url), headers: Map.fromEntries(query));
+    return await session.get(url, queryParameters: Map.fromEntries(query));
   }
 
   Future<void> _getToken() async {
@@ -84,7 +84,7 @@ class MusixmatchProvider extends LrcProvider {
       await Future.delayed(Duration(seconds: 10));
       return await _getToken();
     }
-    final newToken = jsonDecode(d.body)["message"]["body"]["user_token"];
+    final newToken = jsonDecode(d.data)["message"]["body"]["user_token"];
     final currentTime = DateTime.now().millisecondsSinceEpoch ~/ 1000;
     final expirationTime = currentTime + 600; // 10 minutes
     token = newToken;
@@ -105,7 +105,7 @@ class MusixmatchProvider extends LrcProvider {
         MapEntry("translation_fields_set", "minimal"),
         MapEntry("selected_language", lang!),
       ]);
-      final bodyTr = jsonDecode(rTr.body)["message"]["body"];
+      final bodyTr = jsonDecode(rTr.data)["message"]["body"];
       if (bodyTr["translations_list"] == null ||
           (bodyTr["translations_list"] as List).isEmpty) {
         throw Exception("Couldn't find translations");
@@ -113,7 +113,7 @@ class MusixmatchProvider extends LrcProvider {
       // Translation handling would need full implementation
     }
     if (r.statusCode != 200) return null;
-    final body = jsonDecode(r.body)["message"]["body"];
+    final body = jsonDecode(r.data)["message"]["body"];
     if (body == null) return null;
     final lrcStr = body["subtitle"]["subtitle_body"];
     final lrc = Lyrics(synced: lrcStr);
@@ -124,9 +124,9 @@ class MusixmatchProvider extends LrcProvider {
     var lrc = Lyrics();
     final r = await _get("track.richsync.get", [MapEntry("track_id", trackId)]);
     if (r.statusCode == 200 &&
-        jsonDecode(r.body)["message"]["header"]["status_code"] == 200) {
+        jsonDecode(r.data)["message"]["header"]["status_code"] == 200) {
       final lrcRaw = jsonDecode(
-        r.body,
+        r.data,
       )["message"]["body"]["richsync"]["richsync_body"];
       final data = jsonDecode(lrcRaw);
       String lrcStr = "";
@@ -157,9 +157,9 @@ class MusixmatchProvider extends LrcProvider {
       MapEntry("page_size", "5"),
       MapEntry("page", "1"),
     ]);
-    final statusCode = jsonDecode(r.body)["message"]["header"]["status_code"];
+    final statusCode = jsonDecode(r.data)["message"]["header"]["status_code"];
     if (statusCode != 200) return null;
-    final body = jsonDecode(r.body)["message"]["body"];
+    final body = jsonDecode(r.data)["message"]["body"];
     if (body == null || body is! Map) return null;
     final tracks = body["track_list"];
     if (tracks == null || tracks is! List || tracks.isEmpty) return null;
@@ -194,12 +194,13 @@ class NetEaseProvider extends LrcProvider {
   Future<Map<String, dynamic>?> searchTrack(String searchTerm) async {
     final params = {"limit": "10", "type": "1", "offset": "0", "s": searchTerm};
     final response = await session.get(
-      Uri.parse(apiEndpointMetadata).replace(queryParameters: params),
-      headers: {"cookie": cookie},
+      apiEndpointMetadata,
+      queryParameters: params,
+      options: Options(headers: {"cookie": cookie}),
     );
     // Update the session cookies from the new sent cookies for the next request.
     // In http package, we can set it, but for simplicity, pass to next call
-    final results = jsonDecode(response.body)["result"]["songs"];
+    final results = jsonDecode(response.data)["result"]["songs"];
     if (results == null || results.isEmpty) return null;
     // Simple best match - first track
     return results[0];
@@ -208,10 +209,11 @@ class NetEaseProvider extends LrcProvider {
   Future<Lyrics?> getLrcById(String trackId) async {
     final params = {"id": trackId, "lv": "1"};
     final response = await session.get(
-      Uri.parse(apiEndpointLyrics).replace(queryParameters: params),
-      headers: {"cookie": cookie},
+      apiEndpointLyrics,
+      queryParameters: params,
+      options: Options(headers: {"cookie": cookie}),
     );
-    final data = jsonDecode(response.body);
+    final data = jsonDecode(response.data);
     final lrc = Lyrics(synced: data["lrc"]["lyric"]);
     return lrc;
   }

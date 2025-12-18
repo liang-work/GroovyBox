@@ -160,40 +160,6 @@ class SettingsScreen extends ConsumerWidget {
                   ),
                 ),
               ),
-
-              const SizedBox(height: 16),
-
-              // Supported Formats Section
-              Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'Supported Formats',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Wrap(
-                        spacing: 8,
-                        runSpacing: 4,
-                        children: settings.supportedFormats.map((format) {
-                          return Chip(
-                            label: Text(format.toUpperCase()),
-                            backgroundColor: Theme.of(
-                              context,
-                            ).primaryColor.withOpacity(0.1),
-                          );
-                        }).toList(),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
             ],
           ),
         ),
