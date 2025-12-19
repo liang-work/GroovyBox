@@ -3,6 +3,7 @@ import 'package:groovybox/providers/settings_provider.dart';
 import 'package:groovybox/providers/watch_folder_provider.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:styled_widget/styled_widget.dart';
 
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
@@ -15,152 +16,179 @@ class SettingsScreen extends ConsumerWidget {
     return Scaffold(
       appBar: AppBar(title: const Text('Settings')),
       body: settingsAsync.when(
-        data: (settings) => SingleChildScrollView(
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Auto Scan Section
-              Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'Auto Scan',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
+        data: (settings) => Align(
+          alignment: Alignment.topCenter,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 640),
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                spacing: 16,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Auto Scan Section
+                  Card(
+                    margin: EdgeInsets.zero,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Auto Scan',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ).padding(horizontal: 16, bottom: 8, top: 16),
+                        SwitchListTile(
+                          title: const Text('Auto-scan music libraries'),
+                          subtitle: const Text(
+                            'Automatically scan music libraries for new music files',
+                          ),
+                          shape: const RoundedRectangleBorder(
+                            borderRadius: BorderRadius.all(Radius.circular(8)),
+                          ),
+                          value: settings.autoScan,
+                          onChanged: (value) {
+                            ref.read(autoScanProvider.notifier).update(value);
+                          },
                         ),
-                      ),
-                      const SizedBox(height: 8),
-                      SwitchListTile(
-                        title: const Text('Auto-scan music libraries'),
-                        subtitle: const Text(
-                          'Automatically scan music libraries for new music files',
+                        SwitchListTile(
+                          title: const Text('Watch for changes'),
+                          subtitle: const Text(
+                            'Monitor music libraries for file changes',
+                          ),
+                          shape: const RoundedRectangleBorder(
+                            borderRadius: BorderRadius.all(Radius.circular(8)),
+                          ),
+                          value: settings.watchForChanges,
+                          onChanged: (value) {
+                            ref
+                                .read(watchForChangesProvider.notifier)
+                                .update(value);
+                          },
                         ),
-                        value: settings.autoScan,
-                        onChanged: (value) {
-                          ref.read(autoScanProvider.notifier).update(value);
-                        },
-                      ),
-                      SwitchListTile(
-                        title: const Text('Watch for changes'),
-                        subtitle: const Text(
-                          'Monitor music libraries for file changes',
-                        ),
-                        value: settings.watchForChanges,
-                        onChanged: (value) {
-                          ref
-                              .read(watchForChangesProvider.notifier)
-                              .update(value);
-                        },
-                      ),
-                    ],
+                        const SizedBox(height: 8),
+                      ],
+                    ),
                   ),
-                ),
-              ),
 
-              const SizedBox(height: 16),
-
-              // Watch Folders Section
-              Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          const Text(
-                            'Music Libraries',
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          Row(
-                            children: [
-                              IconButton(
-                                onPressed: () => _scanLibraries(context, ref),
-                                icon: const Icon(Icons.refresh),
-                                tooltip: 'Scan Libraries',
-                              ),
-                              IconButton(
-                                onPressed: () => _addMusicLibrary(context, ref),
-                                icon: const Icon(Icons.add),
-                                tooltip: 'Add Music Library',
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-                      const Text(
-                        'Add folder libraries to index music files. Files will be copied to internal storage for playback.',
-                        style: TextStyle(color: Colors.grey, fontSize: 14),
-                      ),
-                      const SizedBox(height: 8),
-                      watchFoldersAsync.when(
-                        data: (folders) => folders.isEmpty
-                            ? const Text(
-                                'No music libraries added yet.',
-                                style: TextStyle(
-                                  color: Colors.grey,
-                                  fontSize: 14,
+                  // Watch Folders Section
+                  Card(
+                    margin: EdgeInsets.zero,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Column(
+                          children: [
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                const Text(
+                                  'Music Libraries',
+                                  style: TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
+                                  ),
                                 ),
-                              )
-                            : Column(
-                                children: folders
-                                    .map(
-                                      (folder) => ListTile(
-                                        title: Text(folder.name),
-                                        subtitle: Text(folder.path),
-                                        trailing: Row(
-                                          mainAxisSize: MainAxisSize.min,
-                                          children: [
-                                            Switch(
-                                              value: folder.isActive,
-                                              onChanged: (value) {
-                                                ref
-                                                    .read(
-                                                      watchFolderServiceProvider,
-                                                    )
-                                                    .toggleWatchFolder(
-                                                      folder.id,
-                                                      value,
-                                                    );
-                                              },
-                                            ),
-                                            IconButton(
-                                              icon: const Icon(Icons.delete),
-                                              onPressed: () {
-                                                ref
-                                                    .read(
-                                                      watchFolderServiceProvider,
-                                                    )
-                                                    .removeWatchFolder(
-                                                      folder.id,
-                                                    );
-                                              },
-                                            ),
-                                          ],
-                                        ),
+                                Row(
+                                  children: [
+                                    IconButton(
+                                      onPressed: () =>
+                                          _scanLibraries(context, ref),
+                                      icon: const Icon(Icons.refresh),
+                                      tooltip: 'Scan Libraries',
+                                      visualDensity: const VisualDensity(
+                                        horizontal: -4,
+                                        vertical: -4,
                                       ),
-                                    )
-                                    .toList(),
+                                    ),
+                                    IconButton(
+                                      onPressed: () =>
+                                          _addMusicLibrary(context, ref),
+                                      icon: const Icon(Icons.add),
+                                      tooltip: 'Add Music Library',
+                                      visualDensity: const VisualDensity(
+                                        horizontal: -4,
+                                        vertical: -4,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                            const Text(
+                              'Add folder libraries to index music files. Files will be copied to internal storage for playback.',
+                              style: TextStyle(
+                                color: Colors.grey,
+                                fontSize: 14,
                               ),
-                        loading: () => const CircularProgressIndicator(),
-                        error: (error, _) =>
-                            Text('Error loading libraries: $error'),
-                      ),
-                    ],
+                            ),
+                          ],
+                        ).padding(horizontal: 16, top: 16, bottom: 8),
+                        watchFoldersAsync.when(
+                          data: (folders) => folders.isEmpty
+                              ? const Text(
+                                  'No music libraries added yet.',
+                                  style: TextStyle(
+                                    color: Colors.grey,
+                                    fontSize: 14,
+                                  ),
+                                ).padding(horizontal: 16, vertical: 8)
+                              : Column(
+                                  children: folders
+                                      .map(
+                                        (folder) => ListTile(
+                                          title: Text(folder.name),
+                                          subtitle: Text(folder.path),
+                                          contentPadding: const EdgeInsets.only(
+                                            left: 16,
+                                            right: 16,
+                                          ),
+                                          trailing: Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              Switch(
+                                                value: folder.isActive,
+                                                onChanged: (value) {
+                                                  ref
+                                                      .read(
+                                                        watchFolderServiceProvider,
+                                                      )
+                                                      .toggleWatchFolder(
+                                                        folder.id,
+                                                        value,
+                                                      );
+                                                },
+                                              ),
+                                              IconButton(
+                                                icon: const Icon(Icons.delete),
+                                                onPressed: () {
+                                                  ref
+                                                      .read(
+                                                        watchFolderServiceProvider,
+                                                      )
+                                                      .removeWatchFolder(
+                                                        folder.id,
+                                                      );
+                                                },
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      )
+                                      .toList(),
+                                ),
+                          loading: () => const CircularProgressIndicator(),
+                          error: (error, _) =>
+                              Text('Error loading libraries: $error'),
+                        ),
+                        const SizedBox(height: 8),
+                      ],
+                    ),
                   ),
-                ),
+                ],
               ),
-            ],
+            ),
           ),
         ),
         loading: () => const Center(child: CircularProgressIndicator()),
