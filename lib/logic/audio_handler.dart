@@ -1,7 +1,7 @@
 import 'dart:typed_data';
 import 'package:audio_service/audio_service.dart';
+import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
-import 'package:http/http.dart' as http;
 import 'package:media_kit/media_kit.dart' as media_kit;
 import 'package:groovybox/data/db.dart' as db;
 import 'package:groovybox/logic/metadata_service.dart';
@@ -59,9 +59,17 @@ class AudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
       TrackMetadata? metadata;
       db.Track? track;
 
-      // For remote tracks, get metadata from database
+      // Set loading state for remote tracks
       final urlResolver = _container!.read(remoteUrlResolverProvider);
-      if (urlResolver.isProtocolUrl(mediaItem.id)) {
+      final isRemoteTrack = urlResolver.isProtocolUrl(mediaItem.id);
+
+      final loadingNotifier = _container!.read(
+        remoteTrackLoadingProvider.notifier,
+      );
+      loadingNotifier.setLoading(true);
+
+      // For remote tracks, get metadata from database
+      if (isRemoteTrack) {
         final database = _container!.read(databaseProvider);
         track = await (database.select(
           database.tracks,
@@ -71,14 +79,10 @@ class AudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
           // Fetch album art bytes for remote tracks
           Uint8List? artBytes;
           if (track.artUri != null) {
-            try {
-              final response = await http.get(Uri.parse(track.artUri!));
-              if (response.statusCode == 200) {
-                artBytes = response.bodyBytes;
-              }
-            } catch (e) {
-              // Ignore art fetching errors
-            }
+            final imageFile = await DefaultCacheManager().getSingleFile(
+              track.artUri!,
+            );
+            artBytes = await imageFile.readAsBytes();
           }
 
           metadata = TrackMetadata(
@@ -110,6 +114,9 @@ class AudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
         seedColorNotifier.updateFromAlbumArtBytes(metadata.artBytes);
       }
 
+      // Clear loading state
+      loadingNotifier.setLoading(false);
+
       // Set current track
       final trackNotifier = _container!.read(currentTrackProvider.notifier);
       if (track != null) {
@@ -128,6 +135,12 @@ class AudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
         metadataNotifier.clear();
       }
     } catch (e) {
+      // Clear loading state on error
+      final loadingNotifier = _container!.read(
+        remoteTrackLoadingProvider.notifier,
+      );
+      loadingNotifier.setLoading(false);
+
       // If metadata retrieval fails, reset to default color and clear metadata/track
       final seedColorNotifier = _container!.read(seedColorProvider.notifier);
       seedColorNotifier.resetToDefault();
@@ -252,6 +265,12 @@ class AudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
     final position = _player.state.position;
     final duration = _player.state.duration;
 
+    // Get current media item metadata if available
+    MediaItem? currentMediaItem;
+    if (_queueIndex >= 0 && _queueIndex < _queue.length) {
+      currentMediaItem = _queue[_queueIndex];
+    }
+
     playbackState.add(
       PlaybackState(
         controls: [
@@ -274,21 +293,48 @@ class AudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
         queueIndex: _queueIndex,
       ),
     );
+
+    // Update media item separately if we have current track info
+    if (currentMediaItem != null) {
+      mediaItem.add(currentMediaItem);
+    }
   }
 
   // New methods that accept Track objects with proper metadata
   Future<void> playTrack(db.Track track) async {
-    final mediaItem = _trackToMediaItem(track);
+    final mediaItem = await _trackToMediaItem(track);
     await updateQueue([mediaItem]);
   }
 
   Future<void> playTracks(List<db.Track> tracks, {int initialIndex = 0}) async {
-    final mediaItems = tracks.map(_trackToMediaItem).toList();
+    final mediaItems = await Future.wait(tracks.map(_trackToMediaItem));
     _queueIndex = initialIndex;
     await updateQueue(mediaItems);
   }
 
-  MediaItem _trackToMediaItem(db.Track track) {
+  Future<MediaItem> _trackToMediaItem(db.Track track) async {
+    Uri? artUri;
+
+    if (track.artUri != null) {
+      // Check if it's a network URL or local file path
+      if (track.artUri!.startsWith('http://') ||
+          track.artUri!.startsWith('https://')) {
+        // It's a network URL, cache it and get local file path
+        try {
+          final cachedFile = await DefaultCacheManager().getSingleFile(
+            track.artUri!,
+          );
+          artUri = Uri.file(cachedFile.path);
+        } catch (e) {
+          // If caching fails, try to use the network URL directly
+          artUri = Uri.parse(track.artUri!);
+        }
+      } else {
+        // It's a local file path
+        artUri = Uri.file(track.artUri!);
+      }
+    }
+
     return MediaItem(
       id: track.path,
       album: track.album,
@@ -297,19 +343,8 @@ class AudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
       duration: track.duration != null
           ? Duration(milliseconds: track.duration!)
           : null,
-      artUri: track.artUri != null ? Uri.file(track.artUri!) : null,
+      artUri: artUri,
     );
-  }
-
-  // Legacy methods for backward compatibility
-  Future<void> setSource(String path) async {
-    final mediaItem = MediaItem(
-      id: path,
-      album: 'Unknown Album',
-      title: _extractTitleFromPath(path),
-      artist: 'Unknown Artist',
-    );
-    await updateQueue([mediaItem]);
   }
 
   Future<void> openPlaylist(

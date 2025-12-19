@@ -102,3 +102,15 @@ class CurrentTrackMetadataNotifier extends _$CurrentTrackMetadataNotifier {
     state = null;
   }
 }
+
+@Riverpod(keepAlive: true)
+class RemoteTrackLoadingNotifier extends _$RemoteTrackLoadingNotifier {
+  @override
+  bool build() {
+    return false;
+  }
+
+  void setLoading(bool loading) {
+    state = loading;
+  }
+}

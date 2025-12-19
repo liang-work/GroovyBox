@@ -41,7 +41,7 @@ final class LyricsFetcherProvider
   }
 }
 
-String _$lyricsFetcherHash() => r'071b83cb569812a6f90d42d7b7cf6954ac9631d7';
+String _$lyricsFetcherHash() => r'0b279b6294947cc0460c9fa8a5ef3863e24677f9';
 
 abstract class _$LyricsFetcher extends $Notifier<LyricsFetcherState> {
   LyricsFetcherState build();

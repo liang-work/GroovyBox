@@ -54,6 +54,7 @@ class _MobileMiniPlayer extends HookConsumerWidget {
         final devicePadding = MediaQuery.paddingOf(context);
 
         final currentMetadata = ref.watch(currentTrackMetadataProvider);
+        final isRemoteTrackLoading = ref.watch(remoteTrackLoadingProvider);
 
         Widget content = Container(
           height: 72 + devicePadding.bottom,
@@ -75,53 +76,66 @@ class _MobileMiniPlayer extends HookConsumerWidget {
               SizedBox(
                 height: 4,
                 width: double.infinity,
-                child: StreamBuilder<Duration>(
-                  stream: player.stream.position,
-                  initialData: player.state.position,
-                  builder: (context, snapshot) {
-                    final position = snapshot.data ?? Duration.zero;
-                    return StreamBuilder<Duration>(
-                      stream: player.stream.duration,
-                      initialData: player.state.duration,
-                      builder: (context, durationSnapshot) {
-                        final total = durationSnapshot.data ?? Duration.zero;
-                        final max = total.inMilliseconds.toDouble();
-                        final positionValue = position.inMilliseconds
-                            .toDouble()
-                            .clamp(0.0, max > 0 ? max : 0.0);
+                child: isRemoteTrackLoading
+                    ? LinearProgressIndicator(
+                        backgroundColor: Theme.of(
+                          context,
+                        ).colorScheme.surfaceContainerHighest,
+                        valueColor: AlwaysStoppedAnimation<Color>(
+                          Theme.of(context).colorScheme.primary,
+                        ),
+                      )
+                    : StreamBuilder<Duration>(
+                        stream: player.stream.position,
+                        initialData: player.state.position,
+                        builder: (context, snapshot) {
+                          final position = snapshot.data ?? Duration.zero;
+                          return StreamBuilder<Duration>(
+                            stream: player.stream.duration,
+                            initialData: player.state.duration,
+                            builder: (context, durationSnapshot) {
+                              final total =
+                                  durationSnapshot.data ?? Duration.zero;
+                              final max = total.inMilliseconds.toDouble();
+                              final positionValue = position.inMilliseconds
+                                  .toDouble()
+                                  .clamp(0.0, max > 0 ? max : 0.0);
 
-                        final currentValue = isDragging.value
-                            ? dragValue.value
-                            : positionValue;
+                              final currentValue = isDragging.value
+                                  ? dragValue.value
+                                  : positionValue;
 
-                        return SliderTheme(
-                          data: SliderTheme.of(context).copyWith(
-                            trackHeight: 2,
-                            overlayShape: SliderComponentShape.noOverlay,
-                            thumbShape: const RoundSliderThumbShape(
-                              enabledThumbRadius: 6,
-                            ),
-                            trackShape: const RectangularSliderTrackShape(),
-                          ),
-                          child: Slider(
-                            padding: EdgeInsets.zero,
-                            value: currentValue,
-                            min: 0,
-                            max: max > 0 ? max : 1.0,
-                            onChanged: (val) {
-                              isDragging.value = true;
-                              dragValue.value = val;
+                              return SliderTheme(
+                                data: SliderTheme.of(context).copyWith(
+                                  trackHeight: 2,
+                                  overlayShape: SliderComponentShape.noOverlay,
+                                  thumbShape: const RoundSliderThumbShape(
+                                    enabledThumbRadius: 6,
+                                  ),
+                                  trackShape:
+                                      const RectangularSliderTrackShape(),
+                                ),
+                                child: Slider(
+                                  padding: EdgeInsets.zero,
+                                  value: currentValue,
+                                  min: 0,
+                                  max: max > 0 ? max : 1.0,
+                                  onChanged: (val) {
+                                    isDragging.value = true;
+                                    dragValue.value = val;
+                                  },
+                                  onChangeEnd: (val) {
+                                    isDragging.value = false;
+                                    player.seek(
+                                      Duration(milliseconds: val.toInt()),
+                                    );
+                                  },
+                                ),
+                              );
                             },
-                            onChangeEnd: (val) {
-                              isDragging.value = false;
-                              player.seek(Duration(milliseconds: val.toInt()));
-                            },
-                          ),
-                        );
-                      },
-                    );
-                  },
-                ),
+                          );
+                        },
+                      ),
               ),
               Expanded(
                 child: Row(
@@ -260,6 +274,7 @@ class _DesktopMiniPlayer extends HookConsumerWidget {
         final devicePadding = MediaQuery.paddingOf(context);
 
         final currentMetadata = ref.watch(currentTrackMetadataProvider);
+        final isRemoteTrackLoading = ref.watch(remoteTrackLoadingProvider);
 
         Widget content = Container(
           height: 72 + devicePadding.bottom,
@@ -281,53 +296,66 @@ class _DesktopMiniPlayer extends HookConsumerWidget {
               SizedBox(
                 height: 4,
                 width: double.infinity,
-                child: StreamBuilder<Duration>(
-                  stream: player.stream.position,
-                  initialData: player.state.position,
-                  builder: (context, snapshot) {
-                    final position = snapshot.data ?? Duration.zero;
-                    return StreamBuilder<Duration>(
-                      stream: player.stream.duration,
-                      initialData: player.state.duration,
-                      builder: (context, durationSnapshot) {
-                        final total = durationSnapshot.data ?? Duration.zero;
-                        final max = total.inMilliseconds.toDouble();
-                        final positionValue = position.inMilliseconds
-                            .toDouble()
-                            .clamp(0.0, max > 0 ? max : 0.0);
+                child: isRemoteTrackLoading
+                    ? LinearProgressIndicator(
+                        backgroundColor: Theme.of(
+                          context,
+                        ).colorScheme.surfaceContainerHighest,
+                        valueColor: AlwaysStoppedAnimation<Color>(
+                          Theme.of(context).colorScheme.primary,
+                        ),
+                      )
+                    : StreamBuilder<Duration>(
+                        stream: player.stream.position,
+                        initialData: player.state.position,
+                        builder: (context, snapshot) {
+                          final position = snapshot.data ?? Duration.zero;
+                          return StreamBuilder<Duration>(
+                            stream: player.stream.duration,
+                            initialData: player.state.duration,
+                            builder: (context, durationSnapshot) {
+                              final total =
+                                  durationSnapshot.data ?? Duration.zero;
+                              final max = total.inMilliseconds.toDouble();
+                              final positionValue = position.inMilliseconds
+                                  .toDouble()
+                                  .clamp(0.0, max > 0 ? max : 0.0);
 
-                        final currentValue = isDragging.value
-                            ? dragValue.value
-                            : positionValue;
+                              final currentValue = isDragging.value
+                                  ? dragValue.value
+                                  : positionValue;
 
-                        return SliderTheme(
-                          data: SliderTheme.of(context).copyWith(
-                            trackHeight: 2,
-                            overlayShape: SliderComponentShape.noOverlay,
-                            thumbShape: const RoundSliderThumbShape(
-                              enabledThumbRadius: 6,
-                            ),
-                            trackShape: const RectangularSliderTrackShape(),
-                          ),
-                          child: Slider(
-                            padding: EdgeInsets.zero,
-                            value: currentValue,
-                            min: 0,
-                            max: max > 0 ? max : 1.0,
-                            onChanged: (val) {
-                              isDragging.value = true;
-                              dragValue.value = val;
+                              return SliderTheme(
+                                data: SliderTheme.of(context).copyWith(
+                                  trackHeight: 2,
+                                  overlayShape: SliderComponentShape.noOverlay,
+                                  thumbShape: const RoundSliderThumbShape(
+                                    enabledThumbRadius: 6,
+                                  ),
+                                  trackShape:
+                                      const RectangularSliderTrackShape(),
+                                ),
+                                child: Slider(
+                                  padding: EdgeInsets.zero,
+                                  value: currentValue,
+                                  min: 0,
+                                  max: max > 0 ? max : 1.0,
+                                  onChanged: (val) {
+                                    isDragging.value = true;
+                                    dragValue.value = val;
+                                  },
+                                  onChangeEnd: (val) {
+                                    isDragging.value = false;
+                                    player.seek(
+                                      Duration(milliseconds: val.toInt()),
+                                    );
+                                  },
+                                ),
+                              );
                             },
-                            onChangeEnd: (val) {
-                              isDragging.value = false;
-                              player.seek(Duration(milliseconds: val.toInt()));
-                            },
-                          ),
-                        );
-                      },
-                    );
-                  },
-                ),
+                          );
+                        },
+                      ),
               ),
               Expanded(
                 child: Row(
