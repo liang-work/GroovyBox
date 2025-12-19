@@ -238,7 +238,8 @@ class AudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
         }
       }
 
-      medias.add(media_kit.Media(uri));
+      // Store the original track path in extras for queue lookup
+      medias.add(media_kit.Media(uri, extras: {'trackPath': item.id}));
     }
 
     if (medias.isNotEmpty) {

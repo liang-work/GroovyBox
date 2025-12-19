@@ -1177,7 +1177,7 @@ class _QueueView extends HookConsumerWidget {
                 itemBuilder: (context, index) {
                   final media = playlist.medias[index];
                   final isCurrent = index == playlist.index;
-                  final trackPath = media.uri;
+                  final trackPath = media.extras?['trackPath'] ?? media.uri;
                   final trackAsync = ref.watch(trackByPathProvider(trackPath));
 
                   return trackAsync.when(
