@@ -362,142 +362,186 @@ class LibraryScreen extends HookConsumerWidget {
     return StreamBuilder<List<Track>>(
       stream: repo.watchAllTracks(),
       builder: (context, snapshot) {
-        if (snapshot.hasError) {
-          return Center(child: Text('Error: ${snapshot.error}'));
-        }
-        if (!snapshot.hasData) {
-          return const Center(child: CircularProgressIndicator());
-        }
-        final tracks = snapshot.data!;
-        if (tracks.isEmpty) {
-          return const Center(child: Text('No tracks yet. Add some!'));
-        }
-
-        List<Track> filteredTracks;
-        if (searchQuery.value.isEmpty) {
-          filteredTracks = tracks;
+        // Calculate hintText
+        String hintText;
+        if (!snapshot.hasData || snapshot.hasError) {
+          hintText = 'Search tracks...';
         } else {
-          final query = searchQuery.value.toLowerCase();
-          filteredTracks = tracks.where((track) {
-            if (track.title.toLowerCase().contains(query)) return true;
-            if (track.artist?.toLowerCase().contains(query) ?? false) {
-              return true;
-            }
-            if (track.album?.toLowerCase().contains(query) ?? false) {
-              return true;
-            }
-            if (track.lyrics != null) {
-              try {
-                final lyricsData = LyricsData.fromJsonString(track.lyrics!);
-                for (final line in lyricsData.lines) {
-                  if (line.text.toLowerCase().contains(query)) return true;
-                }
-              } catch (e) {
-                // Ignore parsing errors
+          final tracks = snapshot.data!;
+          final totalTracks = tracks.length;
+          if (searchQuery.value.isEmpty) {
+            hintText = 'Search tracks... ($totalTracks tracks)';
+          } else {
+            final query = searchQuery.value.toLowerCase();
+            final filteredCount = tracks.where((track) {
+              if (track.title.toLowerCase().contains(query)) return true;
+              if (track.artist?.toLowerCase().contains(query) ?? false) {
+                return true;
               }
-            }
-            return false;
-          }).toList();
+              if (track.album?.toLowerCase().contains(query) ?? false) {
+                return true;
+              }
+              if (track.lyrics != null) {
+                try {
+                  final lyricsData = LyricsData.fromJsonString(track.lyrics!);
+                  for (final line in lyricsData.lines) {
+                    if (line.text.toLowerCase().contains(query)) return true;
+                  }
+                } catch (e) {
+                  // Ignore parsing errors
+                }
+              }
+              return false;
+            }).length;
+            hintText =
+                'Search tracks... ($filteredCount of $totalTracks tracks)';
+          }
         }
 
-        if (filteredTracks.isEmpty && searchQuery.value.isNotEmpty) {
-          return const Center(child: Text('No tracks match your search.'));
+        // Determine main content
+        Widget mainContent;
+        if (snapshot.hasError) {
+          mainContent = Center(child: Text('Error: ${snapshot.error}'));
+        } else if (!snapshot.hasData) {
+          mainContent = const Center(child: CircularProgressIndicator());
+        } else {
+          final tracks = snapshot.data!;
+          if (tracks.isEmpty) {
+            mainContent = const Center(child: Text('No tracks yet. Add some!'));
+          } else {
+            List<Track> filteredTracks;
+            if (searchQuery.value.isEmpty) {
+              filteredTracks = tracks;
+            } else {
+              final query = searchQuery.value.toLowerCase();
+              filteredTracks = tracks.where((track) {
+                if (track.title.toLowerCase().contains(query)) return true;
+                if (track.artist?.toLowerCase().contains(query) ?? false) {
+                  return true;
+                }
+                if (track.album?.toLowerCase().contains(query) ?? false) {
+                  return true;
+                }
+                if (track.lyrics != null) {
+                  try {
+                    final lyricsData = LyricsData.fromJsonString(track.lyrics!);
+                    for (final line in lyricsData.lines) {
+                      if (line.text.toLowerCase().contains(query)) return true;
+                    }
+                  } catch (e) {
+                    // Ignore parsing errors
+                  }
+                }
+                return false;
+              }).toList();
+            }
+
+            if (filteredTracks.isEmpty && searchQuery.value.isNotEmpty) {
+              mainContent = const Center(
+                child: Text('No tracks match your search.'),
+              );
+            } else {
+              mainContent = ListView.builder(
+                padding: EdgeInsets.only(
+                  bottom: 72 + MediaQuery.paddingOf(context).bottom,
+                  top: 80,
+                ),
+                itemCount: filteredTracks.length,
+                itemBuilder: (context, index) {
+                  final track = filteredTracks[index];
+                  final isSelected = selectedTrackIds.value.contains(track.id);
+
+                  if (isSelectionMode) {
+                    return ListTile(
+                      selected: isSelected,
+                      selectedTileColor: Colors.white10,
+                      leading: Checkbox(
+                        value: isSelected,
+                        onChanged: (_) => toggleSelection(track.id),
+                      ),
+                      title: Text(
+                        track.title,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      subtitle: Text(
+                        '${track.artist ?? 'Unknown Artist'} • ${_formatDuration(track.duration)}',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      onTap: () => toggleSelection(track.id),
+                    );
+                  }
+
+                  return Dismissible(
+                    key: Key('track_${track.id}'),
+                    direction: DismissDirection.endToStart,
+                    background: Container(
+                      color: Colors.red,
+                      alignment: Alignment.centerRight,
+                      padding: const EdgeInsets.only(right: 20),
+                      child: const Icon(Icons.delete, color: Colors.white),
+                    ),
+                    confirmDismiss: (direction) async {
+                      return await showDialog(
+                        context: context,
+                        builder: (context) {
+                          return AlertDialog(
+                            title: const Text('Delete Track?'),
+                            content: Text(
+                              'Are you sure you want to delete "${track.title}"? This cannot be undone.',
+                            ),
+                            actions: [
+                              TextButton(
+                                onPressed: () =>
+                                    Navigator.of(context).pop(false),
+                                child: const Text('Cancel'),
+                              ),
+                              TextButton(
+                                onPressed: () =>
+                                    Navigator.of(context).pop(true),
+                                style: TextButton.styleFrom(
+                                  foregroundColor: Colors.red,
+                                ),
+                                child: const Text('Delete'),
+                              ),
+                            ],
+                          );
+                        },
+                      );
+                    },
+                    onDismissed: (direction) {
+                      ref
+                          .read(trackRepositoryProvider.notifier)
+                          .deleteTrack(track.id);
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('Deleted "${track.title}"')),
+                      );
+                    },
+                    child: TrackTile(
+                      track: track,
+                      showTrailingIcon: true,
+                      onTrailingPressed: () =>
+                          _showTrackOptions(context, ref, track),
+                      onTap: () {
+                        final audio = ref.read(audioHandlerProvider);
+                        audio.playTrack(track);
+                      },
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 8,
+                      ),
+                    ),
+                  );
+                },
+              );
+            }
+          }
         }
 
         return Stack(
           children: [
-            ListView.builder(
-              padding: EdgeInsets.only(
-                bottom: 72 + MediaQuery.paddingOf(context).bottom,
-                top: 80,
-              ),
-              itemCount: filteredTracks.length,
-              itemBuilder: (context, index) {
-                final track = filteredTracks[index];
-                final isSelected = selectedTrackIds.value.contains(track.id);
-
-                if (isSelectionMode) {
-                  return ListTile(
-                    selected: isSelected,
-                    selectedTileColor: Colors.white10,
-                    leading: Checkbox(
-                      value: isSelected,
-                      onChanged: (_) => toggleSelection(track.id),
-                    ),
-                    title: Text(
-                      track.title,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    subtitle: Text(
-                      '${track.artist ?? 'Unknown Artist'} • ${_formatDuration(track.duration)}',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    onTap: () => toggleSelection(track.id),
-                  );
-                }
-
-                return Dismissible(
-                  key: Key('track_${track.id}'),
-                  direction: DismissDirection.endToStart,
-                  background: Container(
-                    color: Colors.red,
-                    alignment: Alignment.centerRight,
-                    padding: const EdgeInsets.only(right: 20),
-                    child: const Icon(Icons.delete, color: Colors.white),
-                  ),
-                  confirmDismiss: (direction) async {
-                    return await showDialog(
-                      context: context,
-                      builder: (context) {
-                        return AlertDialog(
-                          title: const Text('Delete Track?'),
-                          content: Text(
-                            'Are you sure you want to delete "${track.title}"? This cannot be undone.',
-                          ),
-                          actions: [
-                            TextButton(
-                              onPressed: () => Navigator.of(context).pop(false),
-                              child: const Text('Cancel'),
-                            ),
-                            TextButton(
-                              onPressed: () => Navigator.of(context).pop(true),
-                              style: TextButton.styleFrom(
-                                foregroundColor: Colors.red,
-                              ),
-                              child: const Text('Delete'),
-                            ),
-                          ],
-                        );
-                      },
-                    );
-                  },
-                  onDismissed: (direction) {
-                    ref
-                        .read(trackRepositoryProvider.notifier)
-                        .deleteTrack(track.id);
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Deleted "${track.title}"')),
-                    );
-                  },
-                  child: TrackTile(
-                    track: track,
-                    showTrailingIcon: true,
-                    onTrailingPressed: () =>
-                        _showTrackOptions(context, ref, track),
-                    onTap: () {
-                      final audio = ref.read(audioHandlerProvider);
-                      audio.playTrack(track);
-                    },
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 8,
-                    ),
-                  ),
-                );
-              },
-            ),
+            mainContent,
             Positioned(
               top: 0,
               left: 0,
@@ -506,7 +550,7 @@ class LibraryScreen extends HookConsumerWidget {
                 padding: EdgeInsets.symmetric(horizontal: 24, vertical: 16),
                 child: SearchBar(
                   onChanged: (value) => searchQuery.value = value,
-                  hintText: 'Search tracks...',
+                  hintText: hintText,
                   leading: const Icon(Icons.search),
                   padding: WidgetStatePropertyAll(
                     EdgeInsets.symmetric(horizontal: 24),
