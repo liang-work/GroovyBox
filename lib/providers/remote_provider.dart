@@ -97,7 +97,7 @@ class RemoteProviderService {
       final client = JellyfinDart(basePathOverride: provider.serverUrl);
 
       // Set device info
-      client.setDeviceId('groovybox-${providerId}');
+      client.setDeviceId('groovybox-$providerId');
       client.setVersion('1.0.0');
 
       // Authenticate
@@ -151,53 +151,141 @@ class RemoteProviderService {
     BaseItemDto item,
     String token,
   ) async {
-    // Generate streaming URL
-    final streamUrl =
-        '${provider.serverUrl}/Audio/${item.id}/stream.mp3?api_key=$token&static=true';
+    // Generate secure protocol URL instead of exposing API key
+    final streamUrl = 'groovybox://remote/jellyfin/${provider.id}/${item.id}';
 
     // Extract metadata
     final title = item.name ?? 'Unknown Title';
+
+    // Better artist extraction: prefer album artist, then track artists
     final artist =
-        item.albumArtist ?? item.artists?.join(', ') ?? 'Unknown Artist';
+        item.albumArtist ??
+        (item.artists?.isNotEmpty == true ? item.artists!.join(', ') : null) ??
+        'Unknown Artist';
+
     final album = item.album ?? 'Unknown Album';
     final duration =
         (item.runTimeTicks ?? 0) ~/ 10000; // Convert ticks to milliseconds
+
+    // Generate album art URL (try Primary image)
+    final artUri =
+        '${provider.serverUrl}/Items/${item.id}/Images/Primary?api_key=$token';
+
+    // Extract overview/description as lyrics placeholder if no real lyrics
+    final overview = item.overview;
 
     // Check if track already exists
     final existingTrack = await (db.select(
       db.tracks,
     )..where((t) => t.path.equals(streamUrl))).getSingleOrNull();
 
+    final trackCompanion = TracksCompanion(
+      title: Value(title),
+      artist: Value(artist),
+      album: Value(album),
+      duration: Value(duration),
+      artUri: Value(artUri),
+      lyrics: Value(overview), // Store overview as placeholder for lyrics
+      addedAt: Value(DateTime.now()),
+    );
+
     if (existingTrack != null) {
       // Update existing track
       await (db.update(
         db.tracks,
-      )..where((t) => t.id.equals(existingTrack.id))).write(
-        TracksCompanion(
-          title: Value(title),
-          artist: Value(artist),
-          album: Value(album),
-          duration: Value(duration),
-          addedAt: Value(DateTime.now()),
-        ),
-      );
+      )..where((t) => t.id.equals(existingTrack.id))).write(trackCompanion);
     } else {
       // Insert new track
       await db
           .into(db.tracks)
           .insert(
-            TracksCompanion.insert(
-              title: title,
-              path: streamUrl, // Remote streaming URL
-              artist: Value(artist),
-              album: Value(album),
-              duration: Value(duration),
+            trackCompanion.copyWith(
+              path: Value(streamUrl), // Remote streaming URL
             ),
             mode: InsertMode.insertOrIgnore,
           );
     }
   }
 }
+
+// URL resolver for secure protocol URLs
+class RemoteUrlResolver {
+  final Ref ref;
+
+  RemoteUrlResolver(this.ref);
+
+  /// Resolves a groovybox protocol URL to an actual streaming URL
+  Future<String?> resolveUrl(String protocolUrl) async {
+    final uri = Uri.parse(protocolUrl);
+    if (uri.scheme != 'groovybox' || uri.host != 'remote') {
+      return null; // Not a protocol URL we handle
+    }
+
+    final pathSegments = uri.pathSegments;
+    if (pathSegments.length < 3 || pathSegments[0] != 'jellyfin') {
+      return null;
+    }
+
+    final providerId = int.tryParse(pathSegments[1]);
+    final itemId = pathSegments[2];
+
+    if (providerId == null || itemId.isEmpty) {
+      return null;
+    }
+
+    final db = ref.read(databaseProvider);
+
+    // Get provider details
+    final provider = await (db.select(
+      db.remoteProviders,
+    )..where((t) => t.id.equals(providerId))).getSingleOrNull();
+
+    if (provider == null || !provider.isActive) {
+      return null;
+    }
+
+    try {
+      // Create Jellyfin client and authenticate
+      final client = JellyfinDart(basePathOverride: provider.serverUrl);
+      client.setDeviceId('groovybox-${providerId}');
+      client.setVersion('1.0.0');
+
+      final userApi = client.getUserApi();
+      final authResponse = await userApi.authenticateUserByName(
+        authenticateUserByName: AuthenticateUserByName(
+          username: provider.username,
+          pw: provider.password,
+        ),
+      );
+
+      final token = authResponse.data?.accessToken;
+      if (token == null) {
+        return null;
+      }
+
+      // Return the actual streaming URL
+      return '${provider.serverUrl}/Audio/$itemId/stream.mp3?api_key=$token&static=true';
+    } catch (e) {
+      debugPrint('Error resolving URL $protocolUrl: $e');
+      return null;
+    }
+  }
+
+  /// Checks if a URL is a protocol URL we handle
+  bool isProtocolUrl(String url) {
+    try {
+      final uri = Uri.parse(url);
+      return uri.scheme == 'groovybox' && uri.host == 'remote';
+    } catch (e) {
+      return false;
+    }
+  }
+}
+
+// Provider for the URL resolver
+final remoteUrlResolverProvider = Provider<RemoteUrlResolver>((ref) {
+  return RemoteUrlResolver(ref);
+});
 
 // Provider for the service
 final remoteProviderServiceProvider = Provider<RemoteProviderService>((ref) {

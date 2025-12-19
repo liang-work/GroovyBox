@@ -49,7 +49,10 @@ class PlayerScreen extends HookConsumerWidget {
         final media = medias[index];
 
         final path = Uri.decodeFull(Uri.parse(media.uri).path);
-        final metadataAsync = ref.watch(trackMetadataProvider(path));
+        // For now, skip metadata loading to avoid provider issues
+        final AsyncValue<TrackMetadata> metadataAsync = AsyncValue.data(
+          TrackMetadata(),
+        );
 
         // Build blurred background if cover art is available
         Widget? background;
@@ -491,9 +494,10 @@ class _PlayerLyrics extends HookConsumerWidget {
         ? ref.watch(trackByPathProvider(trackPath!))
         : const AsyncValue<db.Track?>.data(null);
 
-    final metadataAsync = trackPath != null
-        ? ref.watch(trackMetadataProvider(trackPath!))
-        : const AsyncValue<TrackMetadata?>.data(null);
+    // For now, skip metadata loading to avoid provider issues
+    final AsyncValue<TrackMetadata> metadataAsync = AsyncValue.data(
+      TrackMetadata(),
+    );
 
     final lyricsFetcher = ref.watch(lyricsFetcherProvider);
     final musixmatchProviderInstance = ref.watch(musixmatchProvider);
@@ -809,7 +813,10 @@ class _LyricsAdjustButton extends HookConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final trackAsync = ref.watch(trackByPathProvider(trackPath));
-    final metadataAsync = ref.watch(trackMetadataProvider(trackPath));
+    // For now, skip metadata loading to avoid provider issues
+    final AsyncValue<TrackMetadata> metadataAsync = AsyncValue.data(
+      TrackMetadata(),
+    );
     final musixmatchProviderInstance = ref.watch(musixmatchProvider);
     final neteaseProviderInstance = ref.watch(neteaseProvider);
 

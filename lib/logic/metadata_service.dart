@@ -1,9 +1,10 @@
 import 'dart:io';
-import 'dart:typed_data';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_media_metadata/flutter_media_metadata.dart';
+import 'package:http/http.dart' as http;
 import 'package:riverpod_annotation/riverpod_annotation.dart';
-
-part 'metadata_service.g.dart';
+import 'package:groovybox/providers/remote_provider.dart';
+import 'package:groovybox/providers/db_provider.dart';
 
 class TrackMetadata {
   final String? title;
@@ -43,6 +44,42 @@ MetadataService metadataService(Ref ref) {
 }
 
 @riverpod
-Future<TrackMetadata> trackMetadata(Ref ref, String path) {
-  return ref.watch(metadataServiceProvider).getMetadata(path);
+Future<TrackMetadata> trackMetadata(Ref ref, String path) async {
+  // Check if this is a remote track (protocol URL)
+  final urlResolver = ref.watch(remoteUrlResolverProvider);
+  if (urlResolver.isProtocolUrl(path)) {
+    // For remote tracks, get metadata from database
+    final database = ref.watch(databaseProvider);
+    final track = await (database.select(
+      database.tracks,
+    )..where((t) => t.path.equals(path))).getSingleOrNull();
+
+    if (track != null) {
+      // For remote tracks, try to fetch album art from the stored URL
+      Uint8List? artBytes;
+      if (track.artUri != null) {
+        try {
+          final response = await http.get(Uri.parse(track.artUri!));
+          if (response.statusCode == 200) {
+            artBytes = response.bodyBytes;
+          }
+        } catch (e) {
+          // Ignore art fetching errors - album art is not critical
+          debugPrint('Failed to fetch album art from ${track.artUri}: $e');
+        }
+      }
+
+      return TrackMetadata(
+        title: track.title,
+        artist: track.artist,
+        album: track.album,
+        artBytes: artBytes,
+      );
+    }
+    return TrackMetadata();
+  } else {
+    // For local tracks, use file metadata
+    final service = MetadataService();
+    return service.getMetadata(path);
+  }
 }

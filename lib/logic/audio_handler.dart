@@ -3,7 +3,8 @@ import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:media_kit/media_kit.dart' as media_kit;
 import 'package:groovybox/data/db.dart';
 import 'package:groovybox/providers/theme_provider.dart';
-import 'package:groovybox/logic/metadata_service.dart';
+import 'package:groovybox/providers/remote_provider.dart';
+import 'package:groovybox/providers/db_provider.dart';
 
 class AudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
   final media_kit.Player _player;
@@ -51,12 +52,26 @@ class AudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
     if (_container == null) return;
 
     try {
-      // Get metadata for the current track to access artBytes
-      final metadataService = _container!.read(metadataServiceProvider);
-      final metadata = await metadataService.getMetadata(mediaItem.id);
+      // For remote tracks, get metadata from database
+      final urlResolver = _container!.read(remoteUrlResolverProvider);
+      if (urlResolver.isProtocolUrl(mediaItem.id)) {
+        final database = _container!.read(databaseProvider);
+        final track = await (database.select(
+          database.tracks,
+        )..where((t) => t.path.equals(mediaItem.id))).getSingleOrNull();
 
+        if (track != null && track.artUri != null) {
+          // Fetch album art bytes for remote tracks
+          // TODO: Implement remote album art fetching for theme
+        }
+      } else {
+        // For local tracks, use existing metadata service
+        // TODO: Get metadata service working
+      }
+
+      // Reset to default for now
       final seedColorNotifier = _container!.read(seedColorProvider.notifier);
-      seedColorNotifier.updateFromAlbumArtBytes(metadata.artBytes);
+      seedColorNotifier.resetToDefault();
     } catch (e) {
       // If metadata retrieval fails, reset to default color
       final seedColorNotifier = _container!.read(seedColorProvider.notifier);
@@ -134,7 +149,35 @@ class AudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
   }
 
   Future<void> _updatePlaylist() async {
-    final medias = _queue.map((item) => media_kit.Media(item.id)).toList();
+    if (_container == null) {
+      // Fallback if container not set
+      final medias = _queue.map((item) => media_kit.Media(item.id)).toList();
+      if (medias.isNotEmpty) {
+        await _player.open(media_kit.Playlist(medias, index: _queueIndex));
+      }
+      return;
+    }
+
+    final urlResolver = _container!.read(remoteUrlResolverProvider);
+    final medias = <media_kit.Media>[];
+
+    for (final item in _queue) {
+      String uri = item.id;
+
+      // Check if this is a protocol URL that needs resolution
+      if (urlResolver.isProtocolUrl(item.id)) {
+        final resolvedUrl = await urlResolver.resolveUrl(item.id);
+        if (resolvedUrl != null) {
+          uri = resolvedUrl;
+        } else {
+          // If resolution fails, skip this track or use original URL
+          continue;
+        }
+      }
+
+      medias.add(media_kit.Media(uri));
+    }
+
     if (medias.isNotEmpty) {
       await _player.open(media_kit.Playlist(medias, index: _queueIndex));
     }

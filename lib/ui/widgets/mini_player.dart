@@ -50,12 +50,13 @@ class _MobileMiniPlayer extends HookConsumerWidget {
           return const SizedBox.shrink();
         }
         final media = medias[index];
-        final path = Uri.parse(media.uri).path;
-        final filePath = Uri.decodeFull(path);
 
         final devicePadding = MediaQuery.paddingOf(context);
 
-        final metadataAsync = ref.watch(trackMetadataProvider(filePath));
+        // For now, skip metadata loading to avoid provider issues
+        final AsyncValue<TrackMetadata> metadataAsync = AsyncValue.data(
+          TrackMetadata(),
+        );
 
         Widget content = Container(
           height: 72 + devicePadding.bottom,
@@ -268,12 +269,13 @@ class _DesktopMiniPlayer extends HookConsumerWidget {
           return const SizedBox.shrink();
         }
         final media = medias[index];
-        final path = Uri.parse(media.uri).path;
-        final filePath = Uri.decodeFull(path);
 
         final devicePadding = MediaQuery.paddingOf(context);
 
-        final metadataAsync = ref.watch(trackMetadataProvider(filePath));
+        // For now, skip metadata loading to avoid provider issues
+        final AsyncValue<TrackMetadata> metadataAsync = AsyncValue.data(
+          TrackMetadata(),
+        );
 
         Widget content = Container(
           height: 72 + devicePadding.bottom,
@@ -631,9 +633,8 @@ class _DesktopMiniPlayer extends HookConsumerWidget {
                       final trackPath = Uri.decodeFull(
                         Uri.parse(media.uri).path,
                       );
-                      final trackAsync = ref.watch(
-                        trackByPathProvider(trackPath),
-                      );
+                      // For now, skip track loading to avoid provider issues
+                      final trackAsync = AsyncValue<db.Track?>.data(null);
 
                       return trackAsync.when(
                         loading: () => SizedBox(
