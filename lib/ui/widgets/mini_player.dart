@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:gap/gap.dart';
 import 'package:groovybox/data/db.dart' as db;
-import 'package:groovybox/logic/metadata_service.dart';
+
 import 'package:groovybox/providers/audio_provider.dart';
 import 'package:groovybox/ui/screens/player_screen.dart';
 import 'package:groovybox/ui/widgets/track_tile.dart';
@@ -53,10 +53,7 @@ class _MobileMiniPlayer extends HookConsumerWidget {
 
         final devicePadding = MediaQuery.paddingOf(context);
 
-        // For now, skip metadata loading to avoid provider issues
-        final AsyncValue<TrackMetadata> metadataAsync = AsyncValue.data(
-          TrackMetadata(),
-        );
+        final currentMetadata = ref.watch(currentTrackMetadataProvider);
 
         Widget content = Container(
           height: 72 + devicePadding.bottom,
@@ -132,19 +129,18 @@ class _MobileMiniPlayer extends HookConsumerWidget {
                     // Cover Art
                     AspectRatio(
                       aspectRatio: 1,
-                      child: metadataAsync.when(
-                        data: (meta) => meta.artBytes != null
-                            ? Image.memory(meta.artBytes!, fit: BoxFit.cover)
-                            : Container(
-                                color: Colors.grey[800],
-                                child: const Icon(
-                                  Icons.music_note,
-                                  color: Colors.white54,
-                                ),
+                      child: currentMetadata?.artBytes != null
+                          ? Image.memory(
+                              currentMetadata!.artBytes!,
+                              fit: BoxFit.cover,
+                            )
+                          : Container(
+                              color: Colors.grey[800],
+                              child: const Icon(
+                                Icons.music_note,
+                                color: Colors.white54,
                               ),
-                        loading: () => Container(color: Colors.grey[800]),
-                        error: (_, _) => Container(color: Colors.grey[800]),
-                      ),
+                            ),
                     ),
                     const Gap(8),
                     // Title & Artist
@@ -155,28 +151,19 @@ class _MobileMiniPlayer extends HookConsumerWidget {
                           mainAxisAlignment: MainAxisAlignment.center,
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            metadataAsync.when(
-                              data: (meta) => Text(
-                                meta.title ??
-                                    Uri.parse(media.uri).pathSegments.last,
-                                style: Theme.of(context).textTheme.bodyMedium
-                                    ?.copyWith(fontWeight: FontWeight.bold),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                              loading: () => const Text('Loading...'),
-                              error: (_, _) =>
-                                  Text(Uri.parse(media.uri).pathSegments.last),
+                            Text(
+                              currentMetadata?.title ??
+                                  Uri.parse(media.uri).pathSegments.last,
+                              style: Theme.of(context).textTheme.bodyMedium
+                                  ?.copyWith(fontWeight: FontWeight.bold),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                             ),
-                            metadataAsync.when(
-                              data: (meta) => Text(
-                                meta.artist ?? 'Unknown Artist',
-                                style: Theme.of(context).textTheme.bodySmall,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                              loading: () => const SizedBox.shrink(),
-                              error: (_, _) => const SizedBox.shrink(),
+                            Text(
+                              currentMetadata?.artist ?? 'Unknown Artist',
+                              style: Theme.of(context).textTheme.bodySmall,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                             ),
                           ],
                         ),
@@ -272,10 +259,7 @@ class _DesktopMiniPlayer extends HookConsumerWidget {
 
         final devicePadding = MediaQuery.paddingOf(context);
 
-        // For now, skip metadata loading to avoid provider issues
-        final AsyncValue<TrackMetadata> metadataAsync = AsyncValue.data(
-          TrackMetadata(),
-        );
+        final currentMetadata = ref.watch(currentTrackMetadataProvider);
 
         Widget content = Container(
           height: 72 + devicePadding.bottom,
@@ -356,23 +340,18 @@ class _DesktopMiniPlayer extends HookConsumerWidget {
                           // Cover Art
                           AspectRatio(
                             aspectRatio: 1,
-                            child: metadataAsync.when(
-                              data: (meta) => meta.artBytes != null
-                                  ? Image.memory(
-                                      meta.artBytes!,
-                                      fit: BoxFit.cover,
-                                    )
-                                  : Container(
-                                      color: Colors.grey[800],
-                                      child: const Icon(
-                                        Icons.music_note,
-                                        color: Colors.white54,
-                                      ),
+                            child: currentMetadata?.artBytes != null
+                                ? Image.memory(
+                                    currentMetadata!.artBytes!,
+                                    fit: BoxFit.cover,
+                                  )
+                                : Container(
+                                    color: Colors.grey[800],
+                                    child: const Icon(
+                                      Icons.music_note,
+                                      color: Colors.white54,
                                     ),
-                              loading: () => Container(color: Colors.grey[800]),
-                              error: (_, _) =>
-                                  Container(color: Colors.grey[800]),
-                            ),
+                                  ),
                           ),
                           const Gap(8),
                           // Title & Artist
@@ -384,33 +363,19 @@ class _DesktopMiniPlayer extends HookConsumerWidget {
                               mainAxisAlignment: MainAxisAlignment.center,
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                metadataAsync.when(
-                                  data: (meta) => Text(
-                                    meta.title ??
-                                        Uri.parse(media.uri).pathSegments.last,
-                                    style: Theme.of(context)
-                                        .textTheme
-                                        .bodyMedium
-                                        ?.copyWith(fontWeight: FontWeight.bold),
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                  loading: () => const Text('Loading...'),
-                                  error: (_, _) => Text(
-                                    Uri.parse(media.uri).pathSegments.last,
-                                  ),
+                                Text(
+                                  currentMetadata?.title ??
+                                      Uri.parse(media.uri).pathSegments.last,
+                                  style: Theme.of(context).textTheme.bodyMedium
+                                      ?.copyWith(fontWeight: FontWeight.bold),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
                                 ),
-                                metadataAsync.when(
-                                  data: (meta) => Text(
-                                    meta.artist ?? 'Unknown Artist',
-                                    style: Theme.of(
-                                      context,
-                                    ).textTheme.bodySmall,
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                  loading: () => const SizedBox.shrink(),
-                                  error: (_, _) => const SizedBox.shrink(),
+                                Text(
+                                  currentMetadata?.artist ?? 'Unknown Artist',
+                                  style: Theme.of(context).textTheme.bodySmall,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
                                 ),
                               ],
                             ),

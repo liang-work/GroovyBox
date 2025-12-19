@@ -51,6 +51,7 @@ dependencies:
   styled_widget: ^0.4.1
   super_sliver_list: ^0.4.1
   dio: ^5.0.0
+  http: ^1.2.2
   audio_service: ^0.18.18
   palette_generator: ^0.3.3+4
   watcher: ^1.2.0

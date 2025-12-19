@@ -1,10 +1,9 @@
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_media_metadata/flutter_media_metadata.dart';
-import 'package:http/http.dart' as http;
-import 'package:riverpod_annotation/riverpod_annotation.dart';
-import 'package:groovybox/providers/remote_provider.dart';
 import 'package:groovybox/providers/db_provider.dart';
+import 'package:hooks_riverpod/hooks_riverpod.dart';
+import 'package:http/http.dart' as http;
 
 class TrackMetadata {
   final String? title;
@@ -38,20 +37,16 @@ class MetadataService {
   }
 }
 
-@Riverpod(keepAlive: true)
-MetadataService metadataService(Ref ref) {
-  return MetadataService();
-}
+final trackMetadataProvider = FutureProvider.family<TrackMetadata, String>((
+  ref,
+  path,
+) async {
+  try {
+    // Import the database provider directly
+    final db = ref.watch(databaseProvider);
 
-@riverpod
-Future<TrackMetadata> trackMetadata(Ref ref, String path) async {
-  // Check if this is a remote track (protocol URL)
-  final urlResolver = ref.watch(remoteUrlResolverProvider);
-  if (urlResolver.isProtocolUrl(path)) {
-    // For remote tracks, get metadata from database
-    final database = ref.watch(databaseProvider);
-    final track = await (database.select(
-      database.tracks,
+    final track = await (db.select(
+      db.tracks,
     )..where((t) => t.path.equals(path))).getSingleOrNull();
 
     if (track != null) {
@@ -75,11 +70,21 @@ Future<TrackMetadata> trackMetadata(Ref ref, String path) async {
         album: track.album,
         artBytes: artBytes,
       );
+    } else {
+      return TrackMetadata(
+        title: 'Unknown Title',
+        artist: 'Unknown Artist',
+        album: 'Unknown Album',
+        artBytes: null,
+      );
     }
-    return TrackMetadata();
-  } else {
-    // For local tracks, use file metadata
-    final service = MetadataService();
-    return service.getMetadata(path);
+  } catch (e) {
+    debugPrint('Error fetching metadata for $path: $e');
+    return TrackMetadata(
+      title: 'Unknown Title',
+      artist: 'Unknown Artist',
+      album: 'Unknown Album',
+      artBytes: null,
+    );
   }
-}
+});

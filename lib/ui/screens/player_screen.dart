@@ -48,46 +48,37 @@ class PlayerScreen extends HookConsumerWidget {
         }
         final media = medias[index];
 
-        final path = Uri.decodeFull(Uri.parse(media.uri).path);
-        // For now, skip metadata loading to avoid provider issues
-        final AsyncValue<TrackMetadata> metadataAsync = AsyncValue.data(
-          TrackMetadata(),
-        );
+        final currentMetadata = ref.watch(currentTrackMetadataProvider);
 
         // Build blurred background if cover art is available
         Widget? background;
-        metadataAsync.when(
-          data: (meta) {
-            if (meta.artBytes != null) {
-              background = Positioned.fill(
-                child: Stack(
-                  children: [
-                    Container(
-                      decoration: BoxDecoration(
-                        image: DecorationImage(
-                          image: MemoryImage(meta.artBytes!),
-                          fit: BoxFit.cover,
-                        ),
-                      ),
+        final artBytes = currentMetadata?.artBytes;
+        if (artBytes != null) {
+          background = Positioned.fill(
+            child: Stack(
+              children: [
+                Container(
+                  decoration: BoxDecoration(
+                    image: DecorationImage(
+                      image: MemoryImage(artBytes),
+                      fit: BoxFit.cover,
                     ),
-                    BackdropFilter(
-                      filter: ImageFilter.blur(sigmaX: 50, sigmaY: 50),
-                      child: Container(
-                        color: Theme.of(
-                          context,
-                        ).colorScheme.surface.withValues(alpha: 0.6),
-                      ),
-                    ),
-                  ],
+                  ),
                 ),
-              );
-            } else {
-              background = null;
-            }
-          },
-          loading: () => background = null,
-          error: (_, _) => background = null,
-        );
+                BackdropFilter(
+                  filter: ImageFilter.blur(sigmaX: 50, sigmaY: 50),
+                  child: Container(
+                    color: Theme.of(
+                      context,
+                    ).colorScheme.surface.withValues(alpha: 0.6),
+                  ),
+                ),
+              ],
+            ),
+          );
+        } else {
+          background = null;
+        }
 
         final devicePadding = MediaQuery.paddingOf(context);
 
@@ -116,7 +107,7 @@ class PlayerScreen extends HookConsumerWidget {
             body: ClipRect(
               child: Stack(
                 children: [
-                  ...background != null ? [background!] : [],
+                  ...background != null ? [background] : [],
                   // Main content (StreamBuilder)
                   Builder(
                     builder: (context) {
@@ -126,18 +117,16 @@ class PlayerScreen extends HookConsumerWidget {
                           child: _MobileLayout(
                             player: player,
                             viewMode: viewMode,
-                            metadataAsync: metadataAsync,
                             media: media,
-                            trackPath: path,
+                            trackPath: media.uri,
                           ),
                         );
                       } else {
                         return _DesktopLayout(
                           player: player,
                           viewMode: viewMode,
-                          metadataAsync: metadataAsync,
                           media: media,
-                          trackPath: path,
+                          trackPath: media.uri,
                         );
                       }
                     },
@@ -164,30 +153,30 @@ class PlayerScreen extends HookConsumerWidget {
   }
 }
 
-class _MobileLayout extends StatelessWidget {
+class _MobileLayout extends HookConsumerWidget {
   final Player player;
   final ValueNotifier<ViewMode> viewMode;
-  final AsyncValue<TrackMetadata> metadataAsync;
   final Media media;
   final String trackPath;
 
   const _MobileLayout({
     required this.player,
     required this.viewMode,
-    required this.metadataAsync,
     required this.media,
     required this.trackPath,
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final currentMetadata = ref.watch(currentTrackMetadataProvider);
+
     return AnimatedSwitcher(
       duration: const Duration(milliseconds: 300),
       child: switch (viewMode.value) {
         ViewMode.cover => _CoverView(
           key: const ValueKey('cover'),
           player: player,
-          metadataAsync: metadataAsync,
+          currentMetadata: currentMetadata,
           media: media,
           trackPath: trackPath,
         ).padding(bottom: MediaQuery.paddingOf(context).bottom),
@@ -207,13 +196,13 @@ class _MobileLayout extends StatelessWidget {
 
 class _PlayerCoverControlsPanel extends StatelessWidget {
   final Player player;
-  final AsyncValue<TrackMetadata> metadataAsync;
+  final TrackMetadata? currentMetadata;
   final Media media;
   final String trackPath;
 
   const _PlayerCoverControlsPanel({
     required this.player,
-    required this.metadataAsync,
+    required this.currentMetadata,
     required this.media,
     required this.trackPath,
   });
@@ -235,7 +224,7 @@ class _PlayerCoverControlsPanel extends StatelessWidget {
                   constraints: const BoxConstraints(maxWidth: 400),
                   child: AspectRatio(
                     aspectRatio: 1,
-                    child: _PlayerCoverArt(metadataAsync: metadataAsync),
+                    child: _PlayerCoverArt(currentMetadata: currentMetadata),
                   ),
                 ),
               ),
@@ -243,7 +232,7 @@ class _PlayerCoverControlsPanel extends StatelessWidget {
           ),
           _PlayerControls(
             player: player,
-            metadataAsync: metadataAsync,
+            currentMetadata: currentMetadata,
             media: media,
             trackPath: trackPath,
           ),
@@ -254,23 +243,23 @@ class _PlayerCoverControlsPanel extends StatelessWidget {
   }
 }
 
-class _DesktopLayout extends StatelessWidget {
+class _DesktopLayout extends HookConsumerWidget {
   final Player player;
   final ValueNotifier<ViewMode> viewMode;
-  final AsyncValue<TrackMetadata> metadataAsync;
   final Media media;
   final String trackPath;
 
   const _DesktopLayout({
     required this.player,
     required this.viewMode,
-    required this.metadataAsync,
     required this.media,
     required this.trackPath,
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final currentMetadata = ref.watch(currentTrackMetadataProvider);
+
     return AnimatedSwitcher(
       duration: const Duration(milliseconds: 300),
       child: switch (viewMode.value) {
@@ -278,7 +267,7 @@ class _DesktopLayout extends StatelessWidget {
           key: const ValueKey('cover'),
           child: _PlayerCoverControlsPanel(
             player: player,
-            metadataAsync: metadataAsync,
+            currentMetadata: currentMetadata,
             media: media,
             trackPath: trackPath,
           ),
@@ -294,7 +283,7 @@ class _DesktopLayout extends StatelessWidget {
                     child: Center(
                       child: _PlayerCoverControlsPanel(
                         player: player,
-                        metadataAsync: metadataAsync,
+                        currentMetadata: currentMetadata,
                         media: media,
                         trackPath: trackPath,
                       ),
@@ -328,7 +317,7 @@ class _DesktopLayout extends StatelessWidget {
                     child: Center(
                       child: _PlayerCoverControlsPanel(
                         player: player,
-                        metadataAsync: metadataAsync,
+                        currentMetadata: currentMetadata,
                         media: media,
                         trackPath: trackPath,
                       ),
@@ -355,14 +344,14 @@ class _DesktopLayout extends StatelessWidget {
 
 class _CoverView extends StatelessWidget {
   final Player player;
-  final AsyncValue<TrackMetadata> metadataAsync;
+  final TrackMetadata? currentMetadata;
   final Media media;
   final String trackPath;
 
   const _CoverView({
     super.key,
     required this.player,
-    required this.metadataAsync,
+    required this.currentMetadata,
     required this.media,
     required this.trackPath,
   });
@@ -377,13 +366,13 @@ class _CoverView extends StatelessWidget {
             child: Padding(
               padding: const EdgeInsets.only(bottom: 32),
               child: Center(
-                child: _PlayerCoverArt(metadataAsync: metadataAsync),
+                child: _PlayerCoverArt(currentMetadata: currentMetadata),
               ),
             ),
           ),
           _PlayerControls(
             player: player,
-            metadataAsync: metadataAsync,
+            currentMetadata: currentMetadata,
             media: media,
             trackPath: trackPath,
           ),
@@ -417,64 +406,49 @@ class _LyricsView extends StatelessWidget {
 }
 
 class _PlayerCoverArt extends StatelessWidget {
-  final AsyncValue<TrackMetadata> metadataAsync;
+  final TrackMetadata? currentMetadata;
 
-  const _PlayerCoverArt({required this.metadataAsync});
+  const _PlayerCoverArt({required this.currentMetadata});
 
   @override
   Widget build(BuildContext context) {
-    return metadataAsync.when(
-      data: (meta) => Center(
-        child: AspectRatio(
-          aspectRatio: 1,
-          child: Container(
-            decoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.surfaceContainer,
-              borderRadius: BorderRadius.circular(24),
-              boxShadow: [
-                BoxShadow(
-                  color: Theme.of(
-                    context,
-                  ).colorScheme.shadow.withValues(alpha: 0.3),
-                  blurRadius: 20,
-                  offset: const Offset(0, 10),
-                ),
-              ],
-              image: meta.artBytes != null
+    return Center(
+      child: AspectRatio(
+        aspectRatio: 1,
+        child: Container(
+          decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.surfaceContainer,
+            borderRadius: BorderRadius.circular(24),
+            boxShadow: [
+              BoxShadow(
+                color: Theme.of(
+                  context,
+                ).colorScheme.shadow.withValues(alpha: 0.3),
+                blurRadius: 20,
+                offset: const Offset(0, 10),
+              ),
+            ],
+            image: () {
+              final artBytes = currentMetadata?.artBytes;
+              return artBytes != null
                   ? DecorationImage(
-                      image: MemoryImage(meta.artBytes!),
+                      image: MemoryImage(artBytes),
                       fit: BoxFit.cover,
                     )
-                  : null,
-            ),
-            child: meta.artBytes == null
-                ? Center(
-                    child: Icon(
-                      Icons.music_note,
-                      size: 80,
-                      color: Theme.of(
-                        context,
-                      ).colorScheme.onSurface.withValues(alpha: 0.7),
-                    ),
-                  )
-                : null,
+                  : null;
+            }(),
           ),
-        ),
-      ),
-      loading: () => const Center(child: CircularProgressIndicator()),
-      error: (_, _) => Container(
-        decoration: BoxDecoration(
-          color: Theme.of(context).colorScheme.surfaceContainer,
-          borderRadius: BorderRadius.circular(24),
-        ),
-        child: Center(
-          child: Icon(
-            Icons.error_outline,
-            size: 80,
-            color: Theme.of(
-              context,
-            ).colorScheme.onSurface.withValues(alpha: 0.7),
-          ),
+          child: currentMetadata?.artBytes == null
+              ? Center(
+                  child: Icon(
+                    Icons.music_note,
+                    size: 80,
+                    color: Theme.of(
+                      context,
+                    ).colorScheme.onSurface.withValues(alpha: 0.7),
+                  ),
+                )
+              : null,
         ),
       ),
     );
@@ -1161,7 +1135,7 @@ class _QueueView extends HookConsumerWidget {
                 itemBuilder: (context, index) {
                   final media = playlist.medias[index];
                   final isCurrent = index == playlist.index;
-                  final trackPath = Uri.decodeFull(Uri.parse(media.uri).path);
+                  final trackPath = media.uri;
                   final trackAsync = ref.watch(trackByPathProvider(trackPath));
 
                   return trackAsync.when(
@@ -1525,13 +1499,13 @@ class _TimedLyricsView extends HookConsumerWidget {
 
 class _PlayerControls extends HookWidget {
   final Player player;
-  final AsyncValue<TrackMetadata> metadataAsync;
+  final TrackMetadata? currentMetadata;
   final Media media;
   final String trackPath;
 
   const _PlayerControls({
     required this.player,
-    required this.metadataAsync,
+    required this.currentMetadata,
     required this.media,
     required this.trackPath,
   });
@@ -1547,27 +1521,19 @@ class _PlayerControls extends HookWidget {
         // Title & Artist
         Column(
           children: [
-            metadataAsync.when(
-              data: (meta) => Text(
-                meta.title ?? Uri.parse(media.uri).pathSegments.last,
-                style: Theme.of(context).textTheme.headlineSmall,
-                textAlign: TextAlign.center,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-              loading: () => const SizedBox(height: 32),
-              error: (_, _) => Text(Uri.parse(media.uri).pathSegments.last),
+            Text(
+              currentMetadata?.title ?? Uri.parse(media.uri).pathSegments.last,
+              style: Theme.of(context).textTheme.headlineSmall,
+              textAlign: TextAlign.center,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
             ),
             const SizedBox(height: 8),
-            metadataAsync.when(
-              data: (meta) => Text(
-                meta.artist ?? 'Unknown Artist',
-                style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                  color: Theme.of(context).colorScheme.primary,
-                ),
+            Text(
+              currentMetadata?.artist ?? 'Unknown Artist',
+              style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                color: Theme.of(context).colorScheme.primary,
               ),
-              loading: () => const SizedBox(height: 24),
-              error: (_, _) => const SizedBox.shrink(),
             ),
           ],
         ),

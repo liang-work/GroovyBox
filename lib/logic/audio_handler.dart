@@ -1,7 +1,11 @@
+import 'dart:typed_data';
 import 'package:audio_service/audio_service.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
+import 'package:http/http.dart' as http;
 import 'package:media_kit/media_kit.dart' as media_kit;
 import 'package:groovybox/data/db.dart';
+import 'package:groovybox/logic/metadata_service.dart';
+import 'package:groovybox/providers/audio_provider.dart';
 import 'package:groovybox/providers/theme_provider.dart';
 import 'package:groovybox/providers/remote_provider.dart';
 import 'package:groovybox/providers/db_provider.dart';
@@ -47,11 +51,13 @@ class AudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
     _container = container;
   }
 
-  // Update theme color based on current track's album art
+  // Update theme color based on current track's album art and set current metadata
   void _updateThemeFromCurrentTrack(MediaItem mediaItem) async {
     if (_container == null) return;
 
     try {
+      TrackMetadata? metadata;
+
       // For remote tracks, get metadata from database
       final urlResolver = _container!.read(remoteUrlResolverProvider);
       if (urlResolver.isProtocolUrl(mediaItem.id)) {
@@ -60,22 +66,59 @@ class AudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
           database.tracks,
         )..where((t) => t.path.equals(mediaItem.id))).getSingleOrNull();
 
-        if (track != null && track.artUri != null) {
+        if (track != null) {
           // Fetch album art bytes for remote tracks
-          // TODO: Implement remote album art fetching for theme
+          Uint8List? artBytes;
+          if (track.artUri != null) {
+            try {
+              final response = await http.get(Uri.parse(track.artUri!));
+              if (response.statusCode == 200) {
+                artBytes = response.bodyBytes;
+              }
+            } catch (e) {
+              // Ignore art fetching errors
+            }
+          }
+
+          metadata = TrackMetadata(
+            title: track.title,
+            artist: track.artist,
+            album: track.album,
+            artBytes: artBytes,
+          );
+
+          // Update theme from album art
+          final seedColorNotifier = _container!.read(
+            seedColorProvider.notifier,
+          );
+          seedColorNotifier.updateFromAlbumArtBytes(artBytes);
         }
       } else {
-        // For local tracks, use existing metadata service
-        // TODO: Get metadata service working
+        // For local tracks, use metadata service
+        final metadataService = MetadataService();
+        metadata = await metadataService.getMetadata(mediaItem.id);
+
+        // Update theme from album art
+        final seedColorNotifier = _container!.read(seedColorProvider.notifier);
+        seedColorNotifier.updateFromAlbumArtBytes(metadata.artBytes);
       }
 
-      // Reset to default for now
-      final seedColorNotifier = _container!.read(seedColorProvider.notifier);
-      seedColorNotifier.resetToDefault();
+      // Set current track metadata
+      if (metadata != null) {
+        final metadataNotifier = _container!.read(
+          currentTrackMetadataProvider.notifier,
+        );
+        metadataNotifier.setMetadata(metadata);
+      }
     } catch (e) {
-      // If metadata retrieval fails, reset to default color
+      // If metadata retrieval fails, reset to default color and clear metadata
       final seedColorNotifier = _container!.read(seedColorProvider.notifier);
       seedColorNotifier.resetToDefault();
+
+      final metadataNotifier = _container!.read(
+        currentTrackMetadataProvider.notifier,
+      );
+      metadataNotifier.clear();
     }
   }
 
