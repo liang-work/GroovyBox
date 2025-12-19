@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:groovybox/data/track_repository.dart';
 import 'package:groovybox/providers/settings_provider.dart';
 import 'package:groovybox/providers/watch_folder_provider.dart';
 import 'package:groovybox/providers/remote_provider.dart';
@@ -305,6 +306,42 @@ class SettingsScreen extends ConsumerWidget {
                       ],
                     ),
                   ),
+
+                  // Database Management Section
+                  Card(
+                    margin: EdgeInsets.zero,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Database Management',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ).padding(horizontal: 16, bottom: 8, top: 16),
+                        const Text(
+                          'Manage your music database and cached files.',
+                          style: TextStyle(color: Colors.grey, fontSize: 14),
+                        ).padding(horizontal: 16, bottom: 8),
+                        ListTile(
+                          title: const Text('Reset Track Database'),
+                          subtitle: const Text(
+                            'Remove all tracks from database and delete cached files. This action cannot be undone.',
+                          ),
+                          trailing: ElevatedButton(
+                            onPressed: () => _resetTrackDatabase(context, ref),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.red,
+                              foregroundColor: Colors.white,
+                            ),
+                            child: const Text('Reset'),
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                      ],
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -486,6 +523,50 @@ class SettingsScreen extends ConsumerWidget {
               }
             },
             child: const Text('Add'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _resetTrackDatabase(BuildContext context, WidgetRef ref) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Reset Track Database'),
+        content: const Text(
+          'This will permanently delete all tracks from the database and remove all cached music files and album art. This action cannot be undone.\n\nAre you sure you want to continue?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () async {
+              Navigator.of(context).pop(); // Close confirmation dialog
+
+              try {
+                final repository = ref.read(trackRepositoryProvider.notifier);
+                await repository.clearAllTracks();
+
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Track database has been reset'),
+                    ),
+                  );
+                }
+              } catch (e) {
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Error resetting database: $e')),
+                  );
+                }
+              }
+            },
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: const Text('Reset'),
           ),
         ],
       ),

@@ -1,5 +1,4 @@
 import 'dart:io';
-import 'dart:typed_data';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
@@ -9,12 +8,11 @@ import 'package:groovybox/data/playlist_repository.dart';
 import 'package:groovybox/data/track_repository.dart';
 import 'package:groovybox/logic/lyrics_parser.dart';
 import 'package:groovybox/providers/audio_provider.dart';
-import 'package:groovybox/providers/remote_provider.dart';
 import 'package:groovybox/providers/watch_folder_provider.dart';
 import 'package:groovybox/ui/screens/settings_screen.dart';
 import 'package:groovybox/ui/tabs/albums_tab.dart';
 import 'package:groovybox/ui/tabs/playlists_tab.dart';
-import 'package:http/http.dart' as http;
+import 'package:groovybox/ui/widgets/track_tile.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:path/path.dart' as p;
 import 'package:styled_widget/styled_widget.dart';
@@ -483,37 +481,19 @@ class LibraryScreen extends HookConsumerWidget {
                       SnackBar(content: Text('Deleted "${track.title}"')),
                     );
                   },
-                  child: ListTile(
-                    leading: AspectRatio(
-                      aspectRatio: 1,
-                      child: _buildAlbumArt(track, ref),
-                    ),
-                    title: Text(
-                      track.title,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    subtitle: Text(
-                      '${track.artist ?? 'Unknown Artist'} • ${_formatDuration(track.duration)}',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    trailing: isSelectionMode
-                        ? null
-                        : IconButton(
-                            icon: const Icon(Icons.more_vert),
-                            onPressed: () {
-                              _showTrackOptions(context, ref, track);
-                            },
-                          ),
+                  child: TrackTile(
+                    track: track,
+                    showTrailingIcon: true,
+                    onTrailingPressed: () =>
+                        _showTrackOptions(context, ref, track),
                     onTap: () {
                       final audio = ref.read(audioHandlerProvider);
                       audio.playTrack(track);
                     },
-                    onLongPress: () {
-                      // Enter selection mode
-                      toggleSelection(track.id);
-                    },
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 8,
+                    ),
                   ),
                 );
               },
@@ -851,81 +831,6 @@ class LibraryScreen extends HookConsumerWidget {
         ],
       ),
     );
-  }
-
-  Widget _buildAlbumArt(Track track, WidgetRef ref) {
-    // Check if this is a remote track
-    final urlResolver = ref.watch(remoteUrlResolverProvider);
-    final isRemote = urlResolver.isProtocolUrl(track.path);
-
-    if (isRemote && track.artUri != null) {
-      // For remote tracks, fetch album art directly
-      return FutureBuilder<Uint8List?>(
-        future: _fetchRemoteAlbumArt(track.artUri!),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return Container(
-              color: Colors.grey[800],
-              child: const Center(
-                child: SizedBox(
-                  width: 16,
-                  height: 16,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2,
-                    valueColor: AlwaysStoppedAnimation<Color>(Colors.white54),
-                  ),
-                ),
-              ),
-            );
-          } else if (snapshot.hasData && snapshot.data != null) {
-            return Container(
-              decoration: BoxDecoration(
-                color: Colors.grey[800],
-                borderRadius: BorderRadius.circular(8),
-                image: DecorationImage(
-                  image: MemoryImage(snapshot.data!),
-                  fit: BoxFit.cover,
-                ),
-              ),
-            );
-          } else {
-            return Container(
-              color: Colors.grey[800],
-              child: const Icon(Icons.music_note, color: Colors.white54),
-            );
-          }
-        },
-      );
-    } else {
-      // For local tracks, use existing logic
-      return Container(
-        decoration: BoxDecoration(
-          color: Colors.grey[800],
-          borderRadius: BorderRadius.circular(8),
-          image: track.artUri != null
-              ? DecorationImage(
-                  image: FileImage(File(track.artUri!)),
-                  fit: BoxFit.cover,
-                )
-              : null,
-        ),
-        child: track.artUri == null
-            ? const Icon(Icons.music_note, color: Colors.white54)
-            : null,
-      );
-    }
-  }
-
-  Future<Uint8List?> _fetchRemoteAlbumArt(String url) async {
-    try {
-      final response = await http.get(Uri.parse(url));
-      if (response.statusCode == 200) {
-        return response.bodyBytes;
-      }
-    } catch (e) {
-      // Ignore errors
-    }
-    return null;
   }
 
   String _formatDuration(int? durationMs) {

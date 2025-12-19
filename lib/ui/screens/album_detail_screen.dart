@@ -1,9 +1,11 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:groovybox/data/db.dart';
 import 'package:groovybox/data/playlist_repository.dart';
 import 'package:groovybox/providers/audio_provider.dart';
+import 'package:groovybox/ui/widgets/track_tile.dart';
+import 'package:groovybox/ui/widgets/universal_image.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
+import 'package:styled_widget/styled_widget.dart';
 
 class AlbumDetailScreen extends HookConsumerWidget {
   final AlbumData album;
@@ -24,7 +26,7 @@ class AlbumDetailScreen extends HookConsumerWidget {
             flexibleSpace: FlexibleSpaceBar(
               title: Text(album.album),
               background: album.artUri != null
-                  ? Image.file(File(album.artUri!), fit: BoxFit.cover)
+                  ? UniversalImage(uri: album.artUri!, fit: BoxFit.cover)
                   : Container(
                       color: Colors.grey[800],
                       child: const Icon(
@@ -85,30 +87,22 @@ class AlbumDetailScreen extends HookConsumerWidget {
 
   Widget _buildTrackTile(WidgetRef ref, List<Track> tracks, int index) {
     final track = tracks[index];
-    return ListTile(
+    return TrackTile(
+      track: track,
       leading: Text(
-        '${index + 1}',
+        '${index + 1}'.padLeft(2, '0'),
         style: const TextStyle(color: Colors.grey, fontSize: 16),
-      ),
-      title: Text(track.title),
-      subtitle: Text(_formatDuration(track.duration)),
+      ).padding(right: 16),
+      showTrailingIcon: false,
       onTap: () {
         _playAlbum(ref, tracks, initialIndex: index);
       },
-      trailing: const Icon(Icons.play_circle_outline),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
     );
   }
 
   void _playAlbum(WidgetRef ref, List<Track> tracks, {int initialIndex = 0}) {
     final audioHandler = ref.read(audioHandlerProvider);
     audioHandler.playTracks(tracks, initialIndex: initialIndex);
-  }
-
-  String _formatDuration(int? durationMs) {
-    if (durationMs == null) return '--:--';
-    final d = Duration(milliseconds: durationMs);
-    final minutes = d.inMinutes;
-    final seconds = d.inSeconds % 60;
-    return '$minutes:${seconds.toString().padLeft(2, '0')}';
   }
 }

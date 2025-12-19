@@ -1,7 +1,7 @@
-import 'dart:io';
-
 import 'package:flutter/material.dart';
 import 'package:groovybox/data/db.dart' as db;
+import 'package:groovybox/ui/widgets/universal_image.dart';
+import 'package:styled_widget/styled_widget.dart';
 
 class TrackTile extends StatelessWidget {
   final db.Track track;
@@ -41,29 +41,20 @@ class TrackTile extends StatelessWidget {
         borderRadius: BorderRadius.circular(8),
       ),
       child: ListTile(
-        contentPadding:
-            padding ?? const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        contentPadding: padding ?? const EdgeInsets.symmetric(horizontal: 16),
         leading: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
             ?leading,
             AspectRatio(
               aspectRatio: 1,
-              child: Container(
-                decoration: BoxDecoration(
-                  color: Colors.grey[800],
-                  borderRadius: BorderRadius.circular(8),
-                  image: track.artUri != null
-                      ? DecorationImage(
-                          image: FileImage(File(track.artUri!)),
-                          fit: BoxFit.cover,
-                        )
-                      : null,
-                ),
-                child: track.artUri == null
-                    ? const Icon(Icons.music_note, color: Colors.white54)
-                    : null,
-              ),
+              child: UniversalImage(
+                uri: track.artUri,
+                fit: BoxFit.cover,
+                borderRadius: BorderRadius.circular(8),
+                fallbackIcon: Icons.music_note,
+                fallbackIconSize: 24,
+              ).clipRRect(all: 8),
             ),
           ],
         ),

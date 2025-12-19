@@ -1,8 +1,8 @@
-import 'dart:io';
 import 'package:animations/animations.dart';
 import 'package:flutter/material.dart';
 import 'package:groovybox/data/playlist_repository.dart';
 import 'package:groovybox/ui/screens/album_detail_screen.dart';
+import 'package:groovybox/ui/widgets/universal_image.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 
 class AlbumsTab extends HookConsumerWidget {
@@ -49,16 +49,12 @@ class AlbumsTab extends HookConsumerWidget {
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     Expanded(
-                      child: album.artUri != null
-                          ? Image.file(File(album.artUri!), fit: BoxFit.cover)
-                          : Container(
-                              color: Colors.grey[800],
-                              child: const Icon(
-                                Icons.album,
-                                size: 48,
-                                color: Colors.white54,
-                              ),
-                            ),
+                      child: UniversalImage(
+                        uri: album.artUri,
+                        fit: BoxFit.cover,
+                        fallbackIcon: Icons.album,
+                        fallbackIconSize: 48,
+                      ),
                     ),
                     Padding(
                       padding: const EdgeInsets.all(8.0),

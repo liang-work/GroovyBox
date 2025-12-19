@@ -369,4 +369,42 @@ class TrackRepository extends _$TrackRepository {
       }
     }
   }
+
+  /// Clear all tracks from the database and delete associated files/art.
+  Future<void> clearAllTracks() async {
+    final db = ref.read(databaseProvider);
+    final appDir = await getApplicationDocumentsDirectory();
+    final musicDir = p.join(appDir.path, 'music');
+
+    // Get all tracks first
+    final allTracks = await db.select(db.tracks).get();
+
+    // Delete associated files and art for each track
+    for (final track in allTracks) {
+      // Delete file only if it's a copied file (in internal music directory)
+      final file = File(track.path);
+      if (await file.exists() && track.path.startsWith(musicDir)) {
+        try {
+          await file.delete();
+        } catch (e) {
+          debugPrint("Error deleting file: $e");
+        }
+      }
+
+      // Delete album art if exists (always stored internally)
+      if (track.artUri != null) {
+        final artFile = File(track.artUri!);
+        if (await artFile.exists()) {
+          try {
+            await artFile.delete();
+          } catch (e) {
+            debugPrint("Error deleting art: $e");
+          }
+        }
+      }
+    }
+
+    // Clear all tracks from database (cascade will handle playlist entries)
+    await db.delete(db.tracks).go();
+  }
 }

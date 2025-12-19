@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:groovybox/data/db.dart';
 import 'package:groovybox/data/playlist_repository.dart';
 import 'package:groovybox/providers/audio_provider.dart';
+import 'package:groovybox/ui/widgets/track_tile.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 
 class PlaylistDetailScreen extends HookConsumerWidget {
@@ -93,17 +94,17 @@ class PlaylistDetailScreen extends HookConsumerWidget {
 
   Widget _buildTrackTile(WidgetRef ref, List<Track> tracks, int index) {
     final track = tracks[index];
-    return ListTile(
+    return TrackTile(
+      track: track,
       leading: Text(
         '${index + 1}',
         style: const TextStyle(color: Colors.grey, fontSize: 16),
       ),
-      title: Text(track.title),
-      subtitle: Text(track.artist ?? 'Unknown Artist'),
-      trailing: Text(_formatDuration(track.duration)),
+      showTrailingIcon: false,
       onTap: () {
         _playPlaylist(ref, tracks, initialIndex: index);
       },
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
     );
   }
 
@@ -114,13 +115,5 @@ class PlaylistDetailScreen extends HookConsumerWidget {
   }) {
     final audioHandler = ref.read(audioHandlerProvider);
     audioHandler.playTracks(tracks, initialIndex: initialIndex);
-  }
-
-  String _formatDuration(int? durationMs) {
-    if (durationMs == null) return '--:--';
-    final d = Duration(milliseconds: durationMs);
-    final minutes = d.inMinutes;
-    final seconds = d.inSeconds % 60;
-    return '$minutes:${seconds.toString().padLeft(2, '0')}';
   }
 }
