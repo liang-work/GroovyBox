@@ -629,11 +629,10 @@ class _DesktopMiniPlayer extends HookConsumerWidget {
                     itemBuilder: (context, index) {
                       final media = playlist.medias[index];
                       final isCurrent = index == playlist.index;
-                      final trackPath = Uri.decodeFull(
-                        Uri.parse(media.uri).path,
+                      final trackPath = media.extras?['trackPath'] ?? media.uri;
+                      final trackAsync = ref.watch(
+                        trackByPathProvider(trackPath),
                       );
-                      // For now, skip track loading to avoid provider issues
-                      final trackAsync = AsyncValue<db.Track?>.data(null);
 
                       return trackAsync.when(
                         loading: () => SizedBox(
