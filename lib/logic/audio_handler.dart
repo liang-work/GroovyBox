@@ -3,7 +3,7 @@ import 'package:audio_service/audio_service.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:http/http.dart' as http;
 import 'package:media_kit/media_kit.dart' as media_kit;
-import 'package:groovybox/data/db.dart';
+import 'package:groovybox/data/db.dart' as db;
 import 'package:groovybox/logic/metadata_service.dart';
 import 'package:groovybox/providers/audio_provider.dart';
 import 'package:groovybox/providers/theme_provider.dart';
@@ -51,18 +51,19 @@ class AudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
     _container = container;
   }
 
-  // Update theme color based on current track's album art and set current metadata
+  // Update theme color based on current track's album art and set current metadata and track
   void _updateThemeFromCurrentTrack(MediaItem mediaItem) async {
     if (_container == null) return;
 
     try {
       TrackMetadata? metadata;
+      db.Track? track;
 
       // For remote tracks, get metadata from database
       final urlResolver = _container!.read(remoteUrlResolverProvider);
       if (urlResolver.isProtocolUrl(mediaItem.id)) {
         final database = _container!.read(databaseProvider);
-        final track = await (database.select(
+        track = await (database.select(
           database.tracks,
         )..where((t) => t.path.equals(mediaItem.id))).getSingleOrNull();
 
@@ -94,7 +95,13 @@ class AudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
           seedColorNotifier.updateFromAlbumArtBytes(artBytes);
         }
       } else {
-        // For local tracks, use metadata service
+        // For local tracks, get from database and use metadata service
+        final database = _container!.read(databaseProvider);
+        track = await (database.select(
+          database.tracks,
+        )..where((t) => t.path.equals(mediaItem.id))).getSingleOrNull();
+
+        // Use metadata service for local tracks
         final metadataService = MetadataService();
         metadata = await metadataService.getMetadata(mediaItem.id);
 
@@ -103,17 +110,30 @@ class AudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
         seedColorNotifier.updateFromAlbumArtBytes(metadata.artBytes);
       }
 
+      // Set current track
+      final trackNotifier = _container!.read(currentTrackProvider.notifier);
+      if (track != null) {
+        trackNotifier.setTrack(CurrentTrackData.fromTrack(track));
+      } else {
+        trackNotifier.clear();
+      }
+
       // Set current track metadata
+      final metadataNotifier = _container!.read(
+        currentTrackMetadataProvider.notifier,
+      );
       if (metadata != null) {
-        final metadataNotifier = _container!.read(
-          currentTrackMetadataProvider.notifier,
-        );
         metadataNotifier.setMetadata(metadata);
+      } else {
+        metadataNotifier.clear();
       }
     } catch (e) {
-      // If metadata retrieval fails, reset to default color and clear metadata
+      // If metadata retrieval fails, reset to default color and clear metadata/track
       final seedColorNotifier = _container!.read(seedColorProvider.notifier);
       seedColorNotifier.resetToDefault();
+
+      final trackNotifier = _container!.read(currentTrackProvider.notifier);
+      trackNotifier.clear();
 
       final metadataNotifier = _container!.read(
         currentTrackMetadataProvider.notifier,
@@ -256,18 +276,18 @@ class AudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
   }
 
   // New methods that accept Track objects with proper metadata
-  Future<void> playTrack(Track track) async {
+  Future<void> playTrack(db.Track track) async {
     final mediaItem = _trackToMediaItem(track);
     await updateQueue([mediaItem]);
   }
 
-  Future<void> playTracks(List<Track> tracks, {int initialIndex = 0}) async {
+  Future<void> playTracks(List<db.Track> tracks, {int initialIndex = 0}) async {
     final mediaItems = tracks.map(_trackToMediaItem).toList();
     _queueIndex = initialIndex;
     await updateQueue(mediaItems);
   }
 
-  MediaItem _trackToMediaItem(Track track) {
+  MediaItem _trackToMediaItem(db.Track track) {
     return MediaItem(
       id: track.path,
       album: track.album,

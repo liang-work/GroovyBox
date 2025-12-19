@@ -3,6 +3,7 @@ import 'package:groovybox/data/db.dart' as db;
 import 'package:drift/drift.dart' as drift;
 import 'package:groovybox/logic/lrc_providers.dart';
 import 'package:groovybox/logic/lyrics_parser.dart';
+import 'package:groovybox/providers/audio_provider.dart';
 import 'package:groovybox/providers/db_provider.dart';
 import 'package:groovybox/ui/screens/player_screen.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
@@ -59,6 +60,16 @@ class LyricsFetcher extends _$LyricsFetcher {
             .write(db.TracksCompanion(lyrics: drift.Value(lyricsJson)));
 
         debugPrint('Updated database with lyrics for track $trackId');
+
+        // Update the current track provider if this is the current track
+        final currentTrackNotifier = ref.read(currentTrackProvider.notifier);
+        final currentTrack = currentTrackNotifier.state;
+        if (currentTrack != null && currentTrack.id == trackId) {
+          // Update the current track with new lyrics
+          final updatedTrack = currentTrack.copyWith(lyrics: lyricsJson);
+          currentTrackNotifier.setTrack(updatedTrack);
+          debugPrint('Updated current track provider with new lyrics');
+        }
 
         // Invalidate the track provider to refresh the UI
         ref.invalidate(trackByPathProvider(trackPath));

@@ -247,7 +247,7 @@ class RemoteUrlResolver {
     try {
       // Create Jellyfin client and authenticate
       final client = JellyfinDart(basePathOverride: provider.serverUrl);
-      client.setDeviceId('groovybox-${providerId}');
+      client.setDeviceId('groovybox-$providerId');
       client.setVersion('1.0.0');
 
       final userApi = client.getUserApi();

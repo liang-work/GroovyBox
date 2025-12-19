@@ -50,6 +50,60 @@ final class AudioHandlerProvider
 
 String _$audioHandlerHash() => r'65fbd92e049fe4f3a0763516f1e68e1614f7630f';
 
+@ProviderFor(CurrentTrackNotifier)
+const currentTrackProvider = CurrentTrackNotifierProvider._();
+
+final class CurrentTrackNotifierProvider
+    extends $NotifierProvider<CurrentTrackNotifier, CurrentTrackData?> {
+  const CurrentTrackNotifierProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'currentTrackProvider',
+        isAutoDispose: false,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$currentTrackNotifierHash();
+
+  @$internal
+  @override
+  CurrentTrackNotifier create() => CurrentTrackNotifier();
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(CurrentTrackData? value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<CurrentTrackData?>(value),
+    );
+  }
+}
+
+String _$currentTrackNotifierHash() =>
+    r'faa718574ece8c3c4b8f19b70d79d142b4b7f3e9';
+
+abstract class _$CurrentTrackNotifier extends $Notifier<CurrentTrackData?> {
+  CurrentTrackData? build();
+  @$mustCallSuper
+  @override
+  void runBuild() {
+    final created = build();
+    final ref = this.ref as $Ref<CurrentTrackData?, CurrentTrackData?>;
+    final element =
+        ref.element
+            as $ClassProviderElement<
+              AnyNotifier<CurrentTrackData?, CurrentTrackData?>,
+              CurrentTrackData?,
+              Object?,
+              Object?
+            >;
+    element.handleValue(ref, created);
+  }
+}
+
 @ProviderFor(CurrentTrackMetadataNotifier)
 const currentTrackMetadataProvider = CurrentTrackMetadataNotifierProvider._();
 

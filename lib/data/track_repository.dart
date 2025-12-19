@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_media_metadata/flutter_media_metadata.dart';
 import 'package:groovybox/data/db.dart';
+import 'package:groovybox/providers/audio_provider.dart';
 import 'package:groovybox/providers/db_provider.dart';
 import 'package:groovybox/providers/settings_provider.dart';
 import 'package:path/path.dart' as p;
@@ -218,6 +219,15 @@ class TrackRepository extends _$TrackRepository {
     await (db.update(db.tracks)..where((t) => t.id.equals(trackId))).write(
       TracksCompanion(lyrics: Value(lyricsJson)),
     );
+
+    // Update current track provider if this is the current track
+    final currentTrackNotifier = ref.read(currentTrackProvider.notifier);
+    final currentTrack = currentTrackNotifier.state;
+    if (currentTrack != null && currentTrack.id == trackId) {
+      final updatedTrack = currentTrack.copyWith(lyrics: lyricsJson);
+      currentTrackNotifier.setTrack(updatedTrack);
+      debugPrint('Updated current track provider with imported lyrics');
+    }
   }
 
   /// Get a single track by ID.

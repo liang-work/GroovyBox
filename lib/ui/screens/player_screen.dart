@@ -182,7 +182,6 @@ class _MobileLayout extends HookConsumerWidget {
         ).padding(bottom: MediaQuery.paddingOf(context).bottom),
         ViewMode.lyrics => _LyricsView(
           key: const ValueKey('lyrics'),
-          trackPath: trackPath,
           player: player,
         ),
         ViewMode.queue => _QueueView(
@@ -301,7 +300,7 @@ class _DesktopLayout extends HookConsumerWidget {
               width: MediaQuery.sizeOf(context).width * 0.6,
               child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 32),
-                child: _PlayerLyrics(trackPath: trackPath, player: player),
+                child: _PlayerLyrics(player: player),
               ),
             ),
           ],
@@ -384,10 +383,9 @@ class _CoverView extends StatelessWidget {
 }
 
 class _LyricsView extends StatelessWidget {
-  final String trackPath;
   final Player player;
 
-  const _LyricsView({super.key, required this.trackPath, required this.player});
+  const _LyricsView({super.key, required this.player});
 
   @override
   Widget build(BuildContext context) {
@@ -396,7 +394,7 @@ class _LyricsView extends StatelessWidget {
         Expanded(
           child: Padding(
             padding: const EdgeInsets.all(16.0),
-            child: _PlayerLyrics(trackPath: trackPath, player: player),
+            child: _PlayerLyrics(player: player),
           ),
         ),
         MiniPlayer(enableTapToOpen: false),
@@ -456,17 +454,14 @@ class _PlayerCoverArt extends StatelessWidget {
 }
 
 class _PlayerLyrics extends HookConsumerWidget {
-  final String? trackPath;
   final Player player;
 
-  const _PlayerLyrics({this.trackPath, required this.player});
+  const _PlayerLyrics({required this.player});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // Watch for track data (including lyrics) by path
-    final trackAsync = trackPath != null
-        ? ref.watch(trackByPathProvider(trackPath!))
-        : const AsyncValue<db.Track?>.data(null);
+    // Watch for current track data (including lyrics)
+    final currentTrack = ref.watch(currentTrackProvider);
 
     // For now, skip metadata loading to avoid provider issues
     final AsyncValue<TrackMetadata> metadataAsync = AsyncValue.data(
@@ -477,133 +472,33 @@ class _PlayerLyrics extends HookConsumerWidget {
     final musixmatchProviderInstance = ref.watch(musixmatchProvider);
     final neteaseProviderInstance = ref.watch(neteaseProvider);
 
-    return trackAsync.when(
-      loading: () => const Center(child: CircularProgressIndicator()),
-      error: (e, _) => Center(child: Text('Error: $e')),
-      data: (track) {
-        if (track == null || track.lyrics == null) {
-          // Show fetch lyrics UI
-          return Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Text(
-                'No Lyrics Available',
-                style: TextStyle(fontStyle: FontStyle.italic, fontSize: 18),
-              ),
-              const SizedBox(height: 16),
-              ElevatedButton.icon(
-                icon: const Icon(Icons.download),
-                label: const Text('Fetch Lyrics'),
-                onPressed: track != null && trackPath != null
-                    ? () => _showFetchLyricsDialog(
-                        context,
-                        ref,
-                        track,
-                        trackPath!,
-                        metadataAsync.value,
-                        musixmatchProviderInstance,
-                        neteaseProviderInstance,
-                      )
-                    : null,
-              ),
-              if (lyricsFetcher.isLoading)
-                Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: LinearProgressIndicator(),
-                ),
-              if (lyricsFetcher.error != null)
-                Padding(
-                  padding: const EdgeInsets.all(8.0),
-                  child: Text(
-                    lyricsFetcher.error!,
-                    style: TextStyle(color: Colors.red, fontSize: 12),
-                    textAlign: TextAlign.center,
-                  ),
-                ),
-              if (lyricsFetcher.successMessage != null)
-                Padding(
-                  padding: const EdgeInsets.all(8.0),
-                  child: Text(
-                    lyricsFetcher.successMessage!,
-                    style: TextStyle(
-                      color: Colors.green,
-                      fontSize: 14,
-                      fontWeight: FontWeight.bold,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                ),
-            ],
-          );
-        }
+    // Simulate async behavior for compatibility
+    if (currentTrack == null) {
+      return const Center(child: CircularProgressIndicator());
+    }
 
-        try {
-          final lyricsData = LyricsData.fromJsonString(track.lyrics!);
+    // Convert CurrentTrackData to db.Track for compatibility
+    final track = db.Track(
+      id: currentTrack.id,
+      title: currentTrack.title,
+      artist: currentTrack.artist,
+      album: currentTrack.album,
+      path: currentTrack.path,
+      lyrics: currentTrack.lyrics,
+      lyricsOffset: currentTrack.lyricsOffset,
+      duration: null,
+      artUri: null,
+      addedAt: DateTime.now(),
+    );
 
-          if (lyricsData.type == 'timed') {
-            return _TimedLyricsView(
-              lyrics: lyricsData,
-              player: player,
-              trackPath: trackPath!,
-            );
-          } else {
-            // Plain text lyrics
-            final isDesktop = MediaQuery.sizeOf(context).width > 800;
-            if (isDesktop) {
-              return ListWheelScrollView.useDelegate(
-                itemExtent: 50,
-                perspective: 0.002,
-                offAxisFraction: 1.5,
-                squeeze: 1.0,
-                diameterRatio: 2,
-                physics: const FixedExtentScrollPhysics(),
-                childDelegate: ListWheelChildBuilderDelegate(
-                  childCount: lyricsData.lines.length,
-                  builder: (context, index) {
-                    final line = lyricsData.lines[index];
-                    return Align(
-                      alignment: Alignment.centerRight,
-                      child: ConstrainedBox(
-                        constraints: BoxConstraints(
-                          maxWidth: MediaQuery.sizeOf(context).width * 0.4,
-                        ),
-                        child: Container(
-                          alignment: Alignment.centerLeft,
-                          padding: const EdgeInsets.symmetric(horizontal: 32),
-                          child: Text(
-                            line.text,
-                            style: Theme.of(context).textTheme.bodyLarge,
-                            textAlign: TextAlign.left,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                      ),
-                    );
-                  },
-                ),
-              );
-            } else {
-              return ListView.builder(
-                padding: const EdgeInsets.all(16),
-                itemCount: lyricsData.lines.length,
-                itemBuilder: (context, index) {
-                  return Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 4),
-                    child: Text(
-                      lyricsData.lines[index].text,
-                      style: Theme.of(context).textTheme.bodyLarge,
-                      textAlign: TextAlign.center,
-                    ),
-                  );
-                },
-              );
-            }
-          }
-        } catch (e) {
-          return Center(child: Text('Error parsing lyrics: $e'));
-        }
-      },
+    return _buildLyricsContent(
+      track,
+      metadataAsync,
+      ref,
+      lyricsFetcher,
+      musixmatchProviderInstance,
+      neteaseProviderInstance,
+      context,
     );
   }
 
@@ -627,6 +522,137 @@ class _PlayerLyrics extends HookConsumerWidget {
         neteaseProvider: neteaseProvider,
       ),
     );
+  }
+
+  Widget _buildLyricsContent(
+    db.Track track,
+    AsyncValue<TrackMetadata> metadataAsync,
+    WidgetRef ref,
+    dynamic lyricsFetcher,
+    dynamic musixmatchProviderInstance,
+    dynamic neteaseProviderInstance,
+    BuildContext context,
+  ) {
+    if (track.lyrics == null) {
+      // Show fetch lyrics UI
+      return Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Text(
+            'No Lyrics Available',
+            style: TextStyle(fontStyle: FontStyle.italic, fontSize: 18),
+          ),
+          const SizedBox(height: 16),
+          ElevatedButton.icon(
+            icon: const Icon(Icons.download),
+            label: const Text('Fetch Lyrics'),
+            onPressed: () => _showFetchLyricsDialog(
+              context,
+              ref,
+              track,
+              track.path,
+              metadataAsync.value,
+              musixmatchProviderInstance,
+              neteaseProviderInstance,
+            ),
+          ),
+          if (lyricsFetcher.isLoading)
+            Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: LinearProgressIndicator(),
+            ),
+          if (lyricsFetcher.error != null)
+            Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: Text(
+                lyricsFetcher.error!,
+                style: TextStyle(color: Colors.red, fontSize: 12),
+                textAlign: TextAlign.center,
+              ),
+            ),
+          if (lyricsFetcher.successMessage != null)
+            Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: Text(
+                lyricsFetcher.successMessage!,
+                style: TextStyle(
+                  color: Colors.green,
+                  fontSize: 14,
+                  fontWeight: FontWeight.bold,
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ),
+        ],
+      );
+    }
+
+    try {
+      final lyricsData = LyricsData.fromJsonString(track.lyrics!);
+
+      if (lyricsData.type == 'timed') {
+        return _TimedLyricsView(
+          lyrics: lyricsData,
+          player: player,
+          track: track,
+        );
+      } else {
+        // Plain text lyrics
+        final isDesktop = MediaQuery.sizeOf(context).width > 800;
+        if (isDesktop) {
+          return ListWheelScrollView.useDelegate(
+            itemExtent: 50,
+            perspective: 0.002,
+            offAxisFraction: 1.5,
+            squeeze: 1.0,
+            diameterRatio: 2,
+            physics: const FixedExtentScrollPhysics(),
+            childDelegate: ListWheelChildBuilderDelegate(
+              childCount: lyricsData.lines.length,
+              builder: (context, index) {
+                final line = lyricsData.lines[index];
+                return Align(
+                  alignment: Alignment.centerRight,
+                  child: ConstrainedBox(
+                    constraints: BoxConstraints(
+                      maxWidth: MediaQuery.sizeOf(context).width * 0.4,
+                    ),
+                    child: Container(
+                      alignment: Alignment.centerLeft,
+                      padding: const EdgeInsets.symmetric(horizontal: 32),
+                      child: Text(
+                        line.text,
+                        style: Theme.of(context).textTheme.bodyLarge,
+                        textAlign: TextAlign.left,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ),
+                );
+              },
+            ),
+          );
+        } else {
+          return ListView.builder(
+            padding: const EdgeInsets.all(16),
+            itemCount: lyricsData.lines.length,
+            itemBuilder: (context, index) {
+              return Padding(
+                padding: const EdgeInsets.symmetric(vertical: 4),
+                child: Text(
+                  lyricsData.lines[index].text,
+                  style: Theme.of(context).textTheme.bodyLarge,
+                  textAlign: TextAlign.center,
+                ),
+              );
+            },
+          );
+        }
+      }
+    } catch (e) {
+      return Center(child: Text('Error parsing lyrics: $e'));
+    }
   }
 }
 
@@ -779,20 +805,25 @@ class _FetchLyricsDialog extends StatelessWidget {
 }
 
 class _LyricsAdjustButton extends HookConsumerWidget {
-  final String trackPath;
   final Player player;
 
-  const _LyricsAdjustButton({required this.trackPath, required this.player});
+  const _LyricsAdjustButton({required this.player});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final trackAsync = ref.watch(trackByPathProvider(trackPath));
+    final currentTrack = ref.watch(currentTrackProvider);
+
     // For now, skip metadata loading to avoid provider issues
     final AsyncValue<TrackMetadata> metadataAsync = AsyncValue.data(
       TrackMetadata(),
     );
     final musixmatchProviderInstance = ref.watch(musixmatchProvider);
     final neteaseProviderInstance = ref.watch(neteaseProvider);
+
+    // Don't show the button if there's no current track
+    if (currentTrack == null) {
+      return const SizedBox.shrink();
+    }
 
     return IconButton(
       icon: const Icon(Icons.settings_applications),
@@ -801,7 +832,7 @@ class _LyricsAdjustButton extends HookConsumerWidget {
       onPressed: () => _showLyricsRefreshDialog(
         context,
         ref,
-        trackAsync,
+        currentTrack,
         metadataAsync,
         musixmatchProviderInstance,
         neteaseProviderInstance,
@@ -835,11 +866,25 @@ class _LyricsAdjustButton extends HookConsumerWidget {
   void _showLyricsRefreshDialog(
     BuildContext context,
     WidgetRef ref,
-    AsyncValue<db.Track?> trackAsync,
+    CurrentTrackData currentTrack,
     AsyncValue<TrackMetadata> metadataAsync,
     musixmatchProvider,
     neteaseProvider,
   ) {
+    // Convert CurrentTrackData to db.Track for compatibility
+    final track = db.Track(
+      id: currentTrack.id,
+      title: currentTrack.title,
+      artist: currentTrack.artist,
+      album: currentTrack.album,
+      path: currentTrack.path,
+      lyrics: currentTrack.lyrics,
+      lyricsOffset: currentTrack.lyricsOffset,
+      duration: null,
+      artUri: null,
+      addedAt: DateTime.now(),
+    );
+
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -858,24 +903,19 @@ class _LyricsAdjustButton extends HookConsumerWidget {
                       child: ElevatedButton.icon(
                         icon: const Icon(Icons.refresh),
                         label: const Text('Re-fetch'),
-                        onPressed: trackAsync.maybeWhen(
-                          data: (track) => track != null
-                              ? () {
-                                  Navigator.of(context).pop();
-                                  final metadata = metadataAsync.value;
-                                  _showFetchLyricsDialog(
-                                    context,
-                                    ref,
-                                    track,
-                                    trackPath,
-                                    metadata,
-                                    musixmatchProvider,
-                                    neteaseProvider,
-                                  );
-                                }
-                              : null,
-                          orElse: () => null,
-                        ),
+                        onPressed: () {
+                          Navigator.of(context).pop();
+                          final metadata = metadataAsync.value;
+                          _showFetchLyricsDialog(
+                            context,
+                            ref,
+                            track,
+                            currentTrack.path,
+                            metadata,
+                            musixmatchProvider,
+                            neteaseProvider,
+                          );
+                        },
                       ),
                     ),
                     Expanded(
@@ -886,33 +926,45 @@ class _LyricsAdjustButton extends HookConsumerWidget {
                           backgroundColor: Colors.red,
                           foregroundColor: Colors.white,
                         ),
-                        onPressed: trackAsync.maybeWhen(
-                          data: (track) => track != null
-                              ? () async {
-                                  Navigator.of(context).pop();
-                                  debugPrint(
-                                    'Clearing lyrics for track ${track.id}',
-                                  );
-                                  final database = ref.read(databaseProvider);
-                                  await (database.update(
-                                    database.tracks,
-                                  )..where((t) => t.id.equals(track.id))).write(
-                                    db.TracksCompanion(
-                                      lyrics: const drift.Value.absent(),
-                                    ),
-                                  );
-                                  debugPrint('Cleared lyrics from database');
-                                  // Invalidate the track provider to refresh the UI
-                                  ref.invalidate(
-                                    trackByPathProvider(trackPath),
-                                  );
-                                  debugPrint(
-                                    'Invalidated track provider for $trackPath',
-                                  );
-                                }
-                              : null,
-                          orElse: () => null,
-                        ),
+                        onPressed: () async {
+                          Navigator.of(context).pop();
+                          debugPrint('Clearing lyrics for track ${track.id}');
+                          final database = ref.read(databaseProvider);
+                          await (database.update(
+                            database.tracks,
+                          )..where((t) => t.id.equals(track.id))).write(
+                            db.TracksCompanion(
+                              lyrics: const drift.Value.absent(),
+                            ),
+                          );
+                          debugPrint('Cleared lyrics from database');
+
+                          // Update current track provider if this is the current track
+                          final currentTrackNotifier = ref.read(
+                            currentTrackProvider.notifier,
+                          );
+                          final currentTrackState = ref.watch(
+                            currentTrackProvider,
+                          );
+                          if (currentTrackState != null &&
+                              currentTrackState.id == track.id) {
+                            final updatedTrack = currentTrackState.copyWith(
+                              lyrics: null,
+                            );
+                            currentTrackNotifier.setTrack(updatedTrack);
+                            debugPrint(
+                              'Updated current track provider - cleared lyrics',
+                            );
+                          }
+
+                          // Invalidate the track provider to refresh the UI
+                          ref.invalidate(
+                            trackByPathProvider(currentTrack.path),
+                          );
+                          debugPrint(
+                            'Invalidated track provider for ${currentTrack.path}',
+                          );
+                        },
                       ),
                     ),
                   ],
@@ -922,21 +974,16 @@ class _LyricsAdjustButton extends HookConsumerWidget {
                   child: ElevatedButton.icon(
                     icon: const Icon(Icons.sync),
                     label: const Text('Live Sync Lyrics'),
-                    onPressed: trackAsync.maybeWhen(
-                      data: (track) => track != null
-                          ? () {
-                              Navigator.of(context).pop();
-                              _showLiveLyricsSyncDialog(
-                                context,
-                                ref,
-                                track,
-                                trackPath,
-                                player,
-                              );
-                            }
-                          : null,
-                      orElse: () => null,
-                    ),
+                    onPressed: () {
+                      Navigator.of(context).pop();
+                      _showLiveLyricsSyncDialog(
+                        context,
+                        ref,
+                        track,
+                        currentTrack.path,
+                        player,
+                      );
+                    },
                   ),
                 ),
                 SizedBox(
@@ -944,20 +991,15 @@ class _LyricsAdjustButton extends HookConsumerWidget {
                   child: ElevatedButton.icon(
                     icon: const Icon(Icons.tune),
                     label: const Text('Manual Offset'),
-                    onPressed: trackAsync.maybeWhen(
-                      data: (track) => track != null
-                          ? () {
-                              Navigator.of(context).pop();
-                              _showLyricsOffsetDialog(
-                                context,
-                                ref,
-                                track,
-                                trackPath,
-                              );
-                            }
-                          : null,
-                      orElse: () => null,
-                    ),
+                    onPressed: () {
+                      Navigator.of(context).pop();
+                      _showLyricsOffsetDialog(
+                        context,
+                        ref,
+                        track,
+                        currentTrack.path,
+                      );
+                    },
                   ),
                 ),
               ],
@@ -1243,12 +1285,12 @@ class _QueueView extends HookConsumerWidget {
 class _TimedLyricsView extends HookConsumerWidget {
   final LyricsData lyrics;
   final Player player;
-  final String trackPath;
+  final db.Track track;
 
   const _TimedLyricsView({
     required this.lyrics,
     required this.player,
-    required this.trackPath,
+    required this.track,
   });
 
   @override
@@ -1263,169 +1305,64 @@ class _TimedLyricsView extends HookConsumerWidget {
     );
     final previousIndex = useState(-1);
 
-    // Get track data to access lyrics offset
-    final trackAsync = ref.watch(trackByPathProvider(trackPath));
+    // Use track directly to access lyrics offset
+    final lyricsOffset = track.lyricsOffset;
 
-    return trackAsync.when(
-      loading: () => const Center(child: CircularProgressIndicator()),
-      error: (e, _) => Center(child: Text('Error: $e')),
-      data: (track) {
-        final lyricsOffset = track?.lyricsOffset ?? 0;
+    return StreamBuilder<Duration>(
+      stream: player.stream.position,
+      initialData: player.state.position,
+      builder: (context, snapshot) {
+        final position = snapshot.data ?? Duration.zero;
+        final positionMs = position.inMilliseconds + lyricsOffset;
 
-        return StreamBuilder<Duration>(
-          stream: player.stream.position,
-          initialData: player.state.position,
-          builder: (context, snapshot) {
-            final position = snapshot.data ?? Duration.zero;
-            final positionMs = position.inMilliseconds + lyricsOffset;
+        // Find current line index
+        int currentIndex = 0;
+        for (int i = 0; i < lyrics.lines.length; i++) {
+          if ((lyrics.lines[i].timeMs ?? 0) <= positionMs) {
+            currentIndex = i;
+          } else {
+            break;
+          }
+        }
 
-            // Find current line index
-            int currentIndex = 0;
-            for (int i = 0; i < lyrics.lines.length; i++) {
-              if ((lyrics.lines[i].timeMs ?? 0) <= positionMs) {
-                currentIndex = i;
-              } else {
-                break;
-              }
-            }
-
-            // Auto-scroll when current line changes
-            if (currentIndex != previousIndex.value) {
-              WidgetsBinding.instance.addPostFrameCallback((_) {
-                previousIndex.value = currentIndex;
-                if (isDesktop) {
-                  if (wheelScrollController.hasClients) {
-                    wheelScrollController.animateToItem(
-                      currentIndex,
-                      duration: const Duration(milliseconds: 400),
-                      curve: Curves.easeOutCubic,
-                    );
-                  }
-                } else {
-                  listController.animateToItem(
-                    index: currentIndex,
-                    scrollController: scrollController,
-                    alignment: 0.5,
-                    duration: (_) => const Duration(milliseconds: 300),
-                    curve: (_) => Curves.easeOutCubic,
-                  );
-                }
-              });
-            }
-
-            final totalDurationMs = player.state.duration.inMilliseconds;
-
+        // Auto-scroll when current line changes
+        if (currentIndex != previousIndex.value) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            previousIndex.value = currentIndex;
             if (isDesktop) {
-              return ListWheelScrollView.useDelegate(
-                controller: wheelScrollController,
-                itemExtent: 50,
-                perspective: 0.002,
-                offAxisFraction: 1.5,
-                squeeze: 1.0,
-                diameterRatio: 2,
-                physics: const FixedExtentScrollPhysics(),
-                childDelegate: ListWheelChildBuilderDelegate(
-                  childCount: lyrics.lines.length,
-                  builder: (context, index) {
-                    final line = lyrics.lines[index];
-                    final isActive = index == currentIndex;
-
-                    // Calculate progress within the current line for fill effect
-                    double progress = 0.0;
-                    if (isActive) {
-                      final startTime = line.timeMs ?? 0;
-                      final endTime = index < lyrics.lines.length - 1
-                          ? (lyrics.lines[index + 1].timeMs ?? startTime)
-                          : totalDurationMs;
-                      if (endTime > startTime) {
-                        progress =
-                            ((positionMs - startTime) / (endTime - startTime))
-                                .clamp(0.0, 1.0);
-                      }
-                    }
-
-                    return Align(
-                      alignment: Alignment.centerRight,
-                      child: ConstrainedBox(
-                        constraints: BoxConstraints(
-                          maxWidth: MediaQuery.sizeOf(context).width * 0.4,
-                        ),
-                        child: InkWell(
-                          onTap: () {
-                            if (line.timeMs != null) {
-                              player.seek(Duration(milliseconds: line.timeMs!));
-                            }
-                          },
-                          child: Container(
-                            alignment: Alignment.centerLeft,
-                            padding: const EdgeInsets.symmetric(horizontal: 32),
-                            child: AnimatedDefaultTextStyle(
-                              duration: const Duration(milliseconds: 200),
-                              style: Theme.of(context).textTheme.bodyLarge!
-                                  .copyWith(
-                                    fontSize: isActive ? 18 : 16,
-                                    fontWeight: isActive
-                                        ? FontWeight.bold
-                                        : FontWeight.normal,
-                                    color: isActive
-                                        ? Theme.of(context).colorScheme.primary
-                                        : Theme.of(context)
-                                              .colorScheme
-                                              .onSurface
-                                              .withValues(alpha: 0.7),
-                                  ),
-                              textAlign: TextAlign.left,
-                              child: () {
-                                final displayText = line.text;
-
-                                return isActive &&
-                                        progress > 0.0 &&
-                                        progress < 1.0
-                                    ? ShaderMask(
-                                        shaderCallback: (bounds) =>
-                                            LinearGradient(
-                                              colors: [
-                                                Theme.of(
-                                                  context,
-                                                ).colorScheme.primary,
-                                                Theme.of(context)
-                                                    .colorScheme
-                                                    .onSurface
-                                                    .withValues(alpha: 0.7),
-                                              ],
-                                              stops: [progress, progress],
-                                            ).createShader(bounds),
-                                        child: Text(
-                                          displayText,
-                                          maxLines: 1,
-                                          overflow: TextOverflow.ellipsis,
-                                        ),
-                                      )
-                                    : Text(
-                                        displayText,
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                      );
-                              }(),
-                            ),
-                          ),
-                        ),
-                      ),
-                    );
-                  },
-                ),
+              if (wheelScrollController.hasClients) {
+                wheelScrollController.animateToItem(
+                  currentIndex,
+                  duration: const Duration(milliseconds: 400),
+                  curve: Curves.easeOutCubic,
+                );
+              }
+            } else {
+              listController.animateToItem(
+                index: currentIndex,
+                scrollController: scrollController,
+                alignment: 0.5,
+                duration: (_) => const Duration(milliseconds: 300),
+                curve: (_) => Curves.easeOutCubic,
               );
             }
+          });
+        }
 
-            return SuperListView.builder(
-              padding: EdgeInsets.only(
-                top: 0.25 * MediaQuery.sizeOf(context).height,
-                bottom: 0.25 * MediaQuery.sizeOf(context).height,
-              ),
-              listController: listController,
-              controller: scrollController,
-              itemCount: lyrics.lines.length,
-              itemBuilder: (context, index) {
+        final totalDurationMs = player.state.duration.inMilliseconds;
+
+        if (isDesktop) {
+          return ListWheelScrollView.useDelegate(
+            controller: wheelScrollController,
+            itemExtent: 50,
+            perspective: 0.002,
+            offAxisFraction: 1.5,
+            squeeze: 1.0,
+            diameterRatio: 2,
+            physics: const FixedExtentScrollPhysics(),
+            childDelegate: ListWheelChildBuilderDelegate(
+              childCount: lyrics.lines.length,
+              builder: (context, index) {
                 final line = lyrics.lines[index];
                 final isActive = index == currentIndex;
 
@@ -1443,52 +1380,138 @@ class _TimedLyricsView extends HookConsumerWidget {
                   }
                 }
 
-                return InkWell(
-                  onTap: () {
-                    if (line.timeMs != null) {
-                      player.seek(Duration(milliseconds: line.timeMs!));
-                    }
-                  },
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(
-                      vertical: 8,
-                      horizontal: 16,
+                return Align(
+                  alignment: Alignment.centerRight,
+                  child: ConstrainedBox(
+                    constraints: BoxConstraints(
+                      maxWidth: MediaQuery.sizeOf(context).width * 0.4,
                     ),
-                    child: AnimatedDefaultTextStyle(
-                      duration: const Duration(milliseconds: 200),
-                      style: Theme.of(context).textTheme.bodyLarge!.copyWith(
-                        fontSize: isActive ? 20 : 16,
-                        fontWeight: isActive
-                            ? FontWeight.bold
-                            : FontWeight.normal,
-                        color: isActive
-                            ? Theme.of(context).colorScheme.primary
-                            : Theme.of(
-                                context,
-                              ).colorScheme.onSurface.withValues(alpha: 0.7),
-                      ),
-                      textAlign: TextAlign.center,
-                      child: () {
-                        final displayText = line.text;
+                    child: InkWell(
+                      onTap: () {
+                        if (line.timeMs != null) {
+                          player.seek(Duration(milliseconds: line.timeMs!));
+                        }
+                      },
+                      child: Container(
+                        alignment: Alignment.centerLeft,
+                        padding: const EdgeInsets.symmetric(horizontal: 32),
+                        child: AnimatedDefaultTextStyle(
+                          duration: const Duration(milliseconds: 200),
+                          style: Theme.of(context).textTheme.bodyLarge!
+                              .copyWith(
+                                fontSize: isActive ? 18 : 16,
+                                fontWeight: isActive
+                                    ? FontWeight.bold
+                                    : FontWeight.normal,
+                                color: isActive
+                                    ? Theme.of(context).colorScheme.primary
+                                    : Theme.of(context).colorScheme.onSurface
+                                          .withValues(alpha: 0.7),
+                              ),
+                          textAlign: TextAlign.left,
+                          child: () {
+                            final displayText = line.text;
 
-                        return isActive && progress > 0.0 && progress < 1.0
-                            ? ShaderMask(
-                                shaderCallback: (bounds) => LinearGradient(
-                                  colors: [
-                                    Theme.of(context).colorScheme.primary,
-                                    Theme.of(context).colorScheme.onSurface
-                                        .withValues(alpha: 0.7),
-                                  ],
-                                  stops: [progress, progress],
-                                ).createShader(bounds),
-                                child: Text(displayText),
-                              )
-                            : Text(displayText);
-                      }(),
+                            return isActive && progress > 0.0 && progress < 1.0
+                                ? ShaderMask(
+                                    shaderCallback: (bounds) => LinearGradient(
+                                      colors: [
+                                        Theme.of(context).colorScheme.primary,
+                                        Theme.of(context).colorScheme.onSurface
+                                            .withValues(alpha: 0.7),
+                                      ],
+                                      stops: [progress, progress],
+                                    ).createShader(bounds),
+                                    child: Text(
+                                      displayText,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  )
+                                : Text(
+                                    displayText,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  );
+                          }(),
+                        ),
+                      ),
                     ),
                   ),
                 );
               },
+            ),
+          );
+        }
+
+        return SuperListView.builder(
+          padding: EdgeInsets.only(
+            top: 0.25 * MediaQuery.sizeOf(context).height,
+            bottom: 0.25 * MediaQuery.sizeOf(context).height,
+          ),
+          listController: listController,
+          controller: scrollController,
+          itemCount: lyrics.lines.length,
+          itemBuilder: (context, index) {
+            final line = lyrics.lines[index];
+            final isActive = index == currentIndex;
+
+            // Calculate progress within the current line for fill effect
+            double progress = 0.0;
+            if (isActive) {
+              final startTime = line.timeMs ?? 0;
+              final endTime = index < lyrics.lines.length - 1
+                  ? (lyrics.lines[index + 1].timeMs ?? startTime)
+                  : totalDurationMs;
+              if (endTime > startTime) {
+                progress = ((positionMs - startTime) / (endTime - startTime))
+                    .clamp(0.0, 1.0);
+              }
+            }
+
+            return InkWell(
+              onTap: () {
+                if (line.timeMs != null) {
+                  player.seek(Duration(milliseconds: line.timeMs!));
+                }
+              },
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  vertical: 8,
+                  horizontal: 16,
+                ),
+                child: AnimatedDefaultTextStyle(
+                  duration: const Duration(milliseconds: 200),
+                  style: Theme.of(context).textTheme.bodyLarge!.copyWith(
+                    fontSize: isActive ? 20 : 16,
+                    fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
+                    color: isActive
+                        ? Theme.of(context).colorScheme.primary
+                        : Theme.of(
+                            context,
+                          ).colorScheme.onSurface.withValues(alpha: 0.7),
+                  ),
+                  textAlign: TextAlign.center,
+                  child: () {
+                    final displayText = line.text;
+
+                    return isActive && progress > 0.0 && progress < 1.0
+                        ? ShaderMask(
+                            shaderCallback: (bounds) => LinearGradient(
+                              colors: [
+                                Theme.of(context).colorScheme.primary,
+                                Theme.of(
+                                  context,
+                                ).colorScheme.onSurface.withValues(alpha: 0.7),
+                              ],
+                              stops: [progress, progress],
+                            ).createShader(bounds),
+                            child: Text(displayText),
+                          )
+                        : Text(displayText);
+                  }(),
+                ),
+              ),
             );
           },
         );
@@ -1711,7 +1734,7 @@ class _PlayerControls extends HookWidget {
           child: Row(
             spacing: 16,
             children: [
-              _LyricsAdjustButton(trackPath: trackPath, player: player),
+              _LyricsAdjustButton(player: player),
               Expanded(
                 child: StreamBuilder<double>(
                   stream: player.stream.volume,
@@ -1806,6 +1829,21 @@ class _LiveLyricsSyncDialog extends HookConsumerWidget {
               )..where((t) => t.id.equals(track.id))).write(
                 db.TracksCompanion(lyricsOffset: drift.Value(tempOffset.value)),
               );
+
+              // Update current track provider if this is the current track
+              final currentTrackNotifier = ref.read(
+                currentTrackProvider.notifier,
+              );
+              final currentTrack = ref.watch(currentTrackProvider);
+              if (currentTrack != null && currentTrack.id == track.id) {
+                final updatedTrack = currentTrack.copyWith(
+                  lyricsOffset: tempOffset.value,
+                );
+                currentTrackNotifier.setTrack(updatedTrack);
+                debugPrint(
+                  'Updated current track provider with new lyrics offset',
+                );
+              }
 
               // Invalidate the track provider to refresh the UI
               ref.invalidate(trackByPathProvider(trackPath));
