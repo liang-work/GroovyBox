@@ -1597,6 +1597,451 @@ class WatchFoldersCompanion extends UpdateCompanion<WatchFolder> {
   }
 }
 
+class $RemoteProvidersTable extends RemoteProviders
+    with TableInfo<$RemoteProvidersTable, RemoteProvider> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $RemoteProvidersTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
+  );
+  static const VerificationMeta _serverUrlMeta = const VerificationMeta(
+    'serverUrl',
+  );
+  @override
+  late final GeneratedColumn<String> serverUrl = GeneratedColumn<String>(
+    'server_url',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways('UNIQUE'),
+  );
+  static const VerificationMeta _nameMeta = const VerificationMeta('name');
+  @override
+  late final GeneratedColumn<String> name = GeneratedColumn<String>(
+    'name',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _usernameMeta = const VerificationMeta(
+    'username',
+  );
+  @override
+  late final GeneratedColumn<String> username = GeneratedColumn<String>(
+    'username',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _passwordMeta = const VerificationMeta(
+    'password',
+  );
+  @override
+  late final GeneratedColumn<String> password = GeneratedColumn<String>(
+    'password',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _isActiveMeta = const VerificationMeta(
+    'isActive',
+  );
+  @override
+  late final GeneratedColumn<bool> isActive = GeneratedColumn<bool>(
+    'is_active',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("is_active" IN (0, 1))',
+    ),
+    defaultValue: const Constant(true),
+  );
+  static const VerificationMeta _addedAtMeta = const VerificationMeta(
+    'addedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> addedAt = GeneratedColumn<DateTime>(
+    'added_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    serverUrl,
+    name,
+    username,
+    password,
+    isActive,
+    addedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'remote_providers';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<RemoteProvider> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('server_url')) {
+      context.handle(
+        _serverUrlMeta,
+        serverUrl.isAcceptableOrUnknown(data['server_url']!, _serverUrlMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_serverUrlMeta);
+    }
+    if (data.containsKey('name')) {
+      context.handle(
+        _nameMeta,
+        name.isAcceptableOrUnknown(data['name']!, _nameMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_nameMeta);
+    }
+    if (data.containsKey('username')) {
+      context.handle(
+        _usernameMeta,
+        username.isAcceptableOrUnknown(data['username']!, _usernameMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_usernameMeta);
+    }
+    if (data.containsKey('password')) {
+      context.handle(
+        _passwordMeta,
+        password.isAcceptableOrUnknown(data['password']!, _passwordMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_passwordMeta);
+    }
+    if (data.containsKey('is_active')) {
+      context.handle(
+        _isActiveMeta,
+        isActive.isAcceptableOrUnknown(data['is_active']!, _isActiveMeta),
+      );
+    }
+    if (data.containsKey('added_at')) {
+      context.handle(
+        _addedAtMeta,
+        addedAt.isAcceptableOrUnknown(data['added_at']!, _addedAtMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  RemoteProvider map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return RemoteProvider(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      serverUrl: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}server_url'],
+      )!,
+      name: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}name'],
+      )!,
+      username: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}username'],
+      )!,
+      password: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}password'],
+      )!,
+      isActive: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}is_active'],
+      )!,
+      addedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}added_at'],
+      )!,
+    );
+  }
+
+  @override
+  $RemoteProvidersTable createAlias(String alias) {
+    return $RemoteProvidersTable(attachedDatabase, alias);
+  }
+}
+
+class RemoteProvider extends DataClass implements Insertable<RemoteProvider> {
+  final int id;
+  final String serverUrl;
+  final String name;
+  final String username;
+  final String password;
+  final bool isActive;
+  final DateTime addedAt;
+  const RemoteProvider({
+    required this.id,
+    required this.serverUrl,
+    required this.name,
+    required this.username,
+    required this.password,
+    required this.isActive,
+    required this.addedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['server_url'] = Variable<String>(serverUrl);
+    map['name'] = Variable<String>(name);
+    map['username'] = Variable<String>(username);
+    map['password'] = Variable<String>(password);
+    map['is_active'] = Variable<bool>(isActive);
+    map['added_at'] = Variable<DateTime>(addedAt);
+    return map;
+  }
+
+  RemoteProvidersCompanion toCompanion(bool nullToAbsent) {
+    return RemoteProvidersCompanion(
+      id: Value(id),
+      serverUrl: Value(serverUrl),
+      name: Value(name),
+      username: Value(username),
+      password: Value(password),
+      isActive: Value(isActive),
+      addedAt: Value(addedAt),
+    );
+  }
+
+  factory RemoteProvider.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return RemoteProvider(
+      id: serializer.fromJson<int>(json['id']),
+      serverUrl: serializer.fromJson<String>(json['serverUrl']),
+      name: serializer.fromJson<String>(json['name']),
+      username: serializer.fromJson<String>(json['username']),
+      password: serializer.fromJson<String>(json['password']),
+      isActive: serializer.fromJson<bool>(json['isActive']),
+      addedAt: serializer.fromJson<DateTime>(json['addedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'serverUrl': serializer.toJson<String>(serverUrl),
+      'name': serializer.toJson<String>(name),
+      'username': serializer.toJson<String>(username),
+      'password': serializer.toJson<String>(password),
+      'isActive': serializer.toJson<bool>(isActive),
+      'addedAt': serializer.toJson<DateTime>(addedAt),
+    };
+  }
+
+  RemoteProvider copyWith({
+    int? id,
+    String? serverUrl,
+    String? name,
+    String? username,
+    String? password,
+    bool? isActive,
+    DateTime? addedAt,
+  }) => RemoteProvider(
+    id: id ?? this.id,
+    serverUrl: serverUrl ?? this.serverUrl,
+    name: name ?? this.name,
+    username: username ?? this.username,
+    password: password ?? this.password,
+    isActive: isActive ?? this.isActive,
+    addedAt: addedAt ?? this.addedAt,
+  );
+  RemoteProvider copyWithCompanion(RemoteProvidersCompanion data) {
+    return RemoteProvider(
+      id: data.id.present ? data.id.value : this.id,
+      serverUrl: data.serverUrl.present ? data.serverUrl.value : this.serverUrl,
+      name: data.name.present ? data.name.value : this.name,
+      username: data.username.present ? data.username.value : this.username,
+      password: data.password.present ? data.password.value : this.password,
+      isActive: data.isActive.present ? data.isActive.value : this.isActive,
+      addedAt: data.addedAt.present ? data.addedAt.value : this.addedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('RemoteProvider(')
+          ..write('id: $id, ')
+          ..write('serverUrl: $serverUrl, ')
+          ..write('name: $name, ')
+          ..write('username: $username, ')
+          ..write('password: $password, ')
+          ..write('isActive: $isActive, ')
+          ..write('addedAt: $addedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode =>
+      Object.hash(id, serverUrl, name, username, password, isActive, addedAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is RemoteProvider &&
+          other.id == this.id &&
+          other.serverUrl == this.serverUrl &&
+          other.name == this.name &&
+          other.username == this.username &&
+          other.password == this.password &&
+          other.isActive == this.isActive &&
+          other.addedAt == this.addedAt);
+}
+
+class RemoteProvidersCompanion extends UpdateCompanion<RemoteProvider> {
+  final Value<int> id;
+  final Value<String> serverUrl;
+  final Value<String> name;
+  final Value<String> username;
+  final Value<String> password;
+  final Value<bool> isActive;
+  final Value<DateTime> addedAt;
+  const RemoteProvidersCompanion({
+    this.id = const Value.absent(),
+    this.serverUrl = const Value.absent(),
+    this.name = const Value.absent(),
+    this.username = const Value.absent(),
+    this.password = const Value.absent(),
+    this.isActive = const Value.absent(),
+    this.addedAt = const Value.absent(),
+  });
+  RemoteProvidersCompanion.insert({
+    this.id = const Value.absent(),
+    required String serverUrl,
+    required String name,
+    required String username,
+    required String password,
+    this.isActive = const Value.absent(),
+    this.addedAt = const Value.absent(),
+  }) : serverUrl = Value(serverUrl),
+       name = Value(name),
+       username = Value(username),
+       password = Value(password);
+  static Insertable<RemoteProvider> custom({
+    Expression<int>? id,
+    Expression<String>? serverUrl,
+    Expression<String>? name,
+    Expression<String>? username,
+    Expression<String>? password,
+    Expression<bool>? isActive,
+    Expression<DateTime>? addedAt,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (serverUrl != null) 'server_url': serverUrl,
+      if (name != null) 'name': name,
+      if (username != null) 'username': username,
+      if (password != null) 'password': password,
+      if (isActive != null) 'is_active': isActive,
+      if (addedAt != null) 'added_at': addedAt,
+    });
+  }
+
+  RemoteProvidersCompanion copyWith({
+    Value<int>? id,
+    Value<String>? serverUrl,
+    Value<String>? name,
+    Value<String>? username,
+    Value<String>? password,
+    Value<bool>? isActive,
+    Value<DateTime>? addedAt,
+  }) {
+    return RemoteProvidersCompanion(
+      id: id ?? this.id,
+      serverUrl: serverUrl ?? this.serverUrl,
+      name: name ?? this.name,
+      username: username ?? this.username,
+      password: password ?? this.password,
+      isActive: isActive ?? this.isActive,
+      addedAt: addedAt ?? this.addedAt,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (serverUrl.present) {
+      map['server_url'] = Variable<String>(serverUrl.value);
+    }
+    if (name.present) {
+      map['name'] = Variable<String>(name.value);
+    }
+    if (username.present) {
+      map['username'] = Variable<String>(username.value);
+    }
+    if (password.present) {
+      map['password'] = Variable<String>(password.value);
+    }
+    if (isActive.present) {
+      map['is_active'] = Variable<bool>(isActive.value);
+    }
+    if (addedAt.present) {
+      map['added_at'] = Variable<DateTime>(addedAt.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('RemoteProvidersCompanion(')
+          ..write('id: $id, ')
+          ..write('serverUrl: $serverUrl, ')
+          ..write('name: $name, ')
+          ..write('username: $username, ')
+          ..write('password: $password, ')
+          ..write('isActive: $isActive, ')
+          ..write('addedAt: $addedAt')
+          ..write(')'))
+        .toString();
+  }
+}
+
 class $AppSettingsTable extends AppSettings
     with TableInfo<$AppSettingsTable, AppSetting> {
   @override
@@ -1814,6 +2259,9 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     this,
   );
   late final $WatchFoldersTable watchFolders = $WatchFoldersTable(this);
+  late final $RemoteProvidersTable remoteProviders = $RemoteProvidersTable(
+    this,
+  );
   late final $AppSettingsTable appSettings = $AppSettingsTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
@@ -1824,6 +2272,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     playlists,
     playlistEntries,
     watchFolders,
+    remoteProviders,
     appSettings,
   ];
   @override
@@ -3118,6 +3567,244 @@ typedef $$WatchFoldersTableProcessedTableManager =
       WatchFolder,
       PrefetchHooks Function()
     >;
+typedef $$RemoteProvidersTableCreateCompanionBuilder =
+    RemoteProvidersCompanion Function({
+      Value<int> id,
+      required String serverUrl,
+      required String name,
+      required String username,
+      required String password,
+      Value<bool> isActive,
+      Value<DateTime> addedAt,
+    });
+typedef $$RemoteProvidersTableUpdateCompanionBuilder =
+    RemoteProvidersCompanion Function({
+      Value<int> id,
+      Value<String> serverUrl,
+      Value<String> name,
+      Value<String> username,
+      Value<String> password,
+      Value<bool> isActive,
+      Value<DateTime> addedAt,
+    });
+
+class $$RemoteProvidersTableFilterComposer
+    extends Composer<_$AppDatabase, $RemoteProvidersTable> {
+  $$RemoteProvidersTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get serverUrl => $composableBuilder(
+    column: $table.serverUrl,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get username => $composableBuilder(
+    column: $table.username,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get password => $composableBuilder(
+    column: $table.password,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get isActive => $composableBuilder(
+    column: $table.isActive,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get addedAt => $composableBuilder(
+    column: $table.addedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$RemoteProvidersTableOrderingComposer
+    extends Composer<_$AppDatabase, $RemoteProvidersTable> {
+  $$RemoteProvidersTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get serverUrl => $composableBuilder(
+    column: $table.serverUrl,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get username => $composableBuilder(
+    column: $table.username,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get password => $composableBuilder(
+    column: $table.password,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get isActive => $composableBuilder(
+    column: $table.isActive,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get addedAt => $composableBuilder(
+    column: $table.addedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$RemoteProvidersTableAnnotationComposer
+    extends Composer<_$AppDatabase, $RemoteProvidersTable> {
+  $$RemoteProvidersTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get serverUrl =>
+      $composableBuilder(column: $table.serverUrl, builder: (column) => column);
+
+  GeneratedColumn<String> get name =>
+      $composableBuilder(column: $table.name, builder: (column) => column);
+
+  GeneratedColumn<String> get username =>
+      $composableBuilder(column: $table.username, builder: (column) => column);
+
+  GeneratedColumn<String> get password =>
+      $composableBuilder(column: $table.password, builder: (column) => column);
+
+  GeneratedColumn<bool> get isActive =>
+      $composableBuilder(column: $table.isActive, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get addedAt =>
+      $composableBuilder(column: $table.addedAt, builder: (column) => column);
+}
+
+class $$RemoteProvidersTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $RemoteProvidersTable,
+          RemoteProvider,
+          $$RemoteProvidersTableFilterComposer,
+          $$RemoteProvidersTableOrderingComposer,
+          $$RemoteProvidersTableAnnotationComposer,
+          $$RemoteProvidersTableCreateCompanionBuilder,
+          $$RemoteProvidersTableUpdateCompanionBuilder,
+          (
+            RemoteProvider,
+            BaseReferences<
+              _$AppDatabase,
+              $RemoteProvidersTable,
+              RemoteProvider
+            >,
+          ),
+          RemoteProvider,
+          PrefetchHooks Function()
+        > {
+  $$RemoteProvidersTableTableManager(
+    _$AppDatabase db,
+    $RemoteProvidersTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$RemoteProvidersTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$RemoteProvidersTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$RemoteProvidersTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<String> serverUrl = const Value.absent(),
+                Value<String> name = const Value.absent(),
+                Value<String> username = const Value.absent(),
+                Value<String> password = const Value.absent(),
+                Value<bool> isActive = const Value.absent(),
+                Value<DateTime> addedAt = const Value.absent(),
+              }) => RemoteProvidersCompanion(
+                id: id,
+                serverUrl: serverUrl,
+                name: name,
+                username: username,
+                password: password,
+                isActive: isActive,
+                addedAt: addedAt,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                required String serverUrl,
+                required String name,
+                required String username,
+                required String password,
+                Value<bool> isActive = const Value.absent(),
+                Value<DateTime> addedAt = const Value.absent(),
+              }) => RemoteProvidersCompanion.insert(
+                id: id,
+                serverUrl: serverUrl,
+                name: name,
+                username: username,
+                password: password,
+                isActive: isActive,
+                addedAt: addedAt,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$RemoteProvidersTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $RemoteProvidersTable,
+      RemoteProvider,
+      $$RemoteProvidersTableFilterComposer,
+      $$RemoteProvidersTableOrderingComposer,
+      $$RemoteProvidersTableAnnotationComposer,
+      $$RemoteProvidersTableCreateCompanionBuilder,
+      $$RemoteProvidersTableUpdateCompanionBuilder,
+      (
+        RemoteProvider,
+        BaseReferences<_$AppDatabase, $RemoteProvidersTable, RemoteProvider>,
+      ),
+      RemoteProvider,
+      PrefetchHooks Function()
+    >;
 typedef $$AppSettingsTableCreateCompanionBuilder =
     AppSettingsCompanion Function({
       required String key,
@@ -3269,6 +3956,8 @@ class $AppDatabaseManager {
       $$PlaylistEntriesTableTableManager(_db, _db.playlistEntries);
   $$WatchFoldersTableTableManager get watchFolders =>
       $$WatchFoldersTableTableManager(_db, _db.watchFolders);
+  $$RemoteProvidersTableTableManager get remoteProviders =>
+      $$RemoteProvidersTableTableManager(_db, _db.remoteProviders);
   $$AppSettingsTableTableManager get appSettings =>
       $$AppSettingsTableTableManager(_db, _db.appSettings);
 }

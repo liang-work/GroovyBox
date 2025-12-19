@@ -55,6 +55,7 @@ dependencies:
   palette_generator: ^0.3.3+4
   watcher: ^1.2.0
   shared_preferences: ^2.3.5
+  jellyfin_dart: ^0.1.2
 
 dev_dependencies:
   flutter_test:

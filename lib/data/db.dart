@@ -42,6 +42,17 @@ class WatchFolders extends Table {
   DateTimeColumn get lastScanned => dateTime().nullable()();
 }
 
+class RemoteProviders extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  TextColumn get serverUrl => text().unique()();
+  TextColumn get name => text()();
+  TextColumn get username => text()();
+  TextColumn get password =>
+      text()(); // Note: In production, this should be encrypted
+  BoolColumn get isActive => boolean().withDefault(const Constant(true))();
+  DateTimeColumn get addedAt => dateTime().withDefault(currentDateAndTime)();
+}
+
 class AppSettings extends Table {
   TextColumn get key => text()();
   TextColumn get value => text()();
@@ -51,13 +62,20 @@ class AppSettings extends Table {
 }
 
 @DriftDatabase(
-  tables: [Tracks, Playlists, PlaylistEntries, WatchFolders, AppSettings],
+  tables: [
+    Tracks,
+    Playlists,
+    PlaylistEntries,
+    WatchFolders,
+    RemoteProviders,
+    AppSettings,
+  ],
 )
 class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
 
   @override
-  int get schemaVersion => 6; // Bump version for watch folders and settings
+  int get schemaVersion => 7; // Bump version for remote providers
 
   @override
   MigrationStrategy get migration {
@@ -83,6 +101,10 @@ class AppDatabase extends _$AppDatabase {
           // Create tables for watch folders and settings
           await m.createTable(watchFolders);
           await m.createTable(appSettings);
+        }
+        if (from < 7) {
+          // Create table for remote providers
+          await m.createTable(remoteProviders);
         }
       },
     );

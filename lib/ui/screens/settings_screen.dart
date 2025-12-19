@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:groovybox/providers/settings_provider.dart';
 import 'package:groovybox/providers/watch_folder_provider.dart';
+import 'package:groovybox/providers/remote_provider.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:styled_widget/styled_widget.dart';
@@ -12,6 +13,7 @@ class SettingsScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final settingsAsync = ref.watch(settingsProvider);
     final watchFoldersAsync = ref.watch(watchFoldersProvider);
+    final remoteProvidersAsync = ref.watch(remoteProvidersProvider);
 
     return Scaffold(
       appBar: AppBar(title: const Text('Settings')),
@@ -79,6 +81,7 @@ class SettingsScreen extends ConsumerWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -186,6 +189,122 @@ class SettingsScreen extends ConsumerWidget {
                       ],
                     ),
                   ),
+
+                  // Remote Providers Section
+                  Card(
+                    margin: EdgeInsets.zero,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                const Text(
+                                  'Remote Providers',
+                                  style: TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                Row(
+                                  children: [
+                                    IconButton(
+                                      onPressed: () =>
+                                          _indexRemoteProviders(context, ref),
+                                      icon: const Icon(Icons.refresh),
+                                      tooltip: 'Index Remote Providers',
+                                      visualDensity: const VisualDensity(
+                                        horizontal: -4,
+                                        vertical: -4,
+                                      ),
+                                    ),
+                                    IconButton(
+                                      onPressed: () =>
+                                          _addRemoteProvider(context, ref),
+                                      icon: const Icon(Icons.add),
+                                      tooltip: 'Add Remote Provider',
+                                      visualDensity: const VisualDensity(
+                                        horizontal: -4,
+                                        vertical: -4,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                            const Text(
+                              'Connect to remote media servers like Jellyfin to access your music library.',
+                              style: TextStyle(
+                                color: Colors.grey,
+                                fontSize: 14,
+                              ),
+                            ),
+                          ],
+                        ).padding(horizontal: 16, top: 16, bottom: 8),
+                        remoteProvidersAsync.when(
+                          data: (providers) => providers.isEmpty
+                              ? const Text(
+                                  'No remote providers added yet.',
+                                  style: TextStyle(
+                                    color: Colors.grey,
+                                    fontSize: 14,
+                                  ),
+                                ).padding(horizontal: 16, vertical: 8)
+                              : Column(
+                                  children: providers
+                                      .map(
+                                        (provider) => ListTile(
+                                          title: Text(provider.name),
+                                          subtitle: Text(provider.serverUrl),
+                                          contentPadding: const EdgeInsets.only(
+                                            left: 16,
+                                            right: 16,
+                                          ),
+                                          trailing: Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              Switch(
+                                                value: provider.isActive,
+                                                onChanged: (value) {
+                                                  ref
+                                                      .read(
+                                                        remoteProviderServiceProvider,
+                                                      )
+                                                      .toggleRemoteProvider(
+                                                        provider.id,
+                                                        value,
+                                                      );
+                                                },
+                                              ),
+                                              IconButton(
+                                                icon: const Icon(Icons.delete),
+                                                onPressed: () {
+                                                  ref
+                                                      .read(
+                                                        remoteProviderServiceProvider,
+                                                      )
+                                                      .removeRemoteProvider(
+                                                        provider.id,
+                                                      );
+                                                },
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      )
+                                      .toList(),
+                                ),
+                          loading: () => const CircularProgressIndicator(),
+                          error: (error, _) =>
+                              Text('Error loading providers: $error'),
+                        ),
+                        const SizedBox(height: 8),
+                      ],
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -236,5 +355,140 @@ class SettingsScreen extends ConsumerWidget {
         ).showSnackBar(SnackBar(content: Text('Error scanning libraries: $e')));
       }
     }
+  }
+
+  void _indexRemoteProviders(BuildContext context, WidgetRef ref) async {
+    try {
+      final service = ref.read(remoteProviderServiceProvider);
+      final providersAsync = ref.read(remoteProvidersProvider);
+
+      providersAsync.when(
+        data: (providers) async {
+          final activeProviders = providers.where((p) => p.isActive).toList();
+
+          if (activeProviders.isEmpty) {
+            if (context.mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('No active remote providers to index'),
+                ),
+              );
+            }
+            return;
+          }
+
+          for (final provider in activeProviders) {
+            try {
+              await service.indexRemoteProvider(provider.id);
+            } catch (e) {
+              debugPrint('Error indexing provider ${provider.name}: $e');
+            }
+          }
+
+          if (context.mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(
+                  'Indexed ${activeProviders.length} remote provider(s)',
+                ),
+              ),
+            );
+          }
+        },
+        loading: () {
+          // Providers are still loading, do nothing
+        },
+        error: (error, _) {
+          if (context.mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('Error loading providers: $error')),
+            );
+          }
+        },
+      );
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error indexing remote providers: $e')),
+        );
+      }
+    }
+  }
+
+  void _addRemoteProvider(BuildContext context, WidgetRef ref) {
+    final serverUrlController = TextEditingController();
+    final usernameController = TextEditingController();
+    final passwordController = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Add Remote Provider'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: serverUrlController,
+              decoration: const InputDecoration(
+                labelText: 'Server URL',
+                hintText: 'https://your-jellyfin-server.com',
+              ),
+              keyboardType: TextInputType.url,
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: usernameController,
+              decoration: const InputDecoration(labelText: 'Username'),
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: passwordController,
+              decoration: const InputDecoration(labelText: 'Password'),
+              obscureText: true,
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () async {
+              final serverUrl = serverUrlController.text.trim();
+              final username = usernameController.text.trim();
+              final password = passwordController.text.trim();
+
+              if (serverUrl.isEmpty || username.isEmpty || password.isEmpty) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('All fields are required')),
+                );
+                return;
+              }
+
+              try {
+                final service = ref.read(remoteProviderServiceProvider);
+                await service.addRemoteProvider(serverUrl, username, password);
+                if (context.mounted) {
+                  Navigator.of(context).pop();
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Added remote provider: $serverUrl'),
+                    ),
+                  );
+                }
+              } catch (e) {
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Error adding provider: $e')),
+                  );
+                }
+              }
+            },
+            child: const Text('Add'),
+          ),
+        ],
+      ),
+    );
   }
 }

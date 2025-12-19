@@ -87,7 +87,7 @@ final class ImportModeNotifierProvider
 }
 
 String _$importModeNotifierHash() =>
-    r'eaf3dcf7c74dc24d6ebe14840d597e4a79859a63';
+    r'4a4f8d3bb378e964f1d67159a650a2d7addeab69';
 
 abstract class _$ImportModeNotifier extends $Notifier<ImportMode> {
   ImportMode build();
@@ -140,7 +140,7 @@ final class AutoScanNotifierProvider
   }
 }
 
-String _$autoScanNotifierHash() => r'56f2f1a2f6aef095782a0ed4407a43a8f589dc4b';
+String _$autoScanNotifierHash() => r'e8d7c9bd7059e0117979b120616addcd5c1abb8d';
 
 abstract class _$AutoScanNotifier extends $Notifier<bool> {
   bool build();
@@ -194,7 +194,7 @@ final class WatchForChangesNotifierProvider
 }
 
 String _$watchForChangesNotifierHash() =>
-    r'b4648380ae989e6e36138780d0c925916b6e20b3';
+    r'1f15ffac52a0401b14d8cd4e04d39c69d5a2e704';
 
 abstract class _$WatchForChangesNotifier extends $Notifier<bool> {
   bool build();
