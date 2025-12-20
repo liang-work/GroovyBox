@@ -270,7 +270,7 @@ class Shell extends HookConsumerWidget {
                                 ),
                                 IconButton(
                                   icon: Icon(Symbols.close),
-                                  onPressed: () => windowManager.hide(),
+                                  onPressed: () => windowManager.close(),
                                   iconSize: 16,
                                   padding: EdgeInsets.all(8),
                                   constraints: BoxConstraints(),
