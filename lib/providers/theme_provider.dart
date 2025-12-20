@@ -7,7 +7,7 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 part 'theme_provider.g.dart';
 
 // Default seed color
-const Color defaultSeedColor = Colors.deepPurple;
+const Color defaultSeedColor = Color.fromRGBO(46, 176, 198, 1);
 
 // State class for theme data
 class ThemeState {
