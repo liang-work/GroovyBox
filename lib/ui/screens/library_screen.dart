@@ -713,26 +713,26 @@ class LibraryScreen extends HookConsumerWidget {
                       );
                     }
 
-                    return ListView.builder(
-                      shrinkWrap: true,
-                      itemCount: playlists.length,
-                      itemBuilder: (context, index) {
-                        final playlist = playlists[index];
-                        return ListTile(
-                          title: Text(playlist.name),
-                          onTap: () {
-                            ref
-                                .read(playlistRepositoryProvider.notifier)
-                                .addToPlaylist(playlist.id, track.id);
-                            Navigator.pop(context);
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text('Added to ${playlist.name}'),
-                              ),
-                            );
-                          },
-                        );
-                      },
+                    return SingleChildScrollView(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: playlists.map((playlist) {
+                          return ListTile(
+                            title: Text(playlist.name),
+                            onTap: () {
+                              ref
+                                  .read(playlistRepositoryProvider.notifier)
+                                  .addToPlaylist(playlist.id, track.id);
+                              Navigator.pop(context);
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text('Added to ${playlist.name}'),
+                                ),
+                              );
+                            },
+                          );
+                        }).toList(),
+                      ),
                     );
                   },
                 );
@@ -941,33 +941,33 @@ class LibraryScreen extends HookConsumerWidget {
                       return const Text('No playlists available.');
                     }
 
-                    return ListView.builder(
-                      shrinkWrap: true,
-                      itemCount: playlists.length,
-                      itemBuilder: (context, index) {
-                        final playlist = playlists[index];
-                        return ListTile(
-                          title: Text(playlist.name),
-                          onTap: () async {
-                            final repo = ref.read(
-                              playlistRepositoryProvider.notifier,
-                            );
-                            for (final id in trackIds) {
-                              await repo.addToPlaylist(playlist.id, id);
-                            }
-                            if (!context.mounted) return;
-                            Navigator.pop(context);
-                            onSuccess();
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text(
-                                  'Added ${trackIds.length} tracks to ${playlist.name}',
+                    return SingleChildScrollView(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: playlists.map((playlist) {
+                          return ListTile(
+                            title: Text(playlist.name),
+                            onTap: () async {
+                              final repo = ref.read(
+                                playlistRepositoryProvider.notifier,
+                              );
+                              for (final id in trackIds) {
+                                await repo.addToPlaylist(playlist.id, id);
+                              }
+                              if (!context.mounted) return;
+                              Navigator.pop(context);
+                              onSuccess();
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text(
+                                    'Added ${trackIds.length} tracks to ${playlist.name}',
+                                  ),
                                 ),
-                              ),
-                            );
-                          },
-                        );
-                      },
+                              );
+                            },
+                          );
+                        }).toList(),
+                      ),
                     );
                   },
                 );

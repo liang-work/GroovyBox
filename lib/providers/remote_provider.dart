@@ -212,6 +212,9 @@ class RemoteProviderService {
 class RemoteUrlResolver {
   final Ref ref;
 
+  // Token cache: providerId -> {token: string, expiresAt: DateTime}
+  final Map<int, Map<String, dynamic>> _tokenCache = {};
+
   RemoteUrlResolver(this.ref);
 
   /// Resolves a groovybox protocol URL to an actual streaming URL
@@ -245,7 +248,34 @@ class RemoteUrlResolver {
     }
 
     try {
-      // Create Jellyfin client and authenticate
+      // Get or refresh token
+      final token = await _getToken(providerId, provider);
+
+      if (token == null) {
+        return null;
+      }
+
+      // Return the actual streaming URL
+      return '${provider.serverUrl}/Audio/$itemId/stream.mp3?api_key=$token&static=true';
+    } catch (e) {
+      debugPrint('Error resolving URL $protocolUrl: $e');
+      return null;
+    }
+  }
+
+  /// Get cached token or authenticate to get a new one
+  Future<String?> _getToken(int providerId, RemoteProvider provider) async {
+    // Check if we have a cached token that's still valid
+    final cached = _tokenCache[providerId];
+    if (cached != null) {
+      final expiresAt = cached['expiresAt'] as DateTime?;
+      if (expiresAt != null && DateTime.now().isBefore(expiresAt)) {
+        return cached['token'] as String?;
+      }
+    }
+
+    // Token is expired or missing, authenticate
+    try {
       final client = JellyfinDart(basePathOverride: provider.serverUrl);
       client.setDeviceId('groovybox-$providerId');
       client.setVersion('1.0.0');
@@ -263,10 +293,17 @@ class RemoteUrlResolver {
         return null;
       }
 
-      // Return the actual streaming URL
-      return '${provider.serverUrl}/Audio/$itemId/stream.mp3?api_key=$token&static=true';
+      // Cache the token for 23 hours (tokens typically last 24 hours)
+      _tokenCache[providerId] = {
+        'token': token,
+        'expiresAt': DateTime.now().add(const Duration(hours: 23)),
+      };
+
+      return token;
     } catch (e) {
-      debugPrint('Error resolving URL $protocolUrl: $e');
+      debugPrint('Error authenticating with provider ${provider.name}: $e');
+      // Clear any cached token on authentication failure
+      _tokenCache.remove(providerId);
       return null;
     }
   }
