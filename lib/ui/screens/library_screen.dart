@@ -78,13 +78,17 @@ class LibraryScreen extends HookConsumerWidget {
             ? AppBar(
                 leading: IconButton(
                   icon: const Icon(Symbols.close),
+                  color: Theme.of(context).colorScheme.onPrimary,
                   onPressed: clearSelection,
                 ),
-                title: Text('${selectedTrackIds.value.length} selected'),
+                title: Text(
+                  '${selectedTrackIds.value.length} selected',
+                ).textColor(Theme.of(context).colorScheme.onPrimary),
                 backgroundColor: Theme.of(context).colorScheme.primary,
                 actions: [
                   IconButton(
                     icon: const Icon(Symbols.playlist_add),
+                    color: Theme.of(context).colorScheme.onPrimary,
                     tooltip: 'Add to Playlist',
                     onPressed: () {
                       _batchAddToPlaylist(
@@ -97,6 +101,7 @@ class LibraryScreen extends HookConsumerWidget {
                   ),
                   IconButton(
                     icon: const Icon(Symbols.delete),
+                    color: Theme.of(context).colorScheme.onPrimary,
                     tooltip: 'Delete',
                     onPressed: () {
                       _batchDelete(
@@ -253,14 +258,18 @@ class LibraryScreen extends HookConsumerWidget {
               ? AppBar(
                   leading: IconButton(
                     icon: const Icon(Symbols.close),
+                    color: Theme.of(context).colorScheme.onPrimary,
                     onPressed: clearSelection,
                   ),
-                  title: Text('${selectedTrackIds.value.length} selected'),
+                  title: Text(
+                    '${selectedTrackIds.value.length} selected',
+                  ).textColor(Theme.of(context).colorScheme.onPrimary),
                   backgroundColor: Theme.of(context).colorScheme.primary,
                   actions: [
                     IconButton(
                       icon: const Icon(Symbols.playlist_add),
                       tooltip: 'Add to Playlist',
+                      color: Theme.of(context).colorScheme.onPrimary,
                       onPressed: () {
                         _batchAddToPlaylist(
                           context,
@@ -273,6 +282,7 @@ class LibraryScreen extends HookConsumerWidget {
                     IconButton(
                       icon: const Icon(Symbols.delete),
                       tooltip: 'Delete',
+                      color: Theme.of(context).colorScheme.onPrimary,
                       onPressed: () {
                         _batchDelete(
                           context,
