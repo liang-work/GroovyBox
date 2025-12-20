@@ -5,6 +5,7 @@ import 'package:groovybox/providers/audio_provider.dart';
 import 'package:groovybox/ui/widgets/track_tile.dart';
 import 'package:groovybox/ui/widgets/universal_image.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
+import 'package:material_symbols_icons/symbols.dart';
 import 'package:styled_widget/styled_widget.dart';
 
 class AlbumDetailScreen extends HookConsumerWidget {
@@ -30,7 +31,7 @@ class AlbumDetailScreen extends HookConsumerWidget {
                   : Container(
                       color: Colors.grey[800],
                       child: const Icon(
-                        Icons.album,
+                        Symbols.album,
                         size: 100,
                         color: Colors.white54,
                       ),
@@ -66,7 +67,7 @@ class AlbumDetailScreen extends HookConsumerWidget {
                               onPressed: () {
                                 _playAlbum(ref, tracks);
                               },
-                              icon: const Icon(Icons.play_arrow),
+                              icon: const Icon(Symbols.play_arrow),
                               label: const Text('Play All'),
                             ),
                           ),

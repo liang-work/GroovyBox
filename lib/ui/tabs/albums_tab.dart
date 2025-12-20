@@ -4,6 +4,7 @@ import 'package:groovybox/data/playlist_repository.dart';
 import 'package:groovybox/ui/screens/album_detail_screen.dart';
 import 'package:groovybox/ui/widgets/universal_image.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
+import 'package:material_symbols_icons/symbols.dart';
 
 class AlbumsTab extends HookConsumerWidget {
   const AlbumsTab({super.key});
@@ -52,7 +53,7 @@ class AlbumsTab extends HookConsumerWidget {
                       child: UniversalImage(
                         uri: album.artUri,
                         fit: BoxFit.cover,
-                        fallbackIcon: Icons.album,
+                        fallbackIcon: Symbols.album,
                         fallbackIconSize: 48,
                       ),
                     ),

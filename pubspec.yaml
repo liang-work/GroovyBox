@@ -44,21 +44,22 @@ dependencies:
   path_provider: ^2.1.5
   path: ^1.9.1
   riverpod_annotation: ^3.0.3
-  file_picker: ^10.3.7
+  file_picker: ^10.3.8
   flutter_media_metadata: ^1.0.0+1
   animations: ^2.1.1
   gap: ^3.0.1
   styled_widget: ^0.4.1
   super_sliver_list: ^0.4.1
-  dio: ^5.0.0
-  http: ^1.2.2
+  dio: ^5.9.0
+  http: ^1.6.0
   audio_service: ^0.18.18
-  palette_generator: ^0.3.3+4
+  palette_generator: ^0.3.3+7
   watcher: ^1.2.0
-  shared_preferences: ^2.3.5
+  shared_preferences: ^2.5.4
   jellyfin_dart: ^0.1.2
   cached_network_image: ^3.4.1
   flutter_cache_manager: ^3.4.1
+  material_symbols_icons: ^4.2892.0
 
 dev_dependencies:
   flutter_test:

@@ -3,6 +3,7 @@ import 'package:groovybox/data/db.dart';
 import 'package:groovybox/data/playlist_repository.dart';
 import 'package:groovybox/ui/screens/playlist_detail_screen.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
+import 'package:material_symbols_icons/symbols.dart';
 import 'package:styled_widget/styled_widget.dart';
 
 class PlaylistsTab extends HookConsumerWidget {
@@ -16,8 +17,8 @@ class PlaylistsTab extends HookConsumerWidget {
       body: Column(
         children: [
           ListTile(
-            leading: const Icon(Icons.add),
-            trailing: const Icon(Icons.chevron_right).padding(right: 8),
+            leading: const Icon(Symbols.add),
+            trailing: const Icon(Symbols.chevron_right).padding(right: 8),
             title: Text('Create One'),
             subtitle: Text('Add a new playlist'),
             onTap: () async {
@@ -70,13 +71,13 @@ class PlaylistsTab extends HookConsumerWidget {
                   itemBuilder: (context, index) {
                     final playlist = playlists[index];
                     return ListTile(
-                      leading: const Icon(Icons.queue_music),
+                      leading: const Icon(Symbols.queue_music),
                       title: Text(playlist.name),
                       subtitle: Text(
                         '${playlist.createdAt.day}/${playlist.createdAt.month}/${playlist.createdAt.year}',
                       ),
                       trailing: IconButton(
-                        icon: const Icon(Icons.delete),
+                        icon: const Icon(Symbols.delete),
                         onPressed: () => repo.deletePlaylist(playlist.id),
                       ),
                       onTap: () {

@@ -5,6 +5,7 @@ import 'package:groovybox/providers/watch_folder_provider.dart';
 import 'package:groovybox/providers/remote_provider.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:material_symbols_icons/symbols.dart';
 import 'package:styled_widget/styled_widget.dart';
 
 class SettingsScreen extends ConsumerWidget {
@@ -99,7 +100,7 @@ class SettingsScreen extends ConsumerWidget {
                                     IconButton(
                                       onPressed: () =>
                                           _scanLibraries(context, ref),
-                                      icon: const Icon(Icons.refresh),
+                                      icon: const Icon(Symbols.refresh),
                                       tooltip: 'Scan Libraries',
                                       visualDensity: const VisualDensity(
                                         horizontal: -4,
@@ -109,7 +110,7 @@ class SettingsScreen extends ConsumerWidget {
                                     IconButton(
                                       onPressed: () =>
                                           _addMusicLibrary(context, ref),
-                                      icon: const Icon(Icons.add),
+                                      icon: const Icon(Symbols.add),
                                       tooltip: 'Add Music Library',
                                       visualDensity: const VisualDensity(
                                         horizontal: -4,
@@ -165,7 +166,9 @@ class SettingsScreen extends ConsumerWidget {
                                                 },
                                               ),
                                               IconButton(
-                                                icon: const Icon(Icons.delete),
+                                                icon: const Icon(
+                                                  Symbols.delete,
+                                                ),
                                                 onPressed: () {
                                                   ref
                                                       .read(
@@ -215,7 +218,7 @@ class SettingsScreen extends ConsumerWidget {
                                     IconButton(
                                       onPressed: () =>
                                           _indexRemoteProviders(context, ref),
-                                      icon: const Icon(Icons.refresh),
+                                      icon: const Icon(Symbols.refresh),
                                       tooltip: 'Index Remote Providers',
                                       visualDensity: const VisualDensity(
                                         horizontal: -4,
@@ -225,7 +228,7 @@ class SettingsScreen extends ConsumerWidget {
                                     IconButton(
                                       onPressed: () =>
                                           _addRemoteProvider(context, ref),
-                                      icon: const Icon(Icons.add),
+                                      icon: const Icon(Symbols.add),
                                       tooltip: 'Add Remote Provider',
                                       visualDensity: const VisualDensity(
                                         horizontal: -4,
@@ -281,7 +284,9 @@ class SettingsScreen extends ConsumerWidget {
                                                 },
                                               ),
                                               IconButton(
-                                                icon: const Icon(Icons.delete),
+                                                icon: const Icon(
+                                                  Symbols.delete,
+                                                ),
                                                 onPressed: () {
                                                   ref
                                                       .read(

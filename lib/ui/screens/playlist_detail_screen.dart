@@ -4,6 +4,7 @@ import 'package:groovybox/data/playlist_repository.dart';
 import 'package:groovybox/providers/audio_provider.dart';
 import 'package:groovybox/ui/widgets/track_tile.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
+import 'package:material_symbols_icons/symbols.dart';
 
 class PlaylistDetailScreen extends HookConsumerWidget {
   final Playlist playlist;
@@ -36,7 +37,7 @@ class PlaylistDetailScreen extends HookConsumerWidget {
                 ),
                 child: const Center(
                   child: Icon(
-                    Icons.queue_music,
+                    Symbols.queue_music,
                     size: 80,
                     color: Colors.white70,
                   ),
@@ -73,7 +74,7 @@ class PlaylistDetailScreen extends HookConsumerWidget {
                               onPressed: () {
                                 _playPlaylist(ref, tracks);
                               },
-                              icon: const Icon(Icons.play_arrow),
+                              icon: const Icon(Symbols.play_arrow),
                               label: const Text('Play All'),
                             ),
                           ),

@@ -7,6 +7,7 @@ import 'package:groovybox/ui/screens/player_screen.dart';
 import 'package:groovybox/ui/widgets/track_tile.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
+import 'package:material_symbols_icons/symbols.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:styled_widget/styled_widget.dart';
 
@@ -151,7 +152,7 @@ class _MobileMiniPlayer extends HookConsumerWidget {
                           : Container(
                               color: Colors.grey[800],
                               child: const Icon(
-                                Icons.music_note,
+                                Symbols.music_note,
                                 color: Colors.white54,
                               ),
                             ),
@@ -205,7 +206,7 @@ class _MobileMiniPlayer extends HookConsumerWidget {
                                     );
                                   },
                               child: Icon(
-                                playing ? Icons.pause : Icons.play_arrow,
+                                playing ? Symbols.pause : Symbols.play_arrow,
                                 key: ValueKey<bool>(playing),
                               ),
                             ),
@@ -216,7 +217,7 @@ class _MobileMiniPlayer extends HookConsumerWidget {
                     ),
                     // Next Button
                     IconButton(
-                      icon: const Icon(Icons.skip_next),
+                      icon: const Icon(Symbols.skip_next),
                       onPressed: player.next,
                       iconSize: 24,
                     ),
@@ -376,7 +377,7 @@ class _DesktopMiniPlayer extends HookConsumerWidget {
                                 : Container(
                                     color: Colors.grey[800],
                                     child: const Icon(
-                                      Icons.music_note,
+                                      Symbols.music_note,
                                       color: Colors.white54,
                                     ),
                                   ),
@@ -434,15 +435,15 @@ class _DesktopMiniPlayer extends HookConsumerWidget {
                               Color? color;
                               switch (mode) {
                                 case PlaylistMode.none:
-                                  icon = Icons.repeat;
+                                  icon = Symbols.repeat;
                                   color = Theme.of(context).disabledColor;
                                   break;
                                 case PlaylistMode.single:
-                                  icon = Icons.repeat_one;
+                                  icon = Symbols.repeat_one;
                                   color = Theme.of(context).colorScheme.primary;
                                   break;
                                 case PlaylistMode.loop:
-                                  icon = Icons.repeat;
+                                  icon = Symbols.repeat;
                                   color = Theme.of(context).colorScheme.primary;
                                   break;
                               }
@@ -469,7 +470,7 @@ class _DesktopMiniPlayer extends HookConsumerWidget {
                             },
                           ),
                           IconButton(
-                            icon: const Icon(Icons.skip_previous),
+                            icon: const Icon(Symbols.skip_previous),
                             onPressed: player.previous,
                             iconSize: 24,
                           ),
@@ -499,7 +500,9 @@ class _DesktopMiniPlayer extends HookConsumerWidget {
                                           );
                                         },
                                     child: Icon(
-                                      playing ? Icons.pause : Icons.play_arrow,
+                                      playing
+                                          ? Symbols.pause
+                                          : Symbols.play_arrow,
                                       key: ValueKey<bool>(playing),
                                     ),
                                   ),
@@ -511,12 +514,12 @@ class _DesktopMiniPlayer extends HookConsumerWidget {
                             },
                           ),
                           IconButton(
-                            icon: const Icon(Icons.skip_next),
+                            icon: const Icon(Symbols.skip_next),
                             onPressed: player.next,
                             iconSize: 24,
                           ),
                           IconButton(
-                            icon: const Icon(Icons.queue_music),
+                            icon: const Icon(Symbols.queue_music),
                             onPressed: () =>
                                 _showQueueDialog(context, ref, player),
                             iconSize: 24,
@@ -530,7 +533,7 @@ class _DesktopMiniPlayer extends HookConsumerWidget {
                       child: Row(
                         children: [
                           Icon(
-                            Icons.volume_up,
+                            Symbols.volume_up,
                             size: 16,
                             color: Theme.of(
                               context,
@@ -599,7 +602,7 @@ class _DesktopMiniPlayer extends HookConsumerWidget {
                   const Text('Queue', style: TextStyle(fontSize: 20)),
                   const Spacer(),
                   IconButton(
-                    icon: const Icon(Icons.close),
+                    icon: const Icon(Symbols.close),
                     onPressed: () => Navigator.of(bottomSheetContext).pop(),
                   ),
                 ],
@@ -650,7 +653,7 @@ class _DesktopMiniPlayer extends HookConsumerWidget {
                             alignment: Alignment.centerRight,
                             padding: const EdgeInsets.only(right: 20),
                             child: const Icon(
-                              Icons.delete,
+                              Symbols.delete,
                               color: Colors.white,
                             ),
                           ),
@@ -696,7 +699,7 @@ class _DesktopMiniPlayer extends HookConsumerWidget {
                                 alignment: Alignment.centerRight,
                                 padding: const EdgeInsets.only(right: 20),
                                 child: const Icon(
-                                  Icons.delete,
+                                  Symbols.delete,
                                   color: Colors.white,
                                 ),
                               ),

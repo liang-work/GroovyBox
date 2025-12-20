@@ -20,6 +20,7 @@ import 'package:groovybox/ui/widgets/mini_player.dart';
 import 'package:groovybox/ui/widgets/track_tile.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
+import 'package:material_symbols_icons/symbols.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:styled_widget/styled_widget.dart';
 import 'package:super_sliver_list/super_sliver_list.dart';
@@ -136,7 +137,7 @@ class PlayerScreen extends HookConsumerWidget {
                     top: MediaQuery.of(context).padding.top + 16,
                     left: 16,
                     child: IconButton(
-                      icon: const Icon(Icons.keyboard_arrow_down),
+                      icon: const Icon(Symbols.keyboard_arrow_down),
                       onPressed: () => Navigator.of(context).pop(),
                       padding: EdgeInsets.zero,
                       iconSize: 24,
@@ -439,7 +440,7 @@ class _PlayerCoverArt extends StatelessWidget {
           child: currentMetadata?.artBytes == null
               ? Center(
                   child: Icon(
-                    Icons.music_note,
+                    Symbols.music_note,
                     size: 80,
                     color: Theme.of(
                       context,
@@ -544,7 +545,7 @@ class _PlayerLyrics extends HookConsumerWidget {
           ),
           const SizedBox(height: 16),
           ElevatedButton.icon(
-            icon: const Icon(Icons.download),
+            icon: const Icon(Symbols.download),
             label: const Text('Fetch Lyrics'),
             onPressed: () => _showFetchLyricsDialog(
               context,
@@ -706,7 +707,7 @@ class _FetchLyricsDialog extends StatelessWidget {
               children: [
                 ListTile(
                   dense: true,
-                  leading: const Icon(Icons.library_music),
+                  leading: const Icon(Symbols.library_music),
                   title: const Text('Musixmatch'),
                   shape: RoundedRectangleBorder(
                     borderRadius: const BorderRadius.all(Radius.circular(12)),
@@ -725,7 +726,7 @@ class _FetchLyricsDialog extends StatelessWidget {
                 ),
                 ListTile(
                   dense: true,
-                  leading: const Icon(Icons.music_video),
+                  leading: const Icon(Symbols.music_video),
                   title: const Text('NetEase'),
                   shape: RoundedRectangleBorder(
                     borderRadius: const BorderRadius.all(Radius.circular(12)),
@@ -744,7 +745,7 @@ class _FetchLyricsDialog extends StatelessWidget {
                 ),
                 ListTile(
                   dense: true,
-                  leading: const Icon(Icons.file_upload),
+                  leading: const Icon(Symbols.file_upload),
                   title: const Text('Manual Import'),
                   shape: RoundedRectangleBorder(
                     borderRadius: const BorderRadius.all(Radius.circular(12)),
@@ -826,7 +827,7 @@ class _LyricsAdjustButton extends HookConsumerWidget {
     }
 
     return IconButton(
-      icon: const Icon(Icons.settings_applications),
+      icon: const Icon(Symbols.settings_applications),
       iconSize: 24,
       tooltip: 'Adjust Lyrics',
       onPressed: () => _showLyricsRefreshDialog(
@@ -901,7 +902,7 @@ class _LyricsAdjustButton extends HookConsumerWidget {
                   children: [
                     Expanded(
                       child: ElevatedButton.icon(
-                        icon: const Icon(Icons.refresh),
+                        icon: const Icon(Symbols.refresh),
                         label: const Text('Re-fetch'),
                         onPressed: () {
                           Navigator.of(context).pop();
@@ -920,7 +921,7 @@ class _LyricsAdjustButton extends HookConsumerWidget {
                     ),
                     Expanded(
                       child: ElevatedButton.icon(
-                        icon: const Icon(Icons.clear),
+                        icon: const Icon(Symbols.clear),
                         label: const Text('Clear'),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.red,
@@ -972,7 +973,7 @@ class _LyricsAdjustButton extends HookConsumerWidget {
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton.icon(
-                    icon: const Icon(Icons.sync),
+                    icon: const Icon(Symbols.sync),
                     label: const Text('Live Sync Lyrics'),
                     onPressed: () {
                       Navigator.of(context).pop();
@@ -989,7 +990,7 @@ class _LyricsAdjustButton extends HookConsumerWidget {
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton.icon(
-                    icon: const Icon(Icons.tune),
+                    icon: const Icon(Symbols.tune),
                     label: const Text('Manual Offset'),
                     onPressed: () {
                       Navigator.of(context).pop();
@@ -1098,11 +1099,11 @@ class _ViewToggleButton extends StatelessWidget {
     IconData getIcon() {
       switch (viewMode.value) {
         case ViewMode.cover:
-          return Icons.album;
+          return Symbols.album;
         case ViewMode.lyrics:
-          return Icons.lyrics;
+          return Symbols.lyrics;
         case ViewMode.queue:
-          return Icons.queue_music;
+          return Symbols.queue_music;
       }
     }
 
@@ -1193,7 +1194,7 @@ class _QueueView extends HookConsumerWidget {
                         color: Colors.red,
                         alignment: Alignment.centerRight,
                         padding: const EdgeInsets.only(right: 20),
-                        child: const Icon(Icons.delete, color: Colors.white),
+                        child: const Icon(Symbols.delete, color: Colors.white),
                       ),
                       onDismissed: (direction) => player.remove(index),
                       child: TrackTile(
@@ -1231,7 +1232,7 @@ class _QueueView extends HookConsumerWidget {
                               alignment: Alignment.centerRight,
                               padding: const EdgeInsets.only(right: 20),
                               child: const Icon(
-                                Icons.delete,
+                                Symbols.delete,
                                 color: Colors.white,
                               ),
                             ),
@@ -1636,7 +1637,7 @@ class _PlayerControls extends HookWidget {
                 builder: (context, snapshot) {
                   final shuffle = snapshot.data ?? false;
                   return Icon(
-                    Icons.shuffle,
+                    Symbols.shuffle,
                     color: shuffle
                         ? Theme.of(context).colorScheme.primary
                         : Theme.of(context).disabledColor,
@@ -1649,7 +1650,7 @@ class _PlayerControls extends HookWidget {
             ),
             // Previous
             IconButton(
-              icon: const Icon(Icons.skip_previous, size: 32),
+              icon: const Icon(Symbols.skip_previous, size: 32),
               onPressed: player.previous,
             ),
             // Play/Pause
@@ -1669,7 +1670,7 @@ class _PlayerControls extends HookWidget {
                           );
                         },
                     child: Icon(
-                      playing ? Icons.pause : Icons.play_arrow,
+                      playing ? Symbols.pause : Symbols.play_arrow,
                       key: ValueKey<bool>(playing),
                       size: 48,
                     ),
@@ -1681,7 +1682,7 @@ class _PlayerControls extends HookWidget {
             ),
             // Next
             IconButton(
-              icon: const Icon(Icons.skip_next, size: 32),
+              icon: const Icon(Symbols.skip_next, size: 32),
               onPressed: player.next,
             ),
             // Loop Mode
@@ -1695,15 +1696,15 @@ class _PlayerControls extends HookWidget {
                   Color? color;
                   switch (mode) {
                     case PlaylistMode.none:
-                      icon = Icons.repeat;
+                      icon = Symbols.repeat;
                       color = Theme.of(context).disabledColor;
                       break;
                     case PlaylistMode.single:
-                      icon = Icons.repeat_one;
+                      icon = Symbols.repeat_one;
                       color = Theme.of(context).colorScheme.primary;
                       break;
                     case PlaylistMode.loop:
-                      icon = Icons.repeat;
+                      icon = Symbols.repeat;
                       color = Theme.of(context).colorScheme.primary;
                       break;
                   }
@@ -1744,10 +1745,10 @@ class _PlayerControls extends HookWidget {
                       children: [
                         Icon(
                           volume == 0
-                              ? Icons.volume_off
+                              ? Symbols.volume_off
                               : volume < 50
-                              ? Icons.volume_down
-                              : Icons.volume_up,
+                              ? Symbols.volume_down
+                              : Symbols.volume_up,
                           color: Theme.of(context).colorScheme.onSurfaceVariant,
                         ),
                         Expanded(
@@ -1812,12 +1813,12 @@ class _LiveLyricsSyncDialog extends HookConsumerWidget {
       appBar: AppBar(
         title: const Text('Live Lyrics Sync'),
         leading: IconButton(
-          icon: const Icon(Icons.close),
+          icon: const Icon(Symbols.close),
           onPressed: () => Navigator.of(context).pop(),
         ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.check),
+            icon: const Icon(Symbols.check),
             onPressed: () async {
               // Store context before async operation
               final navigator = Navigator.of(context);
@@ -1890,30 +1891,30 @@ class _LiveLyricsSyncDialog extends HookConsumerWidget {
                   runAlignment: WrapAlignment.center,
                   children: [
                     ElevatedButton.icon(
-                      icon: const Icon(Icons.fast_rewind),
+                      icon: const Icon(Symbols.fast_rewind),
                       label: const Text('-100ms'),
                       onPressed: () =>
                           tempOffset.value = (tempOffset.value - 100),
                     ),
                     ElevatedButton.icon(
-                      icon: const Icon(Icons.skip_previous),
+                      icon: const Icon(Symbols.skip_previous),
                       label: const Text('-10ms'),
                       onPressed: () =>
                           tempOffset.value = (tempOffset.value - 10),
                     ),
                     ElevatedButton.icon(
-                      icon: const Icon(Icons.refresh),
+                      icon: const Icon(Symbols.refresh),
                       label: const Text('Reset'),
                       onPressed: () => tempOffset.value = 0,
                     ),
                     ElevatedButton.icon(
-                      icon: const Icon(Icons.skip_next),
+                      icon: const Icon(Symbols.skip_next),
                       label: const Text('+10ms'),
                       onPressed: () =>
                           tempOffset.value = (tempOffset.value + 10),
                     ),
                     ElevatedButton.icon(
-                      icon: const Icon(Icons.fast_forward),
+                      icon: const Icon(Symbols.fast_forward),
                       label: const Text('+100ms'),
                       onPressed: () =>
                           tempOffset.value = (tempOffset.value + 100),
@@ -1947,7 +1948,7 @@ class _LiveLyricsSyncDialog extends HookConsumerWidget {
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     IconButton(
-                      icon: const Icon(Icons.skip_previous, size: 32),
+                      icon: const Icon(Symbols.skip_previous, size: 32),
                       onPressed: player.previous,
                     ),
                     const SizedBox(width: 16),
@@ -1958,7 +1959,7 @@ class _LiveLyricsSyncDialog extends HookConsumerWidget {
                         final playing = snapshot.data ?? false;
                         return IconButton.filled(
                           icon: Icon(
-                            playing ? Icons.pause : Icons.play_arrow,
+                            playing ? Symbols.pause : Symbols.play_arrow,
                             size: 48,
                           ),
                           onPressed: playing ? player.pause : player.play,
@@ -1968,7 +1969,7 @@ class _LiveLyricsSyncDialog extends HookConsumerWidget {
                     ),
                     const SizedBox(width: 16),
                     IconButton(
-                      icon: const Icon(Icons.skip_next, size: 32),
+                      icon: const Icon(Symbols.skip_next, size: 32),
                       onPressed: player.next,
                     ),
                   ],

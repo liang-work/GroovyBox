@@ -14,6 +14,7 @@ import 'package:groovybox/ui/tabs/albums_tab.dart';
 import 'package:groovybox/ui/tabs/playlists_tab.dart';
 import 'package:groovybox/ui/widgets/track_tile.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
+import 'package:material_symbols_icons/symbols.dart';
 import 'package:path/path.dart' as p;
 import 'package:styled_widget/styled_widget.dart';
 
@@ -75,14 +76,14 @@ class LibraryScreen extends HookConsumerWidget {
         appBar: isSelectionMode
             ? AppBar(
                 leading: IconButton(
-                  icon: const Icon(Icons.close),
+                  icon: const Icon(Symbols.close),
                   onPressed: clearSelection,
                 ),
                 title: Text('${selectedTrackIds.value.length} selected'),
                 backgroundColor: Theme.of(context).primaryColorDark,
                 actions: [
                   IconButton(
-                    icon: const Icon(Icons.playlist_add),
+                    icon: const Icon(Symbols.playlist_add),
                     tooltip: 'Add to Playlist',
                     onPressed: () {
                       _batchAddToPlaylist(
@@ -94,7 +95,7 @@ class LibraryScreen extends HookConsumerWidget {
                     },
                   ),
                   IconButton(
-                    icon: const Icon(Icons.delete),
+                    icon: const Icon(Symbols.delete),
                     tooltip: 'Delete',
                     onPressed: () {
                       _batchDelete(
@@ -132,10 +133,10 @@ class LibraryScreen extends HookConsumerWidget {
                         ),
                       );
                     },
-                    icon: const Icon(Icons.settings),
+                    icon: const Icon(Symbols.settings),
                   ),
                   IconButton(
-                    icon: const Icon(Icons.add_circle_outline),
+                    icon: const Icon(Symbols.add_circle_outline),
                     tooltip: 'Import Files',
                     onPressed: () async {
                       final result = await FilePicker.platform.pickFiles(
@@ -198,15 +199,15 @@ class LibraryScreen extends HookConsumerWidget {
                     onDestinationSelected: (index) => selectedTab.value = index,
                     destinations: const [
                       NavigationRailDestination(
-                        icon: Icon(Icons.audiotrack),
+                        icon: Icon(Symbols.audiotrack),
                         label: Text('Tracks'),
                       ),
                       NavigationRailDestination(
-                        icon: Icon(Icons.album),
+                        icon: Icon(Symbols.album),
                         label: Text('Albums'),
                       ),
                       NavigationRailDestination(
-                        icon: Icon(Icons.queue_music),
+                        icon: Icon(Symbols.queue_music),
                         label: Text('Playlists'),
                       ),
                     ],
@@ -236,14 +237,14 @@ class LibraryScreen extends HookConsumerWidget {
           appBar: isSelectionMode
               ? AppBar(
                   leading: IconButton(
-                    icon: const Icon(Icons.close),
+                    icon: const Icon(Symbols.close),
                     onPressed: clearSelection,
                   ),
                   title: Text('${selectedTrackIds.value.length} selected'),
                   backgroundColor: Theme.of(context).primaryColorDark,
                   actions: [
                     IconButton(
-                      icon: const Icon(Icons.playlist_add),
+                      icon: const Icon(Symbols.playlist_add),
                       tooltip: 'Add to Playlist',
                       onPressed: () {
                         _batchAddToPlaylist(
@@ -255,7 +256,7 @@ class LibraryScreen extends HookConsumerWidget {
                       },
                     ),
                     IconButton(
-                      icon: const Icon(Icons.delete),
+                      icon: const Icon(Symbols.delete),
                       tooltip: 'Delete',
                       onPressed: () {
                         _batchDelete(
@@ -274,14 +275,14 @@ class LibraryScreen extends HookConsumerWidget {
                   title: const Text('Library'),
                   bottom: const TabBar(
                     tabs: [
-                      Tab(text: 'Tracks', icon: Icon(Icons.audiotrack)),
-                      Tab(text: 'Albums', icon: Icon(Icons.album)),
-                      Tab(text: 'Playlists', icon: Icon(Icons.queue_music)),
+                      Tab(text: 'Tracks', icon: Icon(Symbols.audiotrack)),
+                      Tab(text: 'Albums', icon: Icon(Symbols.album)),
+                      Tab(text: 'Playlists', icon: Icon(Symbols.queue_music)),
                     ],
                   ),
                   actions: [
                     IconButton(
-                      icon: const Icon(Icons.add_circle_outline),
+                      icon: const Icon(Symbols.add_circle_outline),
                       tooltip: 'Import Files',
                       onPressed: () async {
                         final result = await FilePicker.platform.pickFiles(
@@ -480,7 +481,7 @@ class LibraryScreen extends HookConsumerWidget {
                       color: Colors.red,
                       alignment: Alignment.centerRight,
                       padding: const EdgeInsets.only(right: 20),
-                      child: const Icon(Icons.delete, color: Colors.white),
+                      child: const Icon(Symbols.delete, color: Colors.white),
                     ),
                     confirmDismiss: (direction) async {
                       return await showDialog(
@@ -551,7 +552,7 @@ class LibraryScreen extends HookConsumerWidget {
                 child: SearchBar(
                   onChanged: (value) => searchQuery.value = value,
                   hintText: hintText,
-                  leading: const Icon(Icons.search),
+                  leading: const Icon(Symbols.search),
                   padding: WidgetStatePropertyAll(
                     EdgeInsets.symmetric(horizontal: 24),
                   ),
@@ -601,7 +602,7 @@ class LibraryScreen extends HookConsumerWidget {
             mainAxisSize: MainAxisSize.min,
             children: [
               ListTile(
-                leading: const Icon(Icons.playlist_add),
+                leading: const Icon(Symbols.playlist_add),
                 title: const Text('Add to Playlist'),
                 onTap: () {
                   Navigator.pop(context);
@@ -609,7 +610,7 @@ class LibraryScreen extends HookConsumerWidget {
                 },
               ),
               ListTile(
-                leading: const Icon(Icons.info_outline),
+                leading: const Icon(Symbols.info),
                 title: const Text('View Details'),
                 onTap: () {
                   Navigator.pop(context);
@@ -617,7 +618,7 @@ class LibraryScreen extends HookConsumerWidget {
                 },
               ),
               ListTile(
-                leading: const Icon(Icons.edit),
+                leading: const Icon(Symbols.edit),
                 title: const Text('Edit Metadata'),
                 onTap: () {
                   Navigator.pop(context);
@@ -625,7 +626,7 @@ class LibraryScreen extends HookConsumerWidget {
                 },
               ),
               ListTile(
-                leading: const Icon(Icons.lyrics_outlined),
+                leading: const Icon(Symbols.lyrics),
                 title: const Text('Import Lyrics'),
                 onTap: () {
                   Navigator.pop(context);
@@ -633,7 +634,7 @@ class LibraryScreen extends HookConsumerWidget {
                 },
               ),
               ListTile(
-                leading: const Icon(Icons.delete, color: Colors.red),
+                leading: const Icon(Symbols.delete, color: Colors.red),
                 title: const Text(
                   'Delete Track',
                   style: TextStyle(color: Colors.red),

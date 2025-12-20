@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:material_symbols_icons/symbols.dart';
 
 class UniversalImage extends StatelessWidget {
   final String? uri;
@@ -21,7 +22,7 @@ class UniversalImage extends StatelessWidget {
     this.width,
     this.height,
     this.fallback,
-    this.fallbackIcon = Icons.image,
+    this.fallbackIcon = Symbols.image,
     this.fallbackIconSize = 48,
     this.fallbackIconColor = Colors.white54,
     this.borderRadius,
