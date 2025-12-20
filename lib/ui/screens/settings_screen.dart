@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:gap/gap.dart';
 import 'package:groovybox/data/track_repository.dart';
 import 'package:groovybox/providers/settings_provider.dart';
 import 'package:groovybox/providers/watch_folder_provider.dart';
@@ -434,6 +435,8 @@ class SettingsScreen extends ConsumerWidget {
                       ],
                     ),
                   ),
+                  // Gap for mini player
+                  const Gap(80),
                 ],
               ),
             ),

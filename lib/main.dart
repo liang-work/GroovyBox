@@ -3,7 +3,7 @@ import 'package:groovybox/logic/audio_handler.dart';
 import 'package:groovybox/logic/window_helpers.dart';
 import 'package:groovybox/providers/audio_provider.dart';
 import 'package:groovybox/providers/theme_provider.dart';
-import 'package:groovybox/ui/shell.dart';
+import 'package:groovybox/router.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:audio_service/audio_service.dart' as audio_service;
@@ -52,14 +52,15 @@ class GroovyApp extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final themeMode = ref.watch(themeProvider);
+    final router = ref.watch(routerProvider);
 
-    return MaterialApp(
+    return MaterialApp.router(
       title: 'GroovyBox',
       debugShowCheckedModeBanner: false,
       theme: ref.watch(lightThemeProvider),
       darkTheme: ref.watch(darkThemeProvider),
       themeMode: themeMode,
-      home: const Shell(),
+      routerConfig: router,
     );
   }
 }

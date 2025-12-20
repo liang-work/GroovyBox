@@ -14,6 +14,7 @@ import 'package:groovybox/data/track_repository.dart';
 import 'package:groovybox/logic/lrc_providers.dart';
 import 'package:groovybox/logic/lyrics_parser.dart';
 import 'package:groovybox/logic/metadata_service.dart';
+import 'package:groovybox/logic/window_helpers.dart';
 import 'package:groovybox/providers/audio_provider.dart';
 import 'package:groovybox/providers/db_provider.dart';
 import 'package:groovybox/providers/lrc_fetcher_provider.dart';
@@ -151,7 +152,12 @@ class PlayerScreen extends HookConsumerWidget {
                     builder: (context) {
                       if (isMobile) {
                         return Padding(
-                          padding: EdgeInsets.only(top: devicePadding.top + 40),
+                          padding: EdgeInsets.only(
+                            top:
+                                devicePadding.top +
+                                40 +
+                                (isDesktopPlatform() ? 28 : 0),
+                          ),
                           child: _MobileLayout(
                             player: player,
                             viewMode: viewMode,
@@ -171,7 +177,8 @@ class PlayerScreen extends HookConsumerWidget {
                   ),
                   // IconButton
                   Positioned(
-                    top: MediaQuery.of(context).padding.top + 16,
+                    top:
+                        devicePadding.top + 16 + (isDesktopPlatform() ? 28 : 0),
                     left: 16,
                     child: IconButton(
                       icon: const Icon(Symbols.keyboard_arrow_down),
@@ -1149,7 +1156,10 @@ class _ViewToggleButton extends StatelessWidget {
     }
 
     return Positioned(
-      top: MediaQuery.of(context).padding.top + 16,
+      top:
+          MediaQuery.of(context).padding.top +
+          16 +
+          (isDesktopPlatform() ? 28 : 0),
       right: 16,
       child: IconButton(
         icon: Icon(getIcon()),

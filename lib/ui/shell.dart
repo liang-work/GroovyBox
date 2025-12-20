@@ -4,11 +4,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:gap/gap.dart';
+import 'package:go_router/go_router.dart';
 import 'package:groovybox/data/track_repository.dart';
 import 'package:groovybox/logic/lyrics_parser.dart';
 import 'package:groovybox/logic/window_helpers.dart';
 import 'package:groovybox/providers/settings_provider.dart';
-import 'package:groovybox/ui/screens/settings_screen.dart';
+import 'package:groovybox/router.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:material_symbols_icons/symbols.dart';
 import 'package:path/path.dart' as p;
@@ -68,7 +69,9 @@ class _WindowMaximizeListener extends WindowListener {
 }
 
 class Shell extends HookConsumerWidget {
-  const Shell({super.key});
+  final Widget child;
+
+  const Shell({super.key, required this.child});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -106,11 +109,7 @@ class Shell extends HookConsumerWidget {
 
     final pageActionsButton = [
       IconButton(
-        onPressed: () {
-          Navigator.of(
-            context,
-          ).push(MaterialPageRoute(builder: (context) => SettingsScreen()));
-        },
+        onPressed: () => context.push(AppRoutes.settings),
         icon: const Icon(Symbols.settings),
         padding: EdgeInsets.all(8),
         constraints: BoxConstraints(),
@@ -169,10 +168,7 @@ class Shell extends HookConsumerWidget {
       ),
       IconButton(
         icon: Icon(Symbols.home),
-        onPressed: () => Navigator.of(context).pushAndRemoveUntil(
-          MaterialPageRoute(builder: (context) => const LibraryScreen()),
-          (route) => false,
-        ),
+        onPressed: () => context.go(AppRoutes.library),
         iconSize: 16,
         padding: EdgeInsets.all(8),
         constraints: BoxConstraints(),
@@ -246,13 +242,8 @@ class Shell extends HookConsumerWidget {
                                 // Settings button
                                 IconButton(
                                   icon: Icon(Symbols.settings),
-                                  onPressed: () {
-                                    Navigator.of(context).push(
-                                      MaterialPageRoute(
-                                        builder: (context) => SettingsScreen(),
-                                      ),
-                                    );
-                                  },
+                                  onPressed: () =>
+                                      context.go(AppRoutes.settings),
                                   iconSize: 16,
                                   padding: EdgeInsets.all(8),
                                   constraints: BoxConstraints(),
@@ -391,7 +382,7 @@ class Shell extends HookConsumerWidget {
                       child: Stack(
                         children: [
                           // Main Content
-                          Positioned.fill(child: LibraryScreen()),
+                          Positioned.fill(child: child),
                           // Mini Player
                           Positioned(
                             left: 0,
@@ -420,7 +411,7 @@ class Shell extends HookConsumerWidget {
         child: Stack(
           fit: StackFit.expand,
           children: [
-            Positioned.fill(child: LibraryScreen()),
+            Positioned.fill(child: child),
             Positioned(left: 0, right: 0, bottom: 0, child: MiniPlayer()),
           ],
         ),
