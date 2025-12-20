@@ -22,7 +22,7 @@ UsePreviousAppDir=no
 
 OutputDir=.\Installer
 OutputBaseFilename=windows-x86_64-setup
-SetupIconFile=.\assets\images\icon-rounded.png
+SetupIconFile=.\assets\images\icon-rounded.ico
 
 Compression=lzma2/ultra64
 SolidCompression=yes
