@@ -128,14 +128,16 @@ flutter_launcher_icons:
   remove_alpha_ios: true
   desaturate_tinted_to_grayscale_ios: true
   background_color_ios: "#ffffff"
+  linux:
+    image_path: "assets/images/icon-rounded.png"
   web:
     generate: true
-    image_path: "assets/images/icon-dark.png"
+    image_path: "assets/images/icon-rounded.png"
     background_color: "#ffffff"
     theme_color: "#2eb0c7"
   windows:
     generate: true
-    image_path: "assets/images/icon-dark.png"
+    image_path: "assets/images/icon-rounded.png"
     icon_size: 256
   macos:
     generate: true
