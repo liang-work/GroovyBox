@@ -1,14 +1,19 @@
+import 'dart:io';
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:gap/gap.dart';
+import 'package:groovybox/data/track_repository.dart';
+import 'package:groovybox/logic/lyrics_parser.dart';
 import 'package:groovybox/logic/window_helpers.dart';
 import 'package:groovybox/providers/settings_provider.dart';
+import 'package:groovybox/ui/screens/settings_screen.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:material_symbols_icons/symbols.dart';
+import 'package:path/path.dart' as p;
 import 'package:styled_widget/styled_widget.dart';
 import 'package:window_manager/window_manager.dart';
-import 'dart:io';
 import 'screens/library_screen.dart';
 import 'widgets/mini_player.dart';
 
@@ -101,6 +106,68 @@ class Shell extends HookConsumerWidget {
 
     final pageActionsButton = [
       IconButton(
+        onPressed: () {
+          Navigator.of(
+            context,
+          ).push(MaterialPageRoute(builder: (context) => SettingsScreen()));
+        },
+        icon: const Icon(Symbols.settings),
+        padding: EdgeInsets.all(8),
+        constraints: BoxConstraints(),
+        color: Theme.of(context).iconTheme.color,
+        iconSize: 16,
+      ),
+      IconButton(
+        icon: const Icon(Symbols.add_circle_outline),
+        iconSize: 16,
+        padding: EdgeInsets.all(8),
+        constraints: BoxConstraints(),
+        color: Theme.of(context).iconTheme.color,
+        tooltip: 'Import Files',
+        onPressed: () async {
+          final result = await FilePicker.platform.pickFiles(
+            type: FileType.custom,
+            allowedExtensions: LibraryScreen.allAllowedExtensions,
+            allowMultiple: true,
+          );
+          if (result != null && result.files.isNotEmpty) {
+            final paths = result.files
+                .map((f) => f.path)
+                .whereType<String>()
+                .toList();
+            if (paths.isNotEmpty) {
+              // Separate audio and lyrics files
+              final audioPaths = paths.where((path) {
+                final ext = p
+                    .extension(path)
+                    .toLowerCase()
+                    .replaceFirst('.', '');
+                return LibraryScreen.audioExtensions.contains(ext);
+              }).toList();
+              final lyricsPaths = paths.where((path) {
+                final ext = p
+                    .extension(path)
+                    .toLowerCase()
+                    .replaceFirst('.', '');
+                return LibraryScreen.lyricsExtensions.contains(ext);
+              }).toList();
+
+              // Import tracks if any
+              if (audioPaths.isNotEmpty) {
+                final repo = ref.watch(trackRepositoryProvider.notifier);
+                await repo.importFiles(audioPaths);
+              }
+
+              // Import lyrics if any
+              if (!context.mounted) return;
+              if (lyricsPaths.isNotEmpty) {
+                await _batchImportLyricsFromPaths(context, ref, lyricsPaths);
+              }
+            }
+          }
+        },
+      ),
+      IconButton(
         icon: Icon(Symbols.home),
         onPressed: () => Navigator.of(context).pushAndRemoveUntil(
           MaterialPageRoute(builder: (context) => const LibraryScreen()),
@@ -176,6 +243,112 @@ class Shell extends HookConsumerWidget {
                                     ],
                                   ).padding(horizontal: 12, vertical: 5),
                                 ),
+                                // Settings button
+                                IconButton(
+                                  icon: Icon(Symbols.settings),
+                                  onPressed: () {
+                                    Navigator.of(context).push(
+                                      MaterialPageRoute(
+                                        builder: (context) => SettingsScreen(),
+                                      ),
+                                    );
+                                  },
+                                  iconSize: 16,
+                                  padding: EdgeInsets.all(8),
+                                  constraints: BoxConstraints(),
+                                  color: Theme.of(context).iconTheme.color,
+                                ),
+                                // Import button
+                                IconButton(
+                                  icon: Icon(Symbols.add_circle_outline),
+                                  tooltip: 'Import Files',
+                                  onPressed: () async {
+                                    final result = await FilePicker.platform
+                                        .pickFiles(
+                                          type: FileType.custom,
+                                          allowedExtensions: const [
+                                            'mp3',
+                                            'm4a',
+                                            'wav',
+                                            'flac',
+                                            'aac',
+                                            'ogg',
+                                            'wma',
+                                            'm4p',
+                                            'aiff',
+                                            'au',
+                                            'dss',
+                                            'lrc',
+                                            'srt',
+                                            'txt',
+                                          ],
+                                          allowMultiple: true,
+                                        );
+                                    if (result != null &&
+                                        result.files.isNotEmpty) {
+                                      final paths = result.files
+                                          .map((f) => f.path)
+                                          .whereType<String>()
+                                          .toList();
+                                      if (paths.isNotEmpty) {
+                                        final repo = ref.read(
+                                          trackRepositoryProvider.notifier,
+                                        );
+
+                                        // Separate audio and lyrics files
+                                        final audioPaths = paths.where((path) {
+                                          final ext = p
+                                              .extension(path)
+                                              .toLowerCase()
+                                              .replaceFirst('.', '');
+                                          return const [
+                                            'mp3',
+                                            'm4a',
+                                            'wav',
+                                            'flac',
+                                            'aac',
+                                            'ogg',
+                                            'wma',
+                                            'm4p',
+                                            'aiff',
+                                            'au',
+                                            'dss',
+                                          ].contains(ext);
+                                        }).toList();
+                                        final lyricsPaths = paths.where((path) {
+                                          final ext = p
+                                              .extension(path)
+                                              .toLowerCase()
+                                              .replaceFirst('.', '');
+                                          return const [
+                                            'lrc',
+                                            'srt',
+                                            'txt',
+                                          ].contains(ext);
+                                        }).toList();
+
+                                        // Import tracks if any
+                                        if (audioPaths.isNotEmpty) {
+                                          await repo.importFiles(audioPaths);
+                                        }
+
+                                        // Import lyrics if any
+                                        if (!context.mounted) return;
+                                        if (lyricsPaths.isNotEmpty) {
+                                          await _batchImportLyricsFromPaths(
+                                            context,
+                                            ref,
+                                            lyricsPaths,
+                                          );
+                                        }
+                                      }
+                                    }
+                                  },
+                                  iconSize: 16,
+                                  padding: EdgeInsets.all(8),
+                                  constraints: BoxConstraints(),
+                                  color: Theme.of(context).iconTheme.color,
+                                ),
                                 ...pageActionsButton,
                                 IconButton(
                                   icon: Icon(Symbols.minimize),
@@ -250,6 +423,56 @@ class Shell extends HookConsumerWidget {
             Positioned.fill(child: LibraryScreen()),
             Positioned(left: 0, right: 0, bottom: 0, child: MiniPlayer()),
           ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _batchImportLyricsFromPaths(
+    BuildContext context,
+    WidgetRef ref,
+    List<String> lyricsPaths,
+  ) async {
+    if (lyricsPaths.isEmpty) return;
+
+    final repo = ref.read(trackRepositoryProvider.notifier);
+    final tracks = await repo.getAllTracks();
+
+    int matched = 0;
+    int notMatched = 0;
+
+    for (final path in lyricsPaths) {
+      final file = File(path);
+      final content = await file.readAsString();
+      final filename = p.basename(path);
+
+      // Get basename without extension for matching
+      final baseName = filename
+          .replaceAll(RegExp(r'\.(lrc|srt|txt)$', caseSensitive: false), '')
+          .toLowerCase();
+
+      // Try to find a matching track by title
+      final matchingTrack = tracks.where((t) {
+        final trackTitle = t.title.toLowerCase();
+        return trackTitle == baseName ||
+            trackTitle.contains(baseName) ||
+            baseName.contains(trackTitle);
+      }).firstOrNull;
+
+      if (matchingTrack != null) {
+        final lyricsData = LyricsParser.parse(content, filename);
+        await repo.updateLyrics(matchingTrack.id, lyricsData.toJsonString());
+        matched++;
+      } else {
+        notMatched++;
+      }
+    }
+
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          'Batch import complete: $matched matched, $notMatched not matched',
         ),
       ),
     );

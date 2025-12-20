@@ -7,6 +7,7 @@ import 'package:groovybox/data/db.dart';
 import 'package:groovybox/data/playlist_repository.dart';
 import 'package:groovybox/data/track_repository.dart';
 import 'package:groovybox/logic/lyrics_parser.dart';
+import 'package:groovybox/logic/window_helpers.dart';
 import 'package:groovybox/providers/audio_provider.dart';
 import 'package:groovybox/providers/watch_folder_provider.dart';
 import 'package:groovybox/ui/screens/settings_screen.dart';
@@ -109,87 +110,94 @@ class LibraryScreen extends HookConsumerWidget {
                   const Gap(8),
                 ],
               )
-            : AppBar(
-                backgroundColor: Theme.of(context).colorScheme.surfaceContainer,
-                elevation: 0,
-                scrolledUnderElevation: 0,
-                title: isLargeScreen
-                    ? Row(
-                        children: [
-                          const Gap(4),
-                          Image.asset(
-                            'assets/images/icon.jpg',
-                            width: 32,
-                            height: 32,
-                          ).clipRRect(all: 8).padding(vertical: 16),
-                          const Gap(12),
-                          Text('GroovyBox', style: TextStyle(fontSize: 18)),
-                        ],
-                      )
-                    : const Text('Library'),
-                actions: [
-                  IconButton(
-                    onPressed: () {
-                      Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (context) => SettingsScreen(),
-                        ),
-                      );
-                    },
-                    icon: const Icon(Symbols.settings),
-                  ),
-                  IconButton(
-                    icon: const Icon(Symbols.add_circle_outline),
-                    tooltip: 'Import Files',
-                    onPressed: () async {
-                      final result = await FilePicker.platform.pickFiles(
-                        type: FileType.custom,
-                        allowedExtensions: allAllowedExtensions,
-                        allowMultiple: true,
-                      );
-                      if (result != null && result.files.isNotEmpty) {
-                        final paths = result.files
-                            .map((f) => f.path)
-                            .whereType<String>()
-                            .toList();
-                        if (paths.isNotEmpty) {
-                          // Separate audio and lyrics files
-                          final audioPaths = paths.where((path) {
-                            final ext = p
-                                .extension(path)
-                                .toLowerCase()
-                                .replaceFirst('.', '');
-                            return audioExtensions.contains(ext);
-                          }).toList();
-                          final lyricsPaths = paths.where((path) {
-                            final ext = p
-                                .extension(path)
-                                .toLowerCase()
-                                .replaceFirst('.', '');
-                            return lyricsExtensions.contains(ext);
-                          }).toList();
-
-                          // Import tracks if any
-                          if (audioPaths.isNotEmpty) {
-                            await repo.importFiles(audioPaths);
-                          }
-
-                          // Import lyrics if any
-                          if (!context.mounted) return;
-                          if (lyricsPaths.isNotEmpty) {
-                            await _batchImportLyricsFromPaths(
-                              context,
-                              ref,
-                              lyricsPaths,
+            : (isDesktopPlatform()
+                  ? null
+                  : AppBar(
+                      backgroundColor: Theme.of(
+                        context,
+                      ).colorScheme.surfaceContainer,
+                      elevation: 0,
+                      scrolledUnderElevation: 0,
+                      title: isLargeScreen
+                          ? Row(
+                              children: [
+                                const Gap(4),
+                                Image.asset(
+                                  'assets/images/icon.jpg',
+                                  width: 32,
+                                  height: 32,
+                                ).clipRRect(all: 8).padding(vertical: 16),
+                                const Gap(12),
+                                Text(
+                                  'GroovyBox',
+                                  style: TextStyle(fontSize: 18),
+                                ),
+                              ],
+                            )
+                          : const Text('Library'),
+                      actions: [
+                        IconButton(
+                          onPressed: () {
+                            Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (context) => SettingsScreen(),
+                              ),
                             );
-                          }
-                        }
-                      }
-                    },
-                  ),
-                  const Gap(8),
-                ],
-              ),
+                          },
+                          icon: const Icon(Symbols.settings),
+                        ),
+                        IconButton(
+                          icon: const Icon(Symbols.add_circle_outline),
+                          tooltip: 'Import Files',
+                          onPressed: () async {
+                            final result = await FilePicker.platform.pickFiles(
+                              type: FileType.custom,
+                              allowedExtensions: allAllowedExtensions,
+                              allowMultiple: true,
+                            );
+                            if (result != null && result.files.isNotEmpty) {
+                              final paths = result.files
+                                  .map((f) => f.path)
+                                  .whereType<String>()
+                                  .toList();
+                              if (paths.isNotEmpty) {
+                                // Separate audio and lyrics files
+                                final audioPaths = paths.where((path) {
+                                  final ext = p
+                                      .extension(path)
+                                      .toLowerCase()
+                                      .replaceFirst('.', '');
+                                  return audioExtensions.contains(ext);
+                                }).toList();
+                                final lyricsPaths = paths.where((path) {
+                                  final ext = p
+                                      .extension(path)
+                                      .toLowerCase()
+                                      .replaceFirst('.', '');
+                                  return lyricsExtensions.contains(ext);
+                                }).toList();
+
+                                // Import tracks if any
+                                if (audioPaths.isNotEmpty) {
+                                  await repo.importFiles(audioPaths);
+                                }
+
+                                // Import lyrics if any
+                                if (!context.mounted) return;
+                                if (lyricsPaths.isNotEmpty) {
+                                  await _batchImportLyricsFromPaths(
+                                    context,
+                                    ref,
+                                    lyricsPaths,
+                                  );
+                                }
+                              }
+                            }
+                          },
+                        ),
+                        const Gap(8),
+                      ],
+                    )),
         body: Container(
           color: Theme.of(context).colorScheme.surfaceContainer,
           child: Row(
