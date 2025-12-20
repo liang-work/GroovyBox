@@ -516,6 +516,7 @@ class _PlayerLyrics extends HookConsumerWidget {
     final lyricsFetcher = ref.watch(lyricsFetcherProvider);
     final musixmatchProviderInstance = ref.watch(musixmatchProvider);
     final neteaseProviderInstance = ref.watch(neteaseProvider);
+    final lrclibProviderInstance = ref.watch(lrclibProvider);
 
     // Simulate async behavior for compatibility
     if (currentTrack == null) {
@@ -543,6 +544,7 @@ class _PlayerLyrics extends HookConsumerWidget {
       lyricsFetcher,
       musixmatchProviderInstance,
       neteaseProviderInstance,
+      lrclibProviderInstance,
       context,
     );
   }
@@ -555,6 +557,7 @@ class _PlayerLyrics extends HookConsumerWidget {
     dynamic metadataObj,
     musixmatchProvider,
     neteaseProvider,
+    lrclibProvider,
   ) {
     showDialog(
       context: context,
@@ -565,6 +568,7 @@ class _PlayerLyrics extends HookConsumerWidget {
         ref: ref,
         musixmatchProvider: musixmatchProvider,
         neteaseProvider: neteaseProvider,
+        lrclibProvider: lrclibProvider,
       ),
     );
   }
@@ -576,6 +580,7 @@ class _PlayerLyrics extends HookConsumerWidget {
     dynamic lyricsFetcher,
     dynamic musixmatchProviderInstance,
     dynamic neteaseProviderInstance,
+    dynamic lrclibProviderInstance,
     BuildContext context,
   ) {
     // Get lyrics mode setting
@@ -614,6 +619,7 @@ class _PlayerLyrics extends HookConsumerWidget {
                 metadataAsync.value,
                 musixmatchProviderInstance,
                 neteaseProviderInstance,
+                lrclibProviderInstance,
               ),
             ),
         ],
@@ -701,6 +707,7 @@ class _FetchLyricsDialog extends StatelessWidget {
   final WidgetRef ref;
   final LrcProvider musixmatchProvider;
   final LrcProvider neteaseProvider;
+  final LrcProvider lrclibProvider;
 
   const _FetchLyricsDialog({
     required this.track,
@@ -709,6 +716,7 @@ class _FetchLyricsDialog extends StatelessWidget {
     required this.ref,
     required this.musixmatchProvider,
     required this.neteaseProvider,
+    required this.lrclibProvider,
   });
 
   @override
@@ -776,6 +784,25 @@ class _FetchLyricsDialog extends StatelessWidget {
                           trackId: track.id,
                           searchTerm: searchTerm,
                           provider: neteaseProvider,
+                          trackPath: trackPath,
+                        );
+                  },
+                ),
+                ListTile(
+                  dense: true,
+                  leading: const Icon(Symbols.library_books),
+                  title: const Text('Lrclib'),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: const BorderRadius.all(Radius.circular(12)),
+                  ),
+                  onTap: () async {
+                    Navigator.of(context).pop();
+                    await ref
+                        .read(lyricsFetcherProvider.notifier)
+                        .fetchLyricsForTrack(
+                          trackId: track.id,
+                          searchTerm: searchTerm,
+                          provider: lrclibProvider,
                           trackPath: trackPath,
                         );
                   },
@@ -857,6 +884,7 @@ class _LyricsAdjustButton extends HookConsumerWidget {
     );
     final musixmatchProviderInstance = ref.watch(musixmatchProvider);
     final neteaseProviderInstance = ref.watch(neteaseProvider);
+    final lrclibProviderInstance = ref.watch(lrclibProvider);
 
     // Don't show the button if there's no current track
     if (currentTrack == null) {
@@ -874,6 +902,7 @@ class _LyricsAdjustButton extends HookConsumerWidget {
         metadataAsync,
         musixmatchProviderInstance,
         neteaseProviderInstance,
+        lrclibProviderInstance,
       ),
       padding: EdgeInsets.zero,
     );
@@ -887,6 +916,7 @@ class _LyricsAdjustButton extends HookConsumerWidget {
     dynamic metadataObj,
     musixmatchProvider,
     neteaseProvider,
+    lrclibProvider,
   ) {
     showDialog(
       context: context,
@@ -897,6 +927,7 @@ class _LyricsAdjustButton extends HookConsumerWidget {
         ref: ref,
         musixmatchProvider: musixmatchProvider,
         neteaseProvider: neteaseProvider,
+        lrclibProvider: lrclibProvider,
       ),
     );
   }
@@ -908,6 +939,7 @@ class _LyricsAdjustButton extends HookConsumerWidget {
     AsyncValue<TrackMetadata> metadataAsync,
     musixmatchProvider,
     neteaseProvider,
+    lrclibProvider,
   ) {
     // Convert CurrentTrackData to db.Track for compatibility
     final track = db.Track(
@@ -952,6 +984,7 @@ class _LyricsAdjustButton extends HookConsumerWidget {
                             metadata,
                             musixmatchProvider,
                             neteaseProvider,
+                            lrclibProvider,
                           );
                         },
                       ),

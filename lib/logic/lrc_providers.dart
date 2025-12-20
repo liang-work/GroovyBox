@@ -226,6 +226,47 @@ class NetEaseProvider extends LrcProvider {
   }
 }
 
+/// Lrclib provider
+class LrclibProvider extends LrcProvider {
+  static const String rootUrl = "https://lrclib.net";
+  static const String apiEndpoint = "$rootUrl/api";
+  static const String searchEndpoint = "$apiEndpoint/search";
+  static const String lrcEndpoint = "$apiEndpoint/get/";
+
+  @override
+  String get name => 'Lrclib';
+
+  Future<Lyrics?> getLrcById(String trackId) async {
+    final url = lrcEndpoint + trackId;
+    final response = await session.get(url);
+    if (response.statusCode != 200) return null;
+    final track = response.data;
+    final synced = track['syncedLyrics'];
+    final plain = track['plainLyrics'];
+    return Lyrics(synced: synced, plain: plain);
+  }
+
+  @override
+  Future<Lyrics?> getLrc(String searchTerm) async {
+    final response = await session.get(
+      searchEndpoint,
+      queryParameters: {'q': searchTerm},
+    );
+    if (response.statusCode != 200) return null;
+    final tracks = response.data as List<dynamic>;
+    if (tracks.isEmpty) return null;
+    // Find first track with syncedLyrics not empty
+    for (final track in tracks) {
+      final synced = track['syncedLyrics'];
+      if (synced != null && synced.trim().isNotEmpty) {
+        final id = track['id'].toString();
+        return await getLrcById(id);
+      }
+    }
+    return null;
+  }
+}
+
 // Utility function
 String formatTime(dynamic time) {
   final seconds = time.toInt();

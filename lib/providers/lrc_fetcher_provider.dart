@@ -120,3 +120,4 @@ class LyricsFetcherState {
 // Providers for each LRC provider
 final musixmatchProvider = Provider((ref) => MusixmatchProvider());
 final neteaseProvider = Provider((ref) => NetEaseProvider());
+final lrclibProvider = Provider((ref) => LrclibProvider());

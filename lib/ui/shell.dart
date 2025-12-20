@@ -83,7 +83,9 @@ class Shell extends HookConsumerWidget {
         void saveWindowSize() {
           windowManager.getBounds().then((bounds) {
             final settingsNotifier = ref.read(settingsProvider.notifier);
-            settingsNotifier.setWindowSize(bounds.size);
+            Future(() {
+              settingsNotifier.setWindowSize(bounds.size);
+            });
           });
         }
 
