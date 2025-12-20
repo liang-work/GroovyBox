@@ -524,6 +524,7 @@ class LibraryScreen extends HookConsumerWidget {
                       showTrailingIcon: true,
                       onTrailingPressed: () =>
                           _showTrackOptions(context, ref, track),
+                      onLongPress: () => toggleSelection(track.id),
                       onTap: () {
                         final loadingNotifier = ref.read(
                           remoteTrackLoadingProvider.notifier,

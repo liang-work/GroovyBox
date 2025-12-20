@@ -7,6 +7,7 @@ import 'package:styled_widget/styled_widget.dart';
 class TrackTile extends StatelessWidget {
   final db.Track track;
   final VoidCallback? onTap;
+  final VoidCallback? onLongPress;
   final bool isPlaying;
   final bool showTrailingIcon;
   final VoidCallback? onTrailingPressed;
@@ -17,6 +18,7 @@ class TrackTile extends StatelessWidget {
     super.key,
     required this.track,
     this.onTap,
+    this.onLongPress,
     this.isPlaying = false,
     this.leading,
     this.padding,
@@ -90,6 +92,7 @@ class TrackTile extends StatelessWidget {
               )
             : null,
         onTap: onTap,
+        onLongPress: onLongPress,
       ),
     );
   }
