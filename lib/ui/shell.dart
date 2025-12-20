@@ -1,26 +1,256 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_hooks/flutter_hooks.dart';
+import 'package:gap/gap.dart';
+import 'package:groovybox/logic/window_helpers.dart';
+import 'package:groovybox/providers/settings_provider.dart';
+import 'package:hooks_riverpod/hooks_riverpod.dart';
+import 'package:material_symbols_icons/symbols.dart';
+import 'package:styled_widget/styled_widget.dart';
+import 'package:window_manager/window_manager.dart';
+import 'dart:io';
 import 'screens/library_screen.dart';
 import 'widgets/mini_player.dart';
 
-class Shell extends StatelessWidget {
+// Navigation intents and actions
+class PopIntent extends Intent {
+  const PopIntent();
+}
+
+class PopAction extends Action<PopIntent> {
+  final WidgetRef ref;
+
+  PopAction(this.ref);
+
+  @override
+  void invoke(PopIntent intent) {
+    // Handle pop navigation
+    // Since we don't have a router, we can handle back navigation here if needed
+  }
+}
+
+// Window management helpers
+class _WindowSizeObserver extends WidgetsBindingObserver {
+  final VoidCallback callback;
+
+  _WindowSizeObserver(this.callback);
+
+  @override
+  void didChangeMetrics() {
+    callback();
+  }
+}
+
+class _WindowMaximizeListener extends WindowListener {
+  final ValueNotifier<bool> isMaximized;
+
+  _WindowMaximizeListener(this.isMaximized);
+
+  @override
+  void onWindowMaximize() {
+    isMaximized.value = true;
+  }
+
+  @override
+  void onWindowUnmaximize() {
+    isMaximized.value = false;
+  }
+
+  @override
+  void onWindowRestore() {
+    isMaximized.value = false;
+  }
+}
+
+class Shell extends HookConsumerWidget {
   const Shell({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    return const Scaffold(
-      body: Stack(
-        children: [
-          // Main Content
-          Positioned.fill(
-            child: LibraryScreen(),
-            // Note: LibraryScreen might need padding at bottom to avoid occlusion by mini player
-            // We can wrap LibraryScreen content or handle it there.
-            // For now, let's just place it.
-          ),
+  Widget build(BuildContext context, WidgetRef ref) {
+    final isMaximized = useState(false);
 
-          // Mini Player
-          Positioned(left: 0, right: 0, bottom: 0, child: MiniPlayer()),
-        ],
+    // Add window resize listener for desktop platforms
+    useEffect(() {
+      if (isDesktopPlatform()) {
+        void saveWindowSize() {
+          windowManager.getBounds().then((bounds) {
+            final settingsNotifier = ref.read(settingsProvider.notifier);
+            settingsNotifier.setWindowSize(bounds.size);
+          });
+        }
+
+        // Save window size when app is about to close
+        WidgetsBinding.instance.addObserver(
+          _WindowSizeObserver(saveWindowSize),
+        );
+
+        final maximizeListener = _WindowMaximizeListener(isMaximized);
+        windowManager.addListener(maximizeListener);
+        windowManager.isMaximized().then((max) => isMaximized.value = max);
+
+        return () {
+          // Cleanup observer when widget is disposed
+          WidgetsBinding.instance.removeObserver(
+            _WindowSizeObserver(saveWindowSize),
+          );
+          windowManager.removeListener(maximizeListener);
+        };
+      }
+      return null;
+    }, []);
+
+    final pageActionsButton = [
+      IconButton(
+        icon: Icon(Symbols.home),
+        onPressed: () => Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(builder: (context) => const LibraryScreen()),
+          (route) => false,
+        ),
+        iconSize: 16,
+        padding: EdgeInsets.all(8),
+        constraints: BoxConstraints(),
+        color: Theme.of(context).iconTheme.color,
+      ),
+      const Gap(8),
+    ];
+
+    if (isDesktopPlatform()) {
+      return Shortcuts(
+        shortcuts: <LogicalKeySet, Intent>{
+          LogicalKeySet(LogicalKeyboardKey.escape): const PopIntent(),
+        },
+        child: Actions(
+          actions: <Type, Action<Intent>>{PopIntent: PopAction(ref)},
+          child: Material(
+            color: Theme.of(context).colorScheme.surfaceContainer,
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                Column(
+                  children: [
+                    DragToMoveArea(
+                      child: Platform.isMacOS
+                          ? Stack(
+                              alignment: Alignment.center,
+                              children: [
+                                if (isWideScreen(context))
+                                  Row(
+                                    children: [
+                                      const Spacer(),
+                                      ...pageActionsButton,
+                                    ],
+                                  )
+                                else
+                                  SizedBox(height: 32),
+                                Text(
+                                  'GroovyBox',
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(
+                                    color: Theme.of(
+                                      context,
+                                    ).colorScheme.onSurface,
+                                  ),
+                                ),
+                              ],
+                            )
+                          : Row(
+                              crossAxisAlignment: CrossAxisAlignment.center,
+                              mainAxisAlignment: MainAxisAlignment.start,
+                              children: [
+                                Expanded(
+                                  child: Row(
+                                    children: [
+                                      Image.asset(
+                                        Theme.of(context).brightness ==
+                                                Brightness.dark
+                                            ? 'assets/images/icon-dark.png'
+                                            : 'assets/images/icon.jpg',
+                                        width: 20,
+                                        height: 20,
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Text(
+                                        'GroovyBox',
+                                        textAlign: TextAlign.start,
+                                      ),
+                                    ],
+                                  ).padding(horizontal: 12, vertical: 5),
+                                ),
+                                ...pageActionsButton,
+                                IconButton(
+                                  icon: Icon(Symbols.minimize),
+                                  onPressed: () => windowManager.minimize(),
+                                  iconSize: 16,
+                                  padding: EdgeInsets.all(8),
+                                  constraints: BoxConstraints(),
+                                  color: Theme.of(context).iconTheme.color,
+                                ),
+                                IconButton(
+                                  icon: Icon(
+                                    isMaximized.value
+                                        ? Symbols.fullscreen_exit
+                                        : Symbols.fullscreen,
+                                  ),
+                                  onPressed: () async {
+                                    if (await windowManager.isMaximized()) {
+                                      windowManager.restore();
+                                    } else {
+                                      windowManager.maximize();
+                                    }
+                                  },
+                                  iconSize: 16,
+                                  padding: EdgeInsets.all(8),
+                                  constraints: BoxConstraints(),
+                                  color: Theme.of(context).iconTheme.color,
+                                ),
+                                IconButton(
+                                  icon: Icon(Symbols.close),
+                                  onPressed: () => windowManager.hide(),
+                                  iconSize: 16,
+                                  padding: EdgeInsets.all(8),
+                                  constraints: BoxConstraints(),
+                                  color: Theme.of(context).iconTheme.color,
+                                ),
+                              ],
+                            ),
+                    ),
+                    Expanded(
+                      child: Stack(
+                        children: [
+                          // Main Content
+                          Positioned.fill(child: LibraryScreen()),
+                          // Mini Player
+                          Positioned(
+                            left: 0,
+                            right: 0,
+                            bottom: 0,
+                            child: MiniPlayer(),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
+    return Shortcuts(
+      shortcuts: <LogicalKeySet, Intent>{
+        LogicalKeySet(LogicalKeyboardKey.escape): const PopIntent(),
+      },
+      child: Actions(
+        actions: <Type, Action<Intent>>{PopIntent: PopAction(ref)},
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            Positioned.fill(child: LibraryScreen()),
+            Positioned(left: 0, right: 0, bottom: 0, child: MiniPlayer()),
+          ],
+        ),
       ),
     );
   }

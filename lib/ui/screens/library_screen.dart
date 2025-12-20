@@ -80,7 +80,7 @@ class LibraryScreen extends HookConsumerWidget {
                   onPressed: clearSelection,
                 ),
                 title: Text('${selectedTrackIds.value.length} selected'),
-                backgroundColor: Theme.of(context).primaryColorDark,
+                backgroundColor: Theme.of(context).colorScheme.primary,
                 actions: [
                   IconButton(
                     icon: const Icon(Symbols.playlist_add),
@@ -110,6 +110,9 @@ class LibraryScreen extends HookConsumerWidget {
                 ],
               )
             : AppBar(
+                backgroundColor: Theme.of(context).colorScheme.surfaceContainer,
+                elevation: 0,
+                scrolledUnderElevation: 0,
                 title: isLargeScreen
                     ? Row(
                         children: [
@@ -187,33 +190,37 @@ class LibraryScreen extends HookConsumerWidget {
                   const Gap(8),
                 ],
               ),
-        body: Column(
-          children: [
-            const Divider(height: 1),
-            Expanded(
-              child: Row(
-                children: [
-                  NavigationRail(
-                    extended: isExtraLargeScreen,
-                    selectedIndex: selectedTab!.value,
-                    onDestinationSelected: (index) => selectedTab.value = index,
-                    destinations: const [
-                      NavigationRailDestination(
-                        icon: Icon(Symbols.audiotrack),
-                        label: Text('Tracks'),
-                      ),
-                      NavigationRailDestination(
-                        icon: Icon(Symbols.album),
-                        label: Text('Albums'),
-                      ),
-                      NavigationRailDestination(
-                        icon: Icon(Symbols.queue_music),
-                        label: Text('Playlists'),
-                      ),
-                    ],
+        body: Container(
+          color: Theme.of(context).colorScheme.surfaceContainer,
+          child: Row(
+            children: [
+              NavigationRail(
+                backgroundColor: Colors.transparent,
+                extended: isExtraLargeScreen,
+                selectedIndex: selectedTab!.value,
+                onDestinationSelected: (index) => selectedTab.value = index,
+                destinations: const [
+                  NavigationRailDestination(
+                    icon: Icon(Symbols.audiotrack),
+                    label: Text('Tracks'),
                   ),
-                  const VerticalDivider(width: 1),
-                  Expanded(
+                  NavigationRailDestination(
+                    icon: Icon(Symbols.album),
+                    label: Text('Albums'),
+                  ),
+                  NavigationRailDestination(
+                    icon: Icon(Symbols.queue_music),
+                    label: Text('Playlists'),
+                  ),
+                ],
+              ),
+              Expanded(
+                child: ClipRRect(
+                  borderRadius: const BorderRadius.only(
+                    topLeft: Radius.circular(16),
+                  ),
+                  child: ColoredBox(
+                    color: Theme.of(context).colorScheme.surface,
                     child: _buildTabContent(
                       selectedTab.value,
                       ref,
@@ -224,10 +231,10 @@ class LibraryScreen extends HookConsumerWidget {
                       isSelectionMode,
                     ),
                   ),
-                ],
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       );
     } else {
@@ -241,7 +248,7 @@ class LibraryScreen extends HookConsumerWidget {
                     onPressed: clearSelection,
                   ),
                   title: Text('${selectedTrackIds.value.length} selected'),
-                  backgroundColor: Theme.of(context).primaryColorDark,
+                  backgroundColor: Theme.of(context).colorScheme.primary,
                   actions: [
                     IconButton(
                       icon: const Icon(Symbols.playlist_add),

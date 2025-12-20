@@ -1,3 +1,5 @@
+import 'dart:ui';
+
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -38,6 +40,7 @@ class SettingsState {
   final LyricsMode lyricsMode;
   final bool continuePlays;
   final Set<String> supportedFormats;
+  final Size? windowSize;
 
   const SettingsState({
     this.importMode = ImportMode.mixed,
@@ -56,6 +59,7 @@ class SettingsState {
       '.wma',
       '.opus',
     },
+    this.windowSize,
   });
 
   SettingsState copyWith({
@@ -66,6 +70,7 @@ class SettingsState {
     LyricsMode? lyricsMode,
     bool? continuePlays,
     Set<String>? supportedFormats,
+    Size? windowSize,
   }) {
     return SettingsState(
       importMode: importMode ?? this.importMode,
@@ -75,6 +80,7 @@ class SettingsState {
       lyricsMode: lyricsMode ?? this.lyricsMode,
       continuePlays: continuePlays ?? this.continuePlays,
       supportedFormats: supportedFormats ?? this.supportedFormats,
+      windowSize: windowSize ?? this.windowSize,
     );
   }
 }
@@ -87,6 +93,8 @@ class SettingsNotifier extends _$SettingsNotifier {
   static const String _defaultPlayerScreenKey = 'default_player_screen';
   static const String _lyricsModeKey = 'lyrics_mode';
   static const String _continuePlaysKey = 'continue_plays';
+  static const String _windowWidthKey = 'window_width';
+  static const String _windowHeightKey = 'window_height';
 
   @override
   Future<SettingsState> build() async {
@@ -108,6 +116,14 @@ class SettingsNotifier extends _$SettingsNotifier {
 
     final continuePlays = prefs.getBool(_continuePlaysKey) ?? false;
 
+    // Load window size
+    Size? windowSize;
+    final windowWidth = prefs.getDouble(_windowWidthKey);
+    final windowHeight = prefs.getDouble(_windowHeightKey);
+    if (windowWidth != null && windowHeight != null) {
+      windowSize = Size(windowWidth, windowHeight);
+    }
+
     return SettingsState(
       importMode: importMode,
       autoScan: autoScan,
@@ -115,6 +131,7 @@ class SettingsNotifier extends _$SettingsNotifier {
       defaultPlayerScreen: defaultPlayerScreen,
       lyricsMode: lyricsMode,
       continuePlays: continuePlays,
+      windowSize: windowSize,
     );
   }
 
@@ -171,6 +188,16 @@ class SettingsNotifier extends _$SettingsNotifier {
 
     if (state.hasValue) {
       state = AsyncValue.data(state.value!.copyWith(continuePlays: enabled));
+    }
+  }
+
+  Future<void> setWindowSize(Size size) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setDouble(_windowWidthKey, size.width);
+    await prefs.setDouble(_windowHeightKey, size.height);
+
+    if (state.hasValue) {
+      state = AsyncValue.data(state.value!.copyWith(windowSize: size));
     }
   }
 }

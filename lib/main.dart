@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:groovybox/logic/audio_handler.dart';
+import 'package:groovybox/logic/window_helpers.dart';
 import 'package:groovybox/providers/audio_provider.dart';
 import 'package:groovybox/providers/theme_provider.dart';
 import 'package:groovybox/ui/shell.dart';
@@ -12,6 +13,11 @@ late AudioHandler _audioHandler;
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   MediaKit.ensureInitialized();
+
+  // Initialize window manager for desktop platforms
+  if (isDesktopPlatform()) {
+    await initializeWindowManager();
+  }
 
   // Initialize AudioService
   _audioHandler = await audio_service.AudioService.init(
