@@ -12,16 +12,38 @@ enum ImportMode {
   final String displayName;
 }
 
+enum DefaultPlayerScreen {
+  cover('Cover'),
+  lyrics('Lyrics'),
+  queue('Queue');
+
+  const DefaultPlayerScreen(this.displayName);
+  final String displayName;
+}
+
+enum LyricsMode {
+  curved('Curved'),
+  flat('Flat'),
+  auto('Auto');
+
+  const LyricsMode(this.displayName);
+  final String displayName;
+}
+
 class SettingsState {
   final ImportMode importMode;
   final bool autoScan;
   final bool watchForChanges;
+  final DefaultPlayerScreen defaultPlayerScreen;
+  final LyricsMode lyricsMode;
   final Set<String> supportedFormats;
 
   const SettingsState({
     this.importMode = ImportMode.mixed,
     this.autoScan = true,
     this.watchForChanges = true,
+    this.defaultPlayerScreen = DefaultPlayerScreen.cover,
+    this.lyricsMode = LyricsMode.auto,
     this.supportedFormats = const {
       '.mp3',
       '.flac',
@@ -38,12 +60,16 @@ class SettingsState {
     ImportMode? importMode,
     bool? autoScan,
     bool? watchForChanges,
+    DefaultPlayerScreen? defaultPlayerScreen,
+    LyricsMode? lyricsMode,
     Set<String>? supportedFormats,
   }) {
     return SettingsState(
       importMode: importMode ?? this.importMode,
       autoScan: autoScan ?? this.autoScan,
       watchForChanges: watchForChanges ?? this.watchForChanges,
+      defaultPlayerScreen: defaultPlayerScreen ?? this.defaultPlayerScreen,
+      lyricsMode: lyricsMode ?? this.lyricsMode,
       supportedFormats: supportedFormats ?? this.supportedFormats,
     );
   }
@@ -54,6 +80,8 @@ class SettingsNotifier extends _$SettingsNotifier {
   static const String _importModeKey = 'import_mode';
   static const String _autoScanKey = 'auto_scan';
   static const String _watchForChangesKey = 'watch_for_changes';
+  static const String _defaultPlayerScreenKey = 'default_player_screen';
+  static const String _lyricsModeKey = 'lyrics_mode';
 
   @override
   Future<SettingsState> build() async {
@@ -65,10 +93,20 @@ class SettingsNotifier extends _$SettingsNotifier {
     final autoScan = prefs.getBool(_autoScanKey) ?? true;
     final watchForChanges = prefs.getBool(_watchForChangesKey) ?? true;
 
+    final defaultPlayerScreenIndex = prefs.getInt(_defaultPlayerScreenKey) ?? 0;
+    final defaultPlayerScreen =
+        DefaultPlayerScreen.values[defaultPlayerScreenIndex];
+
+    final lyricsModeIndex =
+        prefs.getInt(_lyricsModeKey) ?? 2; // Auto is default
+    final lyricsMode = LyricsMode.values[lyricsModeIndex];
+
     return SettingsState(
       importMode: importMode,
       autoScan: autoScan,
       watchForChanges: watchForChanges,
+      defaultPlayerScreen: defaultPlayerScreen,
+      lyricsMode: lyricsMode,
     );
   }
 
@@ -96,6 +134,26 @@ class SettingsNotifier extends _$SettingsNotifier {
 
     if (state.hasValue) {
       state = AsyncValue.data(state.value!.copyWith(watchForChanges: enabled));
+    }
+  }
+
+  Future<void> setDefaultPlayerScreen(DefaultPlayerScreen screen) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt(_defaultPlayerScreenKey, screen.index);
+
+    if (state.hasValue) {
+      state = AsyncValue.data(
+        state.value!.copyWith(defaultPlayerScreen: screen),
+      );
+    }
+  }
+
+  Future<void> setLyricsMode(LyricsMode mode) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt(_lyricsModeKey, mode.index);
+
+    if (state.hasValue) {
+      state = AsyncValue.data(state.value!.copyWith(lyricsMode: mode));
     }
   }
 }
@@ -152,5 +210,41 @@ class WatchForChangesNotifier extends _$WatchForChangesNotifier {
 
   Future<void> update(bool enabled) async {
     await ref.read(settingsProvider.notifier).setWatchForChanges(enabled);
+  }
+}
+
+@riverpod
+class DefaultPlayerScreenNotifier extends _$DefaultPlayerScreenNotifier {
+  @override
+  DefaultPlayerScreen build() {
+    return ref
+        .watch(settingsProvider)
+        .when(
+          data: (settings) => settings.defaultPlayerScreen,
+          loading: () => DefaultPlayerScreen.cover,
+          error: (_, _) => DefaultPlayerScreen.cover,
+        );
+  }
+
+  Future<void> update(DefaultPlayerScreen screen) async {
+    await ref.read(settingsProvider.notifier).setDefaultPlayerScreen(screen);
+  }
+}
+
+@riverpod
+class LyricsModeNotifier extends _$LyricsModeNotifier {
+  @override
+  LyricsMode build() {
+    return ref
+        .watch(settingsProvider)
+        .when(
+          data: (settings) => settings.lyricsMode,
+          loading: () => LyricsMode.auto,
+          error: (_, _) => LyricsMode.auto,
+        );
+  }
+
+  Future<void> update(LyricsMode mode) async {
+    await ref.read(settingsProvider.notifier).setLyricsMode(mode);
   }
 }

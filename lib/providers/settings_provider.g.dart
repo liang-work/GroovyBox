@@ -33,7 +33,7 @@ final class SettingsNotifierProvider
   SettingsNotifier create() => SettingsNotifier();
 }
 
-String _$settingsNotifierHash() => r'6dc43c0f1d6ee7b7744dae2a8557b758574473d2';
+String _$settingsNotifierHash() => r'4099dd1aa3dfc971c0761f314d196f3bc97315e7';
 
 abstract class _$SettingsNotifier extends $AsyncNotifier<SettingsState> {
   FutureOr<SettingsState> build();
@@ -208,6 +208,116 @@ abstract class _$WatchForChangesNotifier extends $Notifier<bool> {
             as $ClassProviderElement<
               AnyNotifier<bool, bool>,
               bool,
+              Object?,
+              Object?
+            >;
+    element.handleValue(ref, created);
+  }
+}
+
+@ProviderFor(DefaultPlayerScreenNotifier)
+const defaultPlayerScreenProvider = DefaultPlayerScreenNotifierProvider._();
+
+final class DefaultPlayerScreenNotifierProvider
+    extends
+        $NotifierProvider<DefaultPlayerScreenNotifier, DefaultPlayerScreen> {
+  const DefaultPlayerScreenNotifierProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'defaultPlayerScreenProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$defaultPlayerScreenNotifierHash();
+
+  @$internal
+  @override
+  DefaultPlayerScreenNotifier create() => DefaultPlayerScreenNotifier();
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(DefaultPlayerScreen value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<DefaultPlayerScreen>(value),
+    );
+  }
+}
+
+String _$defaultPlayerScreenNotifierHash() =>
+    r'cddfe0510ec38b3d5800901bd018728ca2567d54';
+
+abstract class _$DefaultPlayerScreenNotifier
+    extends $Notifier<DefaultPlayerScreen> {
+  DefaultPlayerScreen build();
+  @$mustCallSuper
+  @override
+  void runBuild() {
+    final created = build();
+    final ref = this.ref as $Ref<DefaultPlayerScreen, DefaultPlayerScreen>;
+    final element =
+        ref.element
+            as $ClassProviderElement<
+              AnyNotifier<DefaultPlayerScreen, DefaultPlayerScreen>,
+              DefaultPlayerScreen,
+              Object?,
+              Object?
+            >;
+    element.handleValue(ref, created);
+  }
+}
+
+@ProviderFor(LyricsModeNotifier)
+const lyricsModeProvider = LyricsModeNotifierProvider._();
+
+final class LyricsModeNotifierProvider
+    extends $NotifierProvider<LyricsModeNotifier, LyricsMode> {
+  const LyricsModeNotifierProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'lyricsModeProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$lyricsModeNotifierHash();
+
+  @$internal
+  @override
+  LyricsModeNotifier create() => LyricsModeNotifier();
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(LyricsMode value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<LyricsMode>(value),
+    );
+  }
+}
+
+String _$lyricsModeNotifierHash() =>
+    r'b3f77739bfab6bb7551cb31bebfef5c8b6dcb423';
+
+abstract class _$LyricsModeNotifier extends $Notifier<LyricsMode> {
+  LyricsMode build();
+  @$mustCallSuper
+  @override
+  void runBuild() {
+    final created = build();
+    final ref = this.ref as $Ref<LyricsMode, LyricsMode>;
+    final element =
+        ref.element
+            as $ClassProviderElement<
+              AnyNotifier<LyricsMode, LyricsMode>,
+              LyricsMode,
               Object?,
               Object?
             >;

@@ -42,7 +42,7 @@ class SettingsScreen extends ConsumerWidget {
                             fontSize: 18,
                             fontWeight: FontWeight.bold,
                           ),
-                        ).padding(horizontal: 16, bottom: 8, top: 16),
+                        ).padding(horizontal: 16, top: 16),
                         SwitchListTile(
                           title: const Text('Auto-scan music libraries'),
                           subtitle: const Text(
@@ -312,6 +312,78 @@ class SettingsScreen extends ConsumerWidget {
                     ),
                   ),
 
+                  // Player Settings Section
+                  Card(
+                    margin: EdgeInsets.zero,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Player Settings',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ).padding(horizontal: 16, top: 16),
+                        const Text(
+                          'Configure player behavior and display options.',
+                          style: TextStyle(color: Colors.grey, fontSize: 14),
+                        ).padding(horizontal: 16, bottom: 8),
+                        ListTile(
+                          title: const Text('Default Player Screen'),
+                          subtitle: const Text(
+                            'Choose which screen to show when opening the player.',
+                          ),
+                          trailing: DropdownButtonHideUnderline(
+                            child: DropdownButton<DefaultPlayerScreen>(
+                              value: settings.defaultPlayerScreen,
+                              onChanged: (DefaultPlayerScreen? value) {
+                                if (value != null) {
+                                  ref
+                                      .read(
+                                        defaultPlayerScreenProvider.notifier,
+                                      )
+                                      .update(value);
+                                }
+                              },
+                              items: DefaultPlayerScreen.values.map((screen) {
+                                return DropdownMenuItem(
+                                  value: screen,
+                                  child: Text(screen.displayName),
+                                );
+                              }).toList(),
+                            ),
+                          ),
+                        ),
+                        ListTile(
+                          title: const Text('Lyrics Mode'),
+                          subtitle: const Text(
+                            'Choose how lyrics are displayed.',
+                          ),
+                          trailing: DropdownButtonHideUnderline(
+                            child: DropdownButton<LyricsMode>(
+                              value: settings.lyricsMode,
+                              onChanged: (LyricsMode? value) {
+                                if (value != null) {
+                                  ref
+                                      .read(lyricsModeProvider.notifier)
+                                      .update(value);
+                                }
+                              },
+                              items: LyricsMode.values.map((mode) {
+                                return DropdownMenuItem(
+                                  value: mode,
+                                  child: Text(mode.displayName),
+                                );
+                              }).toList(),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                      ],
+                    ),
+                  ),
+
                   // Database Management Section
                   Card(
                     margin: EdgeInsets.zero,
@@ -324,7 +396,7 @@ class SettingsScreen extends ConsumerWidget {
                             fontSize: 18,
                             fontWeight: FontWeight.bold,
                           ),
-                        ).padding(horizontal: 16, bottom: 8, top: 16),
+                        ).padding(horizontal: 16, top: 16),
                         const Text(
                           'Manage your music database and cached files.',
                           style: TextStyle(color: Colors.grey, fontSize: 14),

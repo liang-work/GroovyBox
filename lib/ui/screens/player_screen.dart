@@ -5,6 +5,7 @@ import 'dart:ui';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:drift/drift.dart' as drift;
 import 'package:gap/gap.dart';
@@ -16,6 +17,7 @@ import 'package:groovybox/logic/metadata_service.dart';
 import 'package:groovybox/providers/audio_provider.dart';
 import 'package:groovybox/providers/db_provider.dart';
 import 'package:groovybox/providers/lrc_fetcher_provider.dart';
+import 'package:groovybox/providers/settings_provider.dart';
 import 'package:groovybox/ui/widgets/mini_player.dart';
 import 'package:groovybox/ui/widgets/track_tile.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
@@ -35,7 +37,26 @@ class PlayerScreen extends HookConsumerWidget {
     final audioHandler = ref.watch(audioHandlerProvider);
     final player = audioHandler.player;
 
-    final viewMode = useState(ViewMode.cover);
+    // Use the default player screen setting from main settings provider
+    final settingsAsync = ref.watch(settingsProvider);
+    final defaultPlayerScreen = settingsAsync.maybeWhen(
+      data: (settings) => settings.defaultPlayerScreen,
+      orElse: () => null, // Return null when loading/error
+    );
+    final viewMode = useState<ViewMode>(ViewMode.cover); // Start with cover
+
+    // Update viewMode when defaultPlayerScreen setting is loaded
+    useEffect(() {
+      if (defaultPlayerScreen != null) {
+        final newViewMode = switch (defaultPlayerScreen) {
+          DefaultPlayerScreen.cover => ViewMode.cover,
+          DefaultPlayerScreen.lyrics => ViewMode.lyrics,
+          DefaultPlayerScreen.queue => ViewMode.queue,
+        };
+        viewMode.value = newViewMode;
+      }
+      return null;
+    }, [defaultPlayerScreen]);
     final isMobile = MediaQuery.sizeOf(context).width <= 800;
 
     return StreamBuilder<Playlist>(
@@ -534,54 +555,42 @@ class _PlayerLyrics extends HookConsumerWidget {
     dynamic neteaseProviderInstance,
     BuildContext context,
   ) {
+    // Get lyrics mode setting
+    final lyricsMode = ref.watch(lyricsModeProvider);
+    final isDesktop = MediaQuery.sizeOf(context).width > 800;
+
+    // Determine if we should use curved (desktop-style) or flat (mobile-style) lyrics
+    final useCurvedStyle = switch (lyricsMode) {
+      LyricsMode.curved => true,
+      LyricsMode.flat => false,
+      LyricsMode.auto =>
+        isDesktop, // Auto mode: curved on desktop, flat on mobile
+    };
     if (track.lyrics == null) {
       // Show fetch lyrics UI
       return Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Text(
-            'No Lyrics Available',
-            style: TextStyle(fontStyle: FontStyle.italic, fontSize: 18),
-          ),
+          Text('No Lyrics Available'),
           const SizedBox(height: 16),
-          ElevatedButton.icon(
-            icon: const Icon(Symbols.download),
-            label: const Text('Fetch Lyrics'),
-            onPressed: () => _showFetchLyricsDialog(
-              context,
-              ref,
-              track,
-              track.path,
-              metadataAsync.value,
-              musixmatchProviderInstance,
-              neteaseProviderInstance,
-            ),
-          ),
+
           if (lyricsFetcher.isLoading)
             Padding(
               padding: const EdgeInsets.all(16.0),
-              child: LinearProgressIndicator(),
-            ),
-          if (lyricsFetcher.error != null)
-            Padding(
-              padding: const EdgeInsets.all(8.0),
-              child: Text(
-                lyricsFetcher.error!,
-                style: TextStyle(color: Colors.red, fontSize: 12),
-                textAlign: TextAlign.center,
-              ),
-            ),
-          if (lyricsFetcher.successMessage != null)
-            Padding(
-              padding: const EdgeInsets.all(8.0),
-              child: Text(
-                lyricsFetcher.successMessage!,
-                style: TextStyle(
-                  color: Colors.green,
-                  fontSize: 14,
-                  fontWeight: FontWeight.bold,
-                ),
-                textAlign: TextAlign.center,
+              child: CircularProgressIndicator(),
+            )
+          else
+            ElevatedButton.icon(
+              icon: const Icon(Symbols.download),
+              label: const Text('Fetch Lyrics'),
+              onPressed: () => _showFetchLyricsDialog(
+                context,
+                ref,
+                track,
+                track.path,
+                metadataAsync.value,
+                musixmatchProviderInstance,
+                neteaseProviderInstance,
               ),
             ),
         ],
@@ -599,24 +608,29 @@ class _PlayerLyrics extends HookConsumerWidget {
         );
       } else {
         // Plain text lyrics
-        final isDesktop = MediaQuery.sizeOf(context).width > 800;
-        if (isDesktop) {
+        if (useCurvedStyle) {
           return ListWheelScrollView.useDelegate(
             itemExtent: 50,
-            perspective: 0.002,
-            offAxisFraction: 1.5,
+            perspective: 0.001,
+            offAxisFraction: isDesktop ? 1.5 : 0,
             squeeze: 1.0,
-            diameterRatio: 2,
+            diameterRatio: isDesktop
+                ? 2
+                : RenderListWheelViewport.defaultDiameterRatio,
             physics: const FixedExtentScrollPhysics(),
             childDelegate: ListWheelChildBuilderDelegate(
               childCount: lyricsData.lines.length,
               builder: (context, index) {
                 final line = lyricsData.lines[index];
                 return Align(
-                  alignment: Alignment.centerRight,
+                  alignment: isDesktop
+                      ? Alignment.centerRight
+                      : Alignment.center,
                   child: ConstrainedBox(
                     constraints: BoxConstraints(
-                      maxWidth: MediaQuery.sizeOf(context).width * 0.4,
+                      maxWidth: isDesktop
+                          ? MediaQuery.sizeOf(context).width * 0.4
+                          : MediaQuery.sizeOf(context).width * 0.8,
                     ),
                     child: Container(
                       alignment: Alignment.centerLeft,
@@ -1296,7 +1310,17 @@ class _TimedLyricsView extends HookConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    // Get lyrics mode setting
+    final lyricsMode = ref.watch(lyricsModeProvider);
     final isDesktop = MediaQuery.sizeOf(context).width > 800;
+
+    // Determine if we should use curved (desktop-style) or flat (mobile-style) lyrics
+    final useCurvedStyle = switch (lyricsMode) {
+      LyricsMode.curved => true,
+      LyricsMode.flat => false,
+      LyricsMode.auto =>
+        isDesktop, // Auto mode: curved on desktop, flat on mobile
+    };
 
     final listController = useMemoized(() => ListController(), []);
     final scrollController = useScrollController();
@@ -1330,7 +1354,7 @@ class _TimedLyricsView extends HookConsumerWidget {
         if (currentIndex != previousIndex.value) {
           WidgetsBinding.instance.addPostFrameCallback((_) {
             previousIndex.value = currentIndex;
-            if (isDesktop) {
+            if (useCurvedStyle) {
               if (wheelScrollController.hasClients) {
                 wheelScrollController.animateToItem(
                   currentIndex,
@@ -1352,14 +1376,16 @@ class _TimedLyricsView extends HookConsumerWidget {
 
         final totalDurationMs = player.state.duration.inMilliseconds;
 
-        if (isDesktop) {
+        if (useCurvedStyle) {
           return ListWheelScrollView.useDelegate(
             controller: wheelScrollController,
             itemExtent: 50,
-            perspective: 0.002,
-            offAxisFraction: 1.5,
+            perspective: 0.001,
+            offAxisFraction: isDesktop ? 1.5 : 0,
             squeeze: 1.0,
-            diameterRatio: 2,
+            diameterRatio: isDesktop
+                ? 2
+                : RenderListWheelViewport.defaultDiameterRatio,
             physics: const FixedExtentScrollPhysics(),
             childDelegate: ListWheelChildBuilderDelegate(
               childCount: lyrics.lines.length,
@@ -1382,10 +1408,14 @@ class _TimedLyricsView extends HookConsumerWidget {
                 }
 
                 return Align(
-                  alignment: Alignment.centerRight,
+                  alignment: isDesktop
+                      ? Alignment.centerRight
+                      : Alignment.center,
                   child: ConstrainedBox(
                     constraints: BoxConstraints(
-                      maxWidth: MediaQuery.sizeOf(context).width * 0.4,
+                      maxWidth: isDesktop
+                          ? MediaQuery.sizeOf(context).width * 0.4
+                          : MediaQuery.sizeOf(context).width * 0.8,
                     ),
                     child: InkWell(
                       onTap: () {
