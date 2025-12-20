@@ -379,6 +379,21 @@ class SettingsScreen extends ConsumerWidget {
                             ),
                           ),
                         ),
+                        SwitchListTile(
+                          title: const Text('Continue Playing'),
+                          subtitle: const Text(
+                            'Continue playing music after the queue is empty',
+                          ),
+                          shape: const RoundedRectangleBorder(
+                            borderRadius: BorderRadius.all(Radius.circular(8)),
+                          ),
+                          value: settings.continuePlays,
+                          onChanged: (value) {
+                            ref
+                                .read(continuePlaysProvider.notifier)
+                                .update(value);
+                          },
+                        ),
                         const SizedBox(height: 8),
                       ],
                     ),

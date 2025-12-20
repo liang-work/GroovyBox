@@ -108,19 +108,35 @@ class PlayerScreen extends HookConsumerWidget {
           autofocus: true,
           onKeyEvent: (node, event) {
             if (event is KeyDownEvent) {
-              if (event.logicalKey == LogicalKeyboardKey.space) {
-                if (player.state.playing) {
-                  player.pause();
-                } else {
-                  player.play();
-                }
-                return KeyEventResult.handled;
-              } else if (event.logicalKey == LogicalKeyboardKey.bracketLeft) {
-                player.previous();
-                return KeyEventResult.handled;
-              } else if (event.logicalKey == LogicalKeyboardKey.bracketRight) {
-                player.next();
-                return KeyEventResult.handled;
+              switch (event.logicalKey) {
+                case LogicalKeyboardKey.space:
+                  if (player.state.playing) {
+                    player.pause();
+                  } else {
+                    player.play();
+                  }
+                  return KeyEventResult.handled;
+                case LogicalKeyboardKey.bracketLeft:
+                  player.previous();
+                  return KeyEventResult.handled;
+                case LogicalKeyboardKey.bracketRight:
+                  player.next();
+                  return KeyEventResult.handled;
+                case LogicalKeyboardKey.escape:
+                  Navigator.of(context).pop();
+                  return KeyEventResult.handled;
+                case LogicalKeyboardKey.arrowUp:
+                  player.setVolume(
+                    (player.state.volume + 10).clamp(0, 100),
+                  ); // Increase volume
+                  return KeyEventResult.handled;
+                case LogicalKeyboardKey.arrowDown:
+                  player.setVolume(
+                    (player.state.volume - 10).clamp(0, 100),
+                  ); // Decrease volume
+                  return KeyEventResult.handled;
+                default:
+                  return KeyEventResult.ignored;
               }
             }
             return KeyEventResult.ignored;
@@ -1700,7 +1716,10 @@ class _PlayerControls extends HookWidget {
                           );
                         },
                     child: Icon(
-                      playing ? Symbols.pause : Symbols.play_arrow,
+                      playing
+                          ? Symbols.pause_rounded
+                          : Symbols.play_arrow_rounded,
+                      fill: 1,
                       key: ValueKey<bool>(playing),
                       size: 48,
                     ),

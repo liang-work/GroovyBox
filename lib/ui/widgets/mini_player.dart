@@ -156,8 +156,7 @@ class _MobileMiniPlayer extends HookConsumerWidget {
                                 color: Colors.white54,
                               ),
                             ),
-                    ),
-                    const Gap(8),
+                    ).clipRRect(all: 8).padding(left: 8, vertical: 8),
                     // Title & Artist
                     Expanded(
                       child: Padding(
@@ -184,6 +183,14 @@ class _MobileMiniPlayer extends HookConsumerWidget {
                         ),
                       ),
                     ),
+                    // Next Button
+                    IconButton(
+                      icon: const Icon(Symbols.skip_previous),
+                      onPressed: player.previous,
+                      iconSize: 24,
+                      visualDensity: const VisualDensity(horizontal: -4),
+                      padding: EdgeInsets.all(8),
+                    ),
                     // Play/Pause Button
                     StreamBuilder<bool>(
                       stream: player.stream.playing,
@@ -206,8 +213,11 @@ class _MobileMiniPlayer extends HookConsumerWidget {
                                     );
                                   },
                               child: Icon(
-                                playing ? Symbols.pause : Symbols.play_arrow,
+                                playing
+                                    ? Symbols.pause_rounded
+                                    : Symbols.play_arrow_rounded,
                                 key: ValueKey<bool>(playing),
+                                fill: 1,
                               ),
                             ),
                             onPressed: playing ? player.pause : player.play,
@@ -215,12 +225,7 @@ class _MobileMiniPlayer extends HookConsumerWidget {
                         );
                       },
                     ),
-                    // Next Button
-                    IconButton(
-                      icon: const Icon(Symbols.skip_next),
-                      onPressed: player.next,
-                      iconSize: 24,
-                    ),
+                    const Gap(12),
                   ],
                 ),
               ),
@@ -381,8 +386,7 @@ class _DesktopMiniPlayer extends HookConsumerWidget {
                                       color: Colors.white54,
                                     ),
                                   ),
-                          ),
-                          const Gap(8),
+                          ).clipRRect(all: 8).padding(left: 8, vertical: 8),
                           // Title & Artist
                           Flexible(
                             child: Padding(
@@ -501,8 +505,9 @@ class _DesktopMiniPlayer extends HookConsumerWidget {
                                         },
                                     child: Icon(
                                       playing
-                                          ? Symbols.pause
-                                          : Symbols.play_arrow,
+                                          ? Symbols.pause_rounded
+                                          : Symbols.play_arrow_rounded,
+                                      fill: 1,
                                       key: ValueKey<bool>(playing),
                                     ),
                                   ),

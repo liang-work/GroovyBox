@@ -1,5 +1,6 @@
 import 'dart:typed_data';
 import 'package:audio_service/audio_service.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:media_kit/media_kit.dart' as media_kit;
@@ -9,6 +10,7 @@ import 'package:groovybox/providers/audio_provider.dart';
 import 'package:groovybox/providers/theme_provider.dart';
 import 'package:groovybox/providers/remote_provider.dart';
 import 'package:groovybox/providers/db_provider.dart';
+import 'package:groovybox/providers/settings_provider.dart';
 
 class AudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
   final media_kit.Player _player;
@@ -41,6 +43,26 @@ class AudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
           final currentItem = _queue[_queueIndex];
           mediaItem.add(currentItem);
           _updateThemeFromCurrentTrack(currentItem);
+        }
+      }
+    });
+
+    _player.stream.completed.listen((completed) async {
+      if (completed && _container != null) {
+        final continuePlays = _container!
+            .read(settingsProvider)
+            .when(
+              data: (settings) => settings.continuePlays,
+              loading: () => false,
+              error: (_, __) => false,
+            );
+
+        if (continuePlays && _queueIndex == _queue.length - 1) {
+          final oldLength = _queue.length;
+          await _addRandomTracksToQueue();
+          _queueIndex = oldLength; // Point to first new track
+          await _updatePlaylist();
+          _broadcastPlaybackState();
         }
       }
     });
@@ -362,6 +384,40 @@ class AudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
 
     _queueIndex = initialIndex;
     await updateQueue(mediaItems);
+  }
+
+  Future<void> _addRandomTracksToQueue() async {
+    if (_container == null) return;
+
+    try {
+      final database = _container!.read(databaseProvider);
+
+      // Get paths of tracks already in queue to avoid duplicates
+      final existingPaths = _queue.map((item) => item.id).toSet();
+
+      // Query for tracks not in current queue
+      final allTracks = await (database.select(
+        database.tracks,
+      )..where((t) => t.path.isNotIn(existingPaths))).get();
+
+      // Shuffle and take 10 random tracks
+      allTracks.shuffle();
+      final tracks = allTracks.take(10).toList();
+
+      if (tracks.isEmpty) return;
+
+      // Convert to MediaItems
+      final newMediaItems = await Future.wait(tracks.map(_trackToMediaItem));
+
+      // Add to queue
+      _queue.addAll(newMediaItems);
+
+      // Update the broadcasted queue
+      queue.add(_queue);
+    } catch (e) {
+      // Silently handle errors to avoid interrupting playback
+      debugPrint('Error adding random tracks to queue: $e');
+    }
   }
 
   String _extractTitleFromPath(String path) {

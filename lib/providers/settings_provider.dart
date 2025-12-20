@@ -36,6 +36,7 @@ class SettingsState {
   final bool watchForChanges;
   final DefaultPlayerScreen defaultPlayerScreen;
   final LyricsMode lyricsMode;
+  final bool continuePlays;
   final Set<String> supportedFormats;
 
   const SettingsState({
@@ -44,6 +45,7 @@ class SettingsState {
     this.watchForChanges = true,
     this.defaultPlayerScreen = DefaultPlayerScreen.cover,
     this.lyricsMode = LyricsMode.auto,
+    this.continuePlays = false,
     this.supportedFormats = const {
       '.mp3',
       '.flac',
@@ -62,6 +64,7 @@ class SettingsState {
     bool? watchForChanges,
     DefaultPlayerScreen? defaultPlayerScreen,
     LyricsMode? lyricsMode,
+    bool? continuePlays,
     Set<String>? supportedFormats,
   }) {
     return SettingsState(
@@ -70,6 +73,7 @@ class SettingsState {
       watchForChanges: watchForChanges ?? this.watchForChanges,
       defaultPlayerScreen: defaultPlayerScreen ?? this.defaultPlayerScreen,
       lyricsMode: lyricsMode ?? this.lyricsMode,
+      continuePlays: continuePlays ?? this.continuePlays,
       supportedFormats: supportedFormats ?? this.supportedFormats,
     );
   }
@@ -82,6 +86,7 @@ class SettingsNotifier extends _$SettingsNotifier {
   static const String _watchForChangesKey = 'watch_for_changes';
   static const String _defaultPlayerScreenKey = 'default_player_screen';
   static const String _lyricsModeKey = 'lyrics_mode';
+  static const String _continuePlaysKey = 'continue_plays';
 
   @override
   Future<SettingsState> build() async {
@@ -101,12 +106,15 @@ class SettingsNotifier extends _$SettingsNotifier {
         prefs.getInt(_lyricsModeKey) ?? 2; // Auto is default
     final lyricsMode = LyricsMode.values[lyricsModeIndex];
 
+    final continuePlays = prefs.getBool(_continuePlaysKey) ?? false;
+
     return SettingsState(
       importMode: importMode,
       autoScan: autoScan,
       watchForChanges: watchForChanges,
       defaultPlayerScreen: defaultPlayerScreen,
       lyricsMode: lyricsMode,
+      continuePlays: continuePlays,
     );
   }
 
@@ -154,6 +162,15 @@ class SettingsNotifier extends _$SettingsNotifier {
 
     if (state.hasValue) {
       state = AsyncValue.data(state.value!.copyWith(lyricsMode: mode));
+    }
+  }
+
+  Future<void> setContinuePlays(bool enabled) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_continuePlaysKey, enabled);
+
+    if (state.hasValue) {
+      state = AsyncValue.data(state.value!.copyWith(continuePlays: enabled));
     }
   }
 }
@@ -246,5 +263,23 @@ class LyricsModeNotifier extends _$LyricsModeNotifier {
 
   Future<void> update(LyricsMode mode) async {
     await ref.read(settingsProvider.notifier).setLyricsMode(mode);
+  }
+}
+
+@riverpod
+class ContinuePlaysNotifier extends _$ContinuePlaysNotifier {
+  @override
+  bool build() {
+    return ref
+        .watch(settingsProvider)
+        .when(
+          data: (settings) => settings.continuePlays,
+          loading: () => false,
+          error: (_, _) => false,
+        );
+  }
+
+  Future<void> update(bool enabled) async {
+    await ref.read(settingsProvider.notifier).setContinuePlays(enabled);
   }
 }

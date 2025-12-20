@@ -525,8 +525,14 @@ class LibraryScreen extends HookConsumerWidget {
                       onTrailingPressed: () =>
                           _showTrackOptions(context, ref, track),
                       onTap: () {
+                        final loadingNotifier = ref.read(
+                          remoteTrackLoadingProvider.notifier,
+                        );
                         final audio = ref.read(audioHandlerProvider);
-                        audio.playTrack(track);
+                        loadingNotifier.setLoading(true);
+                        audio.playTrack(track).then((_) {
+                          loadingNotifier.setLoading(false);
+                        });
                       },
                       padding: const EdgeInsets.symmetric(
                         horizontal: 16,

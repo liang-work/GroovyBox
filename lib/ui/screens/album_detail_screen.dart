@@ -103,7 +103,11 @@ class AlbumDetailScreen extends HookConsumerWidget {
   }
 
   void _playAlbum(WidgetRef ref, List<Track> tracks, {int initialIndex = 0}) {
+    final loadingNotifier = ref.read(remoteTrackLoadingProvider.notifier);
     final audioHandler = ref.read(audioHandlerProvider);
-    audioHandler.playTracks(tracks, initialIndex: initialIndex);
+    loadingNotifier.setLoading(true);
+    audioHandler.playTracks(tracks, initialIndex: initialIndex).then((_) {
+      loadingNotifier.setLoading(false);
+    });
   }
 }

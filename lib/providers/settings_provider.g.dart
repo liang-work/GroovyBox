@@ -33,7 +33,7 @@ final class SettingsNotifierProvider
   SettingsNotifier create() => SettingsNotifier();
 }
 
-String _$settingsNotifierHash() => r'4099dd1aa3dfc971c0761f314d196f3bc97315e7';
+String _$settingsNotifierHash() => r'7c3a92d9ac94e175b79a3a4485bd9bbcc1e860f9';
 
 abstract class _$SettingsNotifier extends $AsyncNotifier<SettingsState> {
   FutureOr<SettingsState> build();
@@ -318,6 +318,60 @@ abstract class _$LyricsModeNotifier extends $Notifier<LyricsMode> {
             as $ClassProviderElement<
               AnyNotifier<LyricsMode, LyricsMode>,
               LyricsMode,
+              Object?,
+              Object?
+            >;
+    element.handleValue(ref, created);
+  }
+}
+
+@ProviderFor(ContinuePlaysNotifier)
+const continuePlaysProvider = ContinuePlaysNotifierProvider._();
+
+final class ContinuePlaysNotifierProvider
+    extends $NotifierProvider<ContinuePlaysNotifier, bool> {
+  const ContinuePlaysNotifierProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'continuePlaysProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$continuePlaysNotifierHash();
+
+  @$internal
+  @override
+  ContinuePlaysNotifier create() => ContinuePlaysNotifier();
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(bool value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<bool>(value),
+    );
+  }
+}
+
+String _$continuePlaysNotifierHash() =>
+    r'17e5f9c933d67837301775ac5beda25462130775';
+
+abstract class _$ContinuePlaysNotifier extends $Notifier<bool> {
+  bool build();
+  @$mustCallSuper
+  @override
+  void runBuild() {
+    final created = build();
+    final ref = this.ref as $Ref<bool, bool>;
+    final element =
+        ref.element
+            as $ClassProviderElement<
+              AnyNotifier<bool, bool>,
+              bool,
               Object?,
               Object?
             >;
