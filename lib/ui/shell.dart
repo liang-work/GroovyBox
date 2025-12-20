@@ -404,18 +404,20 @@ class Shell extends HookConsumerWidget {
       );
     }
 
-    return Shortcuts(
-      shortcuts: <LogicalKeySet, Intent>{
-        LogicalKeySet(LogicalKeyboardKey.escape): const PopIntent(),
-      },
-      child: Actions(
-        actions: <Type, Action<Intent>>{PopIntent: PopAction(ref)},
-        child: Stack(
-          fit: StackFit.expand,
-          children: [
-            Positioned.fill(child: child),
-            Positioned(left: 0, right: 0, bottom: 0, child: MiniPlayer()),
-          ],
+    return Material(
+      child: Shortcuts(
+        shortcuts: <LogicalKeySet, Intent>{
+          LogicalKeySet(LogicalKeyboardKey.escape): const PopIntent(),
+        },
+        child: Actions(
+          actions: <Type, Action<Intent>>{PopIntent: PopAction(ref)},
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              Positioned.fill(child: child),
+              Positioned(left: 0, right: 0, bottom: 0, child: MiniPlayer()),
+            ],
+          ),
         ),
       ),
     );

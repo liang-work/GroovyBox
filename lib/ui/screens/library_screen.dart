@@ -10,7 +10,7 @@ import 'package:groovybox/logic/lyrics_parser.dart';
 import 'package:groovybox/logic/window_helpers.dart';
 import 'package:groovybox/providers/audio_provider.dart';
 import 'package:groovybox/providers/watch_folder_provider.dart';
-import 'package:groovybox/ui/screens/settings_screen.dart';
+import 'package:groovybox/router.dart';
 import 'package:groovybox/ui/tabs/albums_tab.dart';
 import 'package:groovybox/ui/tabs/playlists_tab.dart';
 import 'package:groovybox/ui/widgets/track_tile.dart';
@@ -143,11 +143,7 @@ class LibraryScreen extends HookConsumerWidget {
                       actions: [
                         IconButton(
                           onPressed: () {
-                            Navigator.of(context).push(
-                              MaterialPageRoute(
-                                builder: (context) => SettingsScreen(),
-                              ),
-                            );
+                            ref.read(routerProvider).push(AppRoutes.settings);
                           },
                           icon: const Icon(Symbols.settings),
                         ),
@@ -156,8 +152,7 @@ class LibraryScreen extends HookConsumerWidget {
                           tooltip: 'Import Files',
                           onPressed: () async {
                             final result = await FilePicker.platform.pickFiles(
-                              type: FileType.custom,
-                              allowedExtensions: allAllowedExtensions,
+                              type: FileType.any,
                               allowMultiple: true,
                             );
                             if (result != null && result.files.isNotEmpty) {
@@ -307,12 +302,17 @@ class LibraryScreen extends HookConsumerWidget {
                   ),
                   actions: [
                     IconButton(
+                      onPressed: () {
+                        ref.read(routerProvider).push(AppRoutes.settings);
+                      },
+                      icon: const Icon(Symbols.settings),
+                    ),
+                    IconButton(
                       icon: const Icon(Symbols.add_circle_outline),
                       tooltip: 'Import Files',
                       onPressed: () async {
                         final result = await FilePicker.platform.pickFiles(
-                          type: FileType.custom,
-                          allowedExtensions: allAllowedExtensions,
+                          type: FileType.any,
                           allowMultiple: true,
                         );
                         if (result != null && result.files.isNotEmpty) {
