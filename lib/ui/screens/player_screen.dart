@@ -19,6 +19,7 @@ import 'package:groovybox/providers/audio_provider.dart';
 import 'package:groovybox/providers/db_provider.dart';
 import 'package:groovybox/providers/lrc_fetcher_provider.dart';
 import 'package:groovybox/providers/settings_provider.dart';
+import 'package:groovybox/router.dart';
 import 'package:groovybox/ui/widgets/mini_player.dart';
 import 'package:groovybox/ui/widgets/track_tile.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
@@ -27,6 +28,7 @@ import 'package:material_symbols_icons/symbols.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:styled_widget/styled_widget.dart';
 import 'package:super_sliver_list/super_sliver_list.dart';
+import 'package:window_manager/window_manager.dart';
 
 enum ViewMode { cover, lyrics, queue }
 
@@ -59,6 +61,34 @@ class PlayerScreen extends HookConsumerWidget {
       return null;
     }, [defaultPlayerScreen]);
     final isMobile = MediaQuery.sizeOf(context).width <= 800;
+
+    // Window maximized state
+    final isMaximized = useState(false);
+
+    // Update window maximized state
+    useEffect(() {
+      if (isDesktopPlatform()) {
+        windowManager.isMaximized().then((value) {
+          isMaximized.value = value;
+        });
+      }
+      return null;
+    }, []);
+
+    // Set system UI overlay style to ensure status bar is visible
+    useEffect(() {
+      // Remove edgeToEdge mode to show system title bar like main screen
+      SystemChrome.setEnabledSystemUIMode(SystemUiMode.manual, overlays: SystemUiOverlay.values);
+      SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
+        statusBarIconBrightness: Brightness.light,
+        systemNavigationBarColor: Colors.transparent,
+        systemNavigationBarIconBrightness: Brightness.light,
+      ));
+      return () {
+        SystemChrome.setEnabledSystemUIMode(SystemUiMode.manual, overlays: SystemUiOverlay.values);
+      };
+    }, []);
 
     return StreamBuilder<Playlist>(
       stream: player.stream.playlist,
@@ -142,7 +172,155 @@ class PlayerScreen extends HookConsumerWidget {
             }
             return KeyEventResult.ignored;
           },
-          child: Scaffold(
+          child: isDesktopPlatform() ? Material(
+            color: Colors.transparent,
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                // Main content
+                Positioned.fill(
+                  child: Scaffold(
+                    backgroundColor: Colors.transparent,
+                    body: ClipRect(
+                      child: Stack(
+                        children: [
+                          ...background != null ? [background] : [],
+                          // Main content (StreamBuilder)
+                          Builder(
+                            builder: (context) {
+                              return Padding(
+                                padding: EdgeInsets.only(
+                                  top: devicePadding.top + 32, // Account for custom title bar
+                                ),
+                                child: isMobile ? _MobileLayout(
+                                  player: player,
+                                  viewMode: viewMode,
+                                  media: media,
+                                  trackPath: media.uri,
+                                ) : _DesktopLayout(
+                                  player: player,
+                                  viewMode: viewMode,
+                                  media: media,
+                                  trackPath: media.uri,
+                                ),
+                              );
+                            },
+                          ),
+                          // Back button
+                          Positioned(
+                            top: devicePadding.top + 48, // Adjusted for custom title bar
+                            left: 16,
+                            child: IconButton(
+                              icon: const Icon(Symbols.keyboard_arrow_down),
+                              onPressed: () => Navigator.of(context).pop(),
+                              padding: EdgeInsets.zero,
+                              iconSize: 24,
+                            ),
+                          ),
+                          // view control button
+                          if (!isDesktopPlatform())
+                            _ViewToggleButton(viewMode: viewMode),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+                // Custom title bar
+                Positioned(
+                  top: devicePadding.top,
+                  left: 0,
+                  right: 0,
+                  child: GestureDetector(
+                    onPanStart: (details) {
+                      windowManager.startDragging();
+                    },
+                    child: Container(
+                      height: 32,
+                      color: Theme.of(context).colorScheme.surfaceContainer,
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        mainAxisAlignment: MainAxisAlignment.start,
+                        children: [
+                          Expanded(
+                            child: Row(
+                              children: [
+                                Image.asset(
+                                  Theme.of(context).brightness == Brightness.dark
+                                      ? 'assets/images/icon-dark.png'
+                                      : 'assets/images/icon.jpg',
+                                  width: 20,
+                                  height: 20,
+                                ),
+                                const SizedBox(width: 8),
+                                Text(
+                                  'GroovyBox',
+                                  textAlign: TextAlign.start,
+                                ),
+                              ],
+                            ).padding(horizontal: 12, vertical: 5),
+                          ),
+                          // Page actions
+                          IconButton(
+                            icon: const Icon(Symbols.settings),
+                            onPressed: () {
+                              ref.read(routerProvider).push(AppRoutes.settings);
+                            },
+                            iconSize: 16,
+                            padding: EdgeInsets.all(8),
+                            constraints: BoxConstraints(),
+                            color: Theme.of(context).iconTheme.color,
+                          ),
+                          // Window controls
+                          IconButton(
+                            icon: const Icon(Symbols.minimize),
+                            onPressed: () => windowManager.minimize(),
+                            iconSize: 16,
+                            padding: EdgeInsets.all(8),
+                            constraints: BoxConstraints(),
+                            color: Theme.of(context).iconTheme.color,
+                          ),
+                          IconButton(
+                            icon: Icon(
+                              isMaximized.value
+                                  ? Symbols.fullscreen_exit
+                                  : Symbols.fullscreen,
+                            ),
+                            onPressed: () async {
+                              if (await windowManager.isMaximized()) {
+                                windowManager.restore();
+                                isMaximized.value = false;
+                              } else {
+                                windowManager.maximize();
+                                isMaximized.value = true;
+                              }
+                            },
+                            iconSize: 16,
+                            padding: EdgeInsets.all(8),
+                            constraints: BoxConstraints(),
+                            color: Theme.of(context).iconTheme.color,
+                          ),
+                          IconButton(
+                            icon: const Icon(Symbols.close),
+                            onPressed: () => windowManager.close(),
+                            iconSize: 16,
+                            padding: EdgeInsets.all(8),
+                            constraints: BoxConstraints(),
+                            color: Theme.of(context).iconTheme.color,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ) : Scaffold(
+            extendBodyBehindAppBar: true,
+            appBar: AppBar(
+              backgroundColor: Colors.transparent,
+              elevation: 0,
+              scrolledUnderElevation: 0,
+            ),
             body: ClipRect(
               child: Stack(
                 children: [
@@ -150,35 +328,22 @@ class PlayerScreen extends HookConsumerWidget {
                   // Main content (StreamBuilder)
                   Builder(
                     builder: (context) {
-                      if (isMobile) {
-                        return Padding(
-                          padding: EdgeInsets.only(
-                            top:
-                                devicePadding.top +
-                                40 +
-                                (isDesktopPlatform() ? 28 : 0),
-                          ),
-                          child: _MobileLayout(
-                            player: player,
-                            viewMode: viewMode,
-                            media: media,
-                            trackPath: media.uri,
-                          ),
-                        );
-                      } else {
-                        return _DesktopLayout(
+                      return Padding(
+                        padding: EdgeInsets.only(
+                          top: devicePadding.top + 40,
+                        ),
+                        child: _MobileLayout(
                           player: player,
                           viewMode: viewMode,
                           media: media,
                           trackPath: media.uri,
-                        );
-                      }
+                        ),
+                      );
                     },
                   ),
-                  // IconButton
+                  // Back button for mobile platforms
                   Positioned(
-                    top:
-                        devicePadding.top + 16 + (isDesktopPlatform() ? 28 : 0),
+                    top: devicePadding.top + 16,
                     left: 16,
                     child: IconButton(
                       icon: const Icon(Symbols.keyboard_arrow_down),
@@ -187,6 +352,7 @@ class PlayerScreen extends HookConsumerWidget {
                       iconSize: 24,
                     ),
                   ),
+                  // view control button
                   _ViewToggleButton(viewMode: viewMode),
                 ],
               ),
@@ -250,7 +416,6 @@ class _PlayerCoverControlsPanel extends StatelessWidget {
     required this.media,
     required this.trackPath,
   });
-
   @override
   Widget build(BuildContext context) {
     return ConstrainedBox(
@@ -450,7 +615,6 @@ class _LyricsView extends StatelessWidget {
 
 class _PlayerCoverArt extends StatelessWidget {
   final TrackMetadata? currentMetadata;
-
   const _PlayerCoverArt({required this.currentMetadata});
 
   @override
