@@ -26,6 +26,7 @@ import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:material_symbols_icons/symbols.dart';
 import 'package:media_kit/media_kit.dart';
+import 'package:path/path.dart' as p;
 import 'package:styled_widget/styled_widget.dart';
 import 'package:super_sliver_list/super_sliver_list.dart';
 import 'package:window_manager/window_manager.dart';
@@ -83,7 +84,7 @@ class PlayerScreen extends HookConsumerWidget {
         statusBarColor: Colors.transparent,
         statusBarIconBrightness: Brightness.light,
         systemNavigationBarColor: Colors.transparent,
-        systemNavigationBarIconBrightness: Brightness.light,
+systemNavigationBarIconBrightness: Brightness.light,
       ));
       return () {
         SystemChrome.setEnabledSystemUIMode(SystemUiMode.manual, overlays: SystemUiOverlay.values);
@@ -97,7 +98,7 @@ class PlayerScreen extends HookConsumerWidget {
         final index = snapshot.data?.index ?? 0;
         final medias = snapshot.data?.medias ?? [];
         if (medias.isEmpty || index < 0 || index >= medias.length) {
-          return const Center(child: Text('No media selected'));
+return const Center(child: Text('No media selected'));
         }
         final media = medias[index];
 
@@ -173,7 +174,7 @@ class PlayerScreen extends HookConsumerWidget {
             return KeyEventResult.ignored;
           },
           child: isDesktopPlatform() ? Material(
-            color: Colors.transparent,
+            color: Theme.of(context).colorScheme.surface,
             child: Stack(
               fit: StackFit.expand,
               children: [
@@ -218,8 +219,7 @@ class PlayerScreen extends HookConsumerWidget {
                             ),
                           ),
                           // view control button
-                          if (!isDesktopPlatform())
-                            _ViewToggleButton(viewMode: viewMode),
+                          _ViewToggleButton(viewMode: viewMode),
                         ],
                       ),
                     ),
@@ -259,16 +259,106 @@ class PlayerScreen extends HookConsumerWidget {
                               ],
                             ).padding(horizontal: 12, vertical: 5),
                           ),
-                          // Page actions
                           IconButton(
                             icon: const Icon(Symbols.settings),
                             onPressed: () {
+                              if (isMaximized.value) {
+                                windowManager.restore();
+                                isMaximized.value = false;
+                              }
                               ref.read(routerProvider).push(AppRoutes.settings);
                             },
                             iconSize: 16,
                             padding: EdgeInsets.all(8),
                             constraints: BoxConstraints(),
                             color: Theme.of(context).iconTheme.color,
+                          ),
+                          // Import button - NEW
+                          IconButton(
+                            icon: const Icon(Symbols.add_circle),
+                            onPressed: () async {
+                              if (isMaximized.value) {
+                                windowManager.restore();
+                                isMaximized.value = false;
+                              }
+                              final result = await FilePicker.platform.pickFiles(
+                                type: FileType.any,
+                                allowMultiple: true,
+                              );
+                              if (result != null && result.files.isNotEmpty) {
+                                final paths = result.files
+                                    .map((f) => f.path)
+                                    .whereType<String>()
+                                    .toList();
+                                if (paths.isNotEmpty) {
+                                  // Separate audio and lyrics files
+                                  final audioPaths = paths.where((path) {
+                                    final ext = p
+                                        .extension(path)
+                                        .toLowerCase()
+                                        .replaceFirst('.', '');
+                                    return const [
+                                      'mp3',
+                                      'm4a',
+                                      'wav',
+                                      'flac',
+                                      'aac',
+                                      'ogg',
+                                      'wma',
+                                      'm4p',
+                                      'aiff',
+                                      'au',
+                                      'dss',
+                                    ].contains(ext);
+                                  }).toList();
+                                  final lyricsPaths = paths.where((path) {
+                                    final ext = p
+                                        .extension(path)
+                                        .toLowerCase()
+                                        .replaceFirst('.', '');
+                                    return const ['lrc', 'srt', 'txt'].contains(ext);
+                                  }).toList();
+
+                                  // Import tracks if any
+                                  if (audioPaths.isNotEmpty) {
+                                    await ref.read(trackRepositoryProvider.notifier).importFiles(audioPaths);
+                                  }
+
+                                  // Import lyrics if any
+                                  if (!context.mounted) return;
+                                  if (lyricsPaths.isNotEmpty) {
+                                    await _batchImportLyricsFromPaths(
+                                      context,
+                                      ref,
+                                      lyricsPaths,
+                                    );
+                                  }
+                                }
+                              }
+                            },
+                            iconSize: 16,
+                            padding: EdgeInsets.all(8),
+                            constraints: BoxConstraints(),
+                            color: Theme.of(context).iconTheme.color,
+                            tooltip: 'Import Songs',
+                          ),
+                          // Page actions
+                          IconButton(
+                            icon: const Icon(Symbols.home),
+                            onPressed: () {
+                              if (isMaximized.value) {
+                                windowManager.restore();
+                                isMaximized.value = false;
+                              }
+                              WidgetsBinding.instance.addPostFrameCallback((_) {
+                                ref.read(routerProvider).go(AppRoutes.library);
+                              });
+                            },
+                            iconSize: 16,
+                            padding: EdgeInsets.all(8),
+                            constraints: BoxConstraints(),
+                            color: Theme.of(context).iconTheme.color,
+                            tooltip: 'Home',
                           ),
                           // Window controls
                           IconButton(
@@ -352,11 +442,37 @@ class PlayerScreen extends HookConsumerWidget {
                       iconSize: 24,
                     ),
                   ),
+                  // Home button for mobile platforms
+                  Positioned(
+                    top: devicePadding.top + 16,
+                    left: 56,
+                    child: IconButton(
+                      icon: const Icon(Symbols.home),
+                      onPressed: () {
+                        ref.read(routerProvider).go(AppRoutes.library);
+                      },
+                      padding: EdgeInsets.zero,
+                      iconSize: 24,
+                    ),
+                  ),
+                  // Library button for mobile platforms
+                  Positioned(
+                    top: devicePadding.top + 16,
+                    left: 96,
+                    child: IconButton(
+                      icon: const Icon(Symbols.library_music),
+                      onPressed: () {
+                        ref.read(routerProvider).go(AppRoutes.library);
+                      },
+                      padding: EdgeInsets.zero,
+                      iconSize: 24,
+                    ),
+                  ),
                   // view control button
                   _ViewToggleButton(viewMode: viewMode),
                 ],
               ),
-            ),
+),
           ),
         );
       },
@@ -2422,4 +2538,54 @@ String _formatTimestamp(int milliseconds) {
   final millisecondsPart =
       (duration.inMilliseconds % 1000) ~/ 10; // Show centiseconds
   return '${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}.${millisecondsPart.toString().padLeft(2, '0')}';
+}
+
+Future<void> _batchImportLyricsFromPaths(
+  BuildContext context,
+  WidgetRef ref,
+  List<String> lyricsPaths,
+) async {
+  if (lyricsPaths.isEmpty) return;
+
+  final repo = ref.read(trackRepositoryProvider.notifier);
+  final tracks = await repo.getAllTracks();
+
+  int matched = 0;
+  int notMatched = 0;
+
+  for (final path in lyricsPaths) {
+    final file = File(path);
+    final content = await file.readAsString();
+    final filename = p.basename(path);
+
+    // Get basename without extension for matching
+    final baseName = filename
+        .replaceAll(RegExp(r'\.(lrc|srt|txt)$', caseSensitive: false), '')
+        .toLowerCase();
+
+    // Try to find a matching track by title
+    final matchingTrack = tracks.where((t) {
+      final trackTitle = t.title.toLowerCase();
+      return trackTitle == baseName ||
+          trackTitle.contains(baseName) ||
+          baseName.contains(trackTitle);
+    }).firstOrNull;
+
+    if (matchingTrack != null) {
+      final lyricsData = LyricsParser.parse(content, filename);
+      await repo.updateLyrics(matchingTrack.id, lyricsData.toJsonString());
+      matched++;
+    } else {
+      notMatched++;
+    }
+  }
+
+  if (!context.mounted) return;
+  ScaffoldMessenger.of(context).showSnackBar(
+    SnackBar(
+      content: Text(
+        'Batch import complete: $matched matched, $notMatched not matched',
+      ),
+    ),
+  );
 }
