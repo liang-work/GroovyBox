@@ -27,6 +27,7 @@ import 'package:material_symbols_icons/symbols.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:styled_widget/styled_widget.dart';
 import 'package:super_sliver_list/super_sliver_list.dart';
+import 'package:window_manager/window_manager.dart';
 
 enum ViewMode { cover, lyrics, queue }
 
@@ -147,6 +148,20 @@ class PlayerScreen extends HookConsumerWidget {
               child: Stack(
                 children: [
                   ...background != null ? [background] : [],
+                  // Drag area for desktop platforms
+                  if (isDesktopPlatform())
+                    Positioned(
+                      top: 0,
+                      left: 0,
+                      right: 0,
+                      height: devicePadding.top + 60,
+                      child: GestureDetector(
+                        onPanStart: (details) => windowManager.startDragging(),
+                        child: Container(
+                          color: Colors.transparent,
+                        ),
+                      ),
+                    ),
                   // Main content (StreamBuilder)
                   Builder(
                     builder: (context) {
