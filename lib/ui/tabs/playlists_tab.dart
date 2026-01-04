@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:groovybox/data/db.dart';
 import 'package:groovybox/data/playlist_repository.dart';
+import 'package:groovybox/l10n/app_localizations.dart';
 import 'package:groovybox/ui/screens/playlist_detail_screen.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:material_symbols_icons/symbols.dart';
@@ -19,30 +20,30 @@ class PlaylistsTab extends HookConsumerWidget {
           ListTile(
             leading: const Icon(Symbols.add),
             trailing: const Icon(Symbols.chevron_right).padding(right: 8),
-            title: Text('Create One'),
-            subtitle: Text('Add a new playlist'),
+            title: Text(AppLocalizations.of(context)!.createOne),
+            subtitle: Text(AppLocalizations.of(context)!.addNewPlaylist),
             onTap: () async {
               final nameController = TextEditingController();
               final name = await showDialog<String>(
                 context: context,
                 builder: (context) => AlertDialog(
-                  title: const Text('New Playlist'),
+                  title: Text(AppLocalizations.of(context)!.newPlaylist),
                   content: TextField(
                     controller: nameController,
-                    decoration: const InputDecoration(
-                      labelText: 'Playlist Name',
+                    decoration: InputDecoration(
+                      labelText: AppLocalizations.of(context)!.playlistName,
                     ),
                     autofocus: true,
                   ),
                   actions: [
                     TextButton(
                       onPressed: () => Navigator.pop(context),
-                      child: const Text('Cancel'),
+                      child: Text(AppLocalizations.of(context)!.cancel),
                     ),
                     TextButton(
                       onPressed: () =>
                           Navigator.pop(context, nameController.text),
-                      child: const Text('Create'),
+                      child: Text(AppLocalizations.of(context)!.create),
                     ),
                   ],
                 ),
@@ -63,7 +64,7 @@ class PlaylistsTab extends HookConsumerWidget {
                 final playlists = snapshot.data!;
 
                 if (playlists.isEmpty) {
-                  return const Center(child: Text('No playlists yet'));
+                  return Center(child: Text(AppLocalizations.of(context)!.noPlaylistsYet));
                 }
 
                 return ListView.builder(

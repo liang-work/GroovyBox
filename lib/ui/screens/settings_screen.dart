@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:gap/gap.dart';
 import 'package:groovybox/data/track_repository.dart';
+import 'package:groovybox/l10n/app_localizations.dart';
+import 'package:groovybox/providers/locale_provider.dart';
 import 'package:groovybox/providers/settings_provider.dart';
 import 'package:groovybox/providers/watch_folder_provider.dart';
 import 'package:groovybox/providers/remote_provider.dart';
@@ -394,6 +396,54 @@ class SettingsScreen extends ConsumerWidget {
                                 .read(continuePlaysProvider.notifier)
                                 .update(value);
                           },
+                        ),
+                        const SizedBox(height: 8),
+                      ],
+                    ),
+                  ),
+
+                  // App Settings Section
+                  Card(
+                    margin: EdgeInsets.zero,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          AppLocalizations.of(context)!.appSettings,
+                          style: const TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ).padding(horizontal: 16, top: 16),
+                        Text(
+                          AppLocalizations.of(context)!.appSettingsDescription,
+                          style: const TextStyle(color: Colors.grey, fontSize: 14),
+                        ).padding(horizontal: 16, bottom: 8),
+                        ListTile(
+                          title: Text(AppLocalizations.of(context)!.language),
+                          subtitle: Text(
+                            AppLocalizations.of(context)!.languageDescription,
+                          ),
+                          trailing: DropdownButtonHideUnderline(
+                            child: DropdownButton<Locale>(
+                              value: ref.watch(localeProvider),
+                              onChanged: (Locale? value) {
+                                if (value != null) {
+                                  ref.read(localeProvider.notifier).setLocale(value);
+                                }
+                              },
+                              items: const [
+                                DropdownMenuItem(
+                                  value: Locale('en'),
+                                  child: Text('English'),
+                                ),
+                                DropdownMenuItem(
+                                  value: Locale('zh'),
+                                  child: Text('中文'),
+                                ),
+                              ],
+                            ),
+                          ),
                         ),
                         const SizedBox(height: 8),
                       ],

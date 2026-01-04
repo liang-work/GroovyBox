@@ -6,6 +6,7 @@ import 'package:gap/gap.dart';
 import 'package:groovybox/data/db.dart';
 import 'package:groovybox/data/playlist_repository.dart';
 import 'package:groovybox/data/track_repository.dart';
+import 'package:groovybox/l10n/app_localizations.dart';
 import 'package:groovybox/logic/lyrics_parser.dart';
 import 'package:groovybox/logic/window_helpers.dart';
 import 'package:groovybox/providers/audio_provider.dart';
@@ -82,7 +83,7 @@ class LibraryScreen extends HookConsumerWidget {
                   onPressed: clearSelection,
                 ),
                 title: Text(
-                  '${selectedTrackIds.value.length} selected',
+                  AppLocalizations.of(context)!.selected(selectedTrackIds.value.length),
                 ).textColor(Theme.of(context).colorScheme.onPrimary),
                 backgroundColor: Theme.of(context).colorScheme.primary,
                 actions: [
@@ -257,7 +258,7 @@ class LibraryScreen extends HookConsumerWidget {
                     onPressed: clearSelection,
                   ),
                   title: Text(
-                    '${selectedTrackIds.value.length} selected',
+                    AppLocalizations.of(context)!.selected(selectedTrackIds.value.length),
                   ).textColor(Theme.of(context).colorScheme.onPrimary),
                   backgroundColor: Theme.of(context).colorScheme.primary,
                   actions: [

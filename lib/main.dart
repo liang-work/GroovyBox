@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:groovybox/l10n/app_localizations.dart';
 import 'package:groovybox/logic/audio_handler.dart';
 import 'package:groovybox/logic/window_helpers.dart';
 import 'package:groovybox/providers/audio_provider.dart';
+import 'package:groovybox/providers/locale_provider.dart';
 import 'package:groovybox/providers/theme_provider.dart';
 import 'package:groovybox/router.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
@@ -52,6 +55,7 @@ class GroovyApp extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final themeMode = ref.watch(themeProvider);
+    final locale = ref.watch(localeProvider);
     final router = ref.watch(routerProvider);
 
     return MaterialApp.router(
@@ -60,7 +64,18 @@ class GroovyApp extends ConsumerWidget {
       theme: ref.watch(lightThemeProvider),
       darkTheme: ref.watch(darkThemeProvider),
       themeMode: themeMode,
+      locale: locale,
       routerConfig: router,
+      localizationsDelegates: const [
+        AppLocalizations.delegate,
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
+      supportedLocales: const [
+        Locale('en'), // English
+        Locale('zh'), // Chinese
+      ],
     );
   }
 }

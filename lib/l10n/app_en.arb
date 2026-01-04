@@ -1,0 +1,342 @@
+{
+  "noMediaSelected": "No media selected",
+  "noLyricsAvailable": "No Lyrics Available",
+  "fetchLyrics": "Fetch Lyrics",
+  "searchLyricsWith": "Search lyrics with {searchTerm}",
+  "@searchLyricsWith": {
+    "placeholders": {
+      "searchTerm": {
+        "type": "String"
+      }
+    }
+  },
+  "whereToSearchLyrics": "Where do you want to search lyrics from?",
+  "musixmatch": "Musixmatch",
+  "netease": "NetEase",
+  "lrclib": "Lrclib",
+  "manualImport": "Manual Import",
+  "cancel": "Cancel",
+  "lyricsOptions": "Lyrics Options",
+  "refetch": "Re-fetch",
+  "clear": "Clear",
+  "liveSyncLyrics": "Live Sync Lyrics",
+  "manualOffset": "Manual Offset",
+  "adjustLyricsTiming": "Adjust Lyrics Timing",
+  "enterOffsetMs": "Enter offset in milliseconds.\nPositive values delay lyrics, negative values advance them.",
+  "offsetMs": "Offset (ms)",
+  "save": "Save",
+  "liveLyricsSync": "Live Lyrics Sync",
+  "offset": "Offset: {value}ms",
+  "@offset": {
+    "placeholders": {
+      "value": {
+        "type": "int"
+      }
+    }
+  },
+  "minus100ms": "-100ms",
+  "plus10ms": "+10ms",
+  "reset": "Reset",
+  "plus100ms": "+100ms",
+  "fineAdjustment": "Fine Adjustment",
+  "onlyTimedLyricsCanBeSynced": "Only timed lyrics can be synced",
+  "errorLoadingLyrics": "Error loading lyrics: {error}",
+  "@errorLoadingLyrics": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "errorParsingLyrics": "Error parsing lyrics: {error}",
+  "@errorParsingLyrics": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "noTracksInQueue": "No tracks in queue",
+  "unknownArtist": "Unknown Artist",
+  "showLyrics": "Show Lyrics",
+  "showQueue": "Show Queue",
+  "showCover": "Show Cover",
+  "importedLyricsLines": "Imported {count} lyrics lines for \"{title}\"",
+  "@importedLyricsLines": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "selected": "{count} selected",
+  "@selected": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "addToPlaylist": "Add to Playlist",
+  "delete": "Delete",
+  "groovyBox": "GroovyBox",
+  "library": "Library",
+  "importFiles": "Import Files",
+  "searchTracks": "Search tracks...",
+  "searchTracksWithCount": "Search tracks... ({total} tracks)",
+  "@searchTracksWithCount": {
+    "placeholders": {
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "searchTracksFiltered": "Search tracks... ({filtered} of {total} tracks)",
+  "@searchTracksFiltered": {
+    "placeholders": {
+      "filtered": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "error": "Error: {message}",
+  "@error": {
+    "placeholders": {
+      "message": {
+        "type": "String"
+      }
+    }
+  },
+  "noTracksYet": "No tracks yet. Add some!",
+  "noTracksMatchSearch": "No tracks match your search.",
+  "deleteTrack": "Delete Track?",
+  "confirmDeleteTrack": "Are you sure you want to delete \"{title}\"? This cannot be undone.",
+  "@confirmDeleteTrack": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "deletedTrack": "Deleted \"{title}\"",
+  "@deletedTrack": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "viewDetails": "View Details",
+  "editMetadata": "Edit Metadata",
+  "importLyrics": "Import Lyrics",
+  "noPlaylistsAvailable": "No playlists available. Create one first!",
+  "addedToPlaylist": "Added to {name}",
+  "@addedToPlaylist": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "trackDetails": "Track Details",
+  "close": "Close",
+  "title": "Title",
+  "artist": "Artist",
+  "album": "Album",
+  "duration": "Duration",
+  "fileSize": "File Size",
+  "filePath": "File Path",
+  "dateAdded": "Date Added",
+  "albumArt": "Album Art",
+  "present": "Present",
+  "editTrack": "Edit Track",
+  "addedTracksToPlaylist": "Added {count} tracks to {name}",
+  "@addedTracksToPlaylist": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "deleteTracks": "Delete Tracks?",
+  "confirmDeleteTracks": "Are you sure you want to delete {count} tracks? This will remove them from your device.",
+  "@confirmDeleteTracks": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "deletedTracks": "Deleted {count} tracks",
+  "@deletedTracks": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "batchImportComplete": "Batch import complete: {matched} matched, {notMatched} not matched",
+  "@batchImportComplete": {
+    "placeholders": {
+      "matched": {
+        "type": "int"
+      },
+      "notMatched": {
+        "type": "int"
+      }
+    }
+  },
+  "settings": "Settings",
+  "autoScan": "Auto Scan",
+  "autoScanMusicLibraries": "Auto-scan music libraries",
+  "autoScanDescription": "Automatically scan music libraries for new music files",
+  "watchForChanges": "Watch for changes",
+  "watchForChangesDescription": "Monitor music libraries for file changes",
+  "musicLibraries": "Music Libraries",
+  "scanLibraries": "Scan Libraries",
+  "addMusicLibrary": "Add Music Library",
+  "addMusicLibraryDescription": "Add folder libraries to index music files. Files will be copied to internal storage for playback.",
+  "noMusicLibrariesAdded": "No music libraries added yet.",
+  "errorLoadingLibraries": "Error loading libraries: {error}",
+  "@errorLoadingLibraries": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "remoteProviders": "Remote Providers",
+  "indexRemoteProviders": "Index Remote Providers",
+  "addRemoteProvider": "Add Remote Provider",
+  "remoteProvidersDescription": "Connect to remote media servers like Jellyfin to access your music library.",
+  "noRemoteProvidersAdded": "No remote providers added yet.",
+  "errorLoadingProviders": "Error loading providers: {error}",
+  "@errorLoadingProviders": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "playerSettings": "Player Settings",
+  "playerSettingsDescription": "Configure player behavior and display options.",
+  "defaultPlayerScreen": "Default Player Screen",
+  "defaultPlayerScreenDescription": "Choose which screen to show when opening the player.",
+  "lyricsMode": "Lyrics Mode",
+  "lyricsModeDescription": "Choose how lyrics are displayed.",
+  "continuePlaying": "Continue Playing",
+  "continuePlayingDescription": "Continue playing music after the queue is empty",
+  "databaseManagement": "Database Management",
+  "databaseManagementDescription": "Manage your music database and cached files.",
+  "resetTrackDatabase": "Reset Track Database",
+  "resetTrackDatabaseDescription": "Remove all tracks from database and delete cached files. This action cannot be undone.",
+  "errorLoadingSettings": "Error loading settings: {error}",
+  "@errorLoadingSettings": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "addedMusicLibrary": "Added music library: {path}",
+  "@addedMusicLibrary": {
+    "placeholders": {
+      "path": {
+        "type": "String"
+      }
+    }
+  },
+  "errorAddingLibrary": "Error adding library: {error}",
+  "@errorAddingLibrary": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "librariesScannedSuccessfully": "Libraries scanned successfully",
+  "errorScanningLibraries": "Error scanning libraries: {error}",
+  "@errorScanningLibraries": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "noActiveRemoteProviders": "No active remote providers to index",
+  "indexedRemoteProviders": "Indexed {count} remote provider(s)",
+  "@indexedRemoteProviders": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "errorIndexingRemoteProviders": "Error indexing remote providers: {error}",
+  "@errorIndexingRemoteProviders": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "serverUrl": "Server URL",
+  "serverUrlHint": "https://your-jellyfin-server.com",
+  "username": "Username",
+  "password": "Password",
+  "add": "Add",
+  "allFieldsRequired": "All fields are required",
+  "addedRemoteProvider": "Added remote provider: {url}",
+  "@addedRemoteProvider": {
+    "placeholders": {
+      "url": {
+        "type": "String"
+      }
+    }
+  },
+  "errorAddingProvider": "Error adding provider: {error}",
+  "@errorAddingProvider": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "confirmResetTrackDatabase": "This will permanently delete all tracks from the database and remove all cached music files and album art. This action cannot be undone.\n\nAre you sure you want to continue?",
+  "trackDatabaseReset": "Track database has been reset",
+  "errorResettingDatabase": "Error resetting database: {error}",
+  "@errorResettingDatabase": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "noTracksInAlbum": "No tracks in this album",
+  "playAll": "Play All",
+  "addToQueue": "Add to Queue",
+  "noTracksInPlaylist": "No tracks in this playlist",
+  "noAlbumsFound": "No albums found",
+  "createOne": "Create One",
+  "addNewPlaylist": "Add a new playlist",
+  "newPlaylist": "New Playlist",
+  "playlistName": "Playlist Name",
+  "create": "Create",
+  "noPlaylistsYet": "No playlists yet",
+  "queue": "Queue",
+  "appSettings": "App Settings",
+  "appSettingsDescription": "Configure app-wide settings and preferences.",
+  "language": "Language",
+  "languageDescription": "Choose the app language.",
+  "english": "English",
+  "chinese": "中文"
+}

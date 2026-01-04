@@ -1,6 +1,7 @@
 import 'package:animations/animations.dart';
 import 'package:flutter/material.dart';
 import 'package:groovybox/data/playlist_repository.dart';
+import 'package:groovybox/l10n/app_localizations.dart';
 import 'package:groovybox/ui/screens/album_detail_screen.dart';
 import 'package:groovybox/ui/widgets/universal_image.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
@@ -22,7 +23,7 @@ class AlbumsTab extends HookConsumerWidget {
         final albums = snapshot.data!;
 
         if (albums.isEmpty) {
-          return const Center(child: Text('No albums found'));
+          return Center(child: Text(AppLocalizations.of(context)!.noAlbumsFound));
         }
 
         return GridView.builder(

@@ -11,6 +11,7 @@ import 'package:drift/drift.dart' as drift;
 import 'package:gap/gap.dart';
 import 'package:groovybox/data/db.dart' as db;
 import 'package:groovybox/data/track_repository.dart';
+import 'package:groovybox/l10n/app_localizations.dart';
 import 'package:groovybox/logic/lrc_providers.dart';
 import 'package:groovybox/logic/lyrics_parser.dart';
 import 'package:groovybox/logic/metadata_service.dart';
@@ -68,7 +69,7 @@ class PlayerScreen extends HookConsumerWidget {
         final index = snapshot.data?.index ?? 0;
         final medias = snapshot.data?.medias ?? [];
         if (medias.isEmpty || index < 0 || index >= medias.length) {
-          return const Center(child: Text('No media selected'));
+          return Center(child: Text(AppLocalizations.of(context)!.noMediaSelected));
         }
         final media = medias[index];
 
@@ -614,7 +615,7 @@ class _PlayerLyrics extends HookConsumerWidget {
       return Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Text('No Lyrics Available'),
+          Text(AppLocalizations.of(context)!.noLyricsAvailable),
           const SizedBox(height: 16),
 
           if (lyricsFetcher.isLoading)
@@ -625,7 +626,7 @@ class _PlayerLyrics extends HookConsumerWidget {
           else
             ElevatedButton.icon(
               icon: const Icon(Symbols.download),
-              label: const Text('Fetch Lyrics'),
+              label: Text(AppLocalizations.of(context)!.fetchLyrics),
               onPressed: () => _showFetchLyricsDialog(
                 context,
                 ref,
@@ -742,7 +743,7 @@ class _FetchLyricsDialog extends StatelessWidget {
             .trim();
 
     return AlertDialog(
-      title: const Text('Fetch Lyrics'),
+      title: Text(AppLocalizations.of(context)!.fetchLyrics),
       content: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,

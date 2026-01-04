@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:groovybox/data/db.dart' as db;
+import 'package:groovybox/l10n/app_localizations.dart';
 import 'package:groovybox/ui/widgets/universal_image.dart';
 import 'package:material_symbols_icons/symbols.dart';
 import 'package:styled_widget/styled_widget.dart';
@@ -73,7 +74,7 @@ class TrackTile extends StatelessWidget {
           ),
         ),
         subtitle: Text(
-          '${track.artist ?? 'Unknown Artist'} • ${_formatDuration(track.duration)}',
+          '${track.artist ?? AppLocalizations.of(context)!.unknownArtist} • ${_formatDuration(track.duration)}',
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
           style: TextStyle(
