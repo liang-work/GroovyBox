@@ -42,21 +42,36 @@ Future<void> main() async {
           // Get the provider container and set it on the audio handler
           final container = ProviderScope.containerOf(context);
           _audioHandler.setProviderContainer(container);
-          return const GroovyApp();
+          return GroovyApp();
         },
       ),
     ),
   );
 }
 
-class GroovyApp extends ConsumerWidget {
+class GroovyApp extends ConsumerStatefulWidget {
   const GroovyApp({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<GroovyApp> createState() => _GroovyAppState();
+}
+
+class _GroovyAppState extends ConsumerState<GroovyApp> {
+  @override
+  Widget build(BuildContext context) {
     final themeMode = ref.watch(themeProvider);
     final locale = ref.watch(localeProvider);
     final router = ref.watch(routerProvider);
+
+    // Listen to locale changes and force rebuild when locale changes
+    ref.listen(localeProvider, (previous, next) {
+      if (previous != next) {
+        // Force rebuild of the entire app when locale changes
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          setState(() {});
+        });
+      }
+    });
 
     return MaterialApp.router(
       title: 'GroovyBox',

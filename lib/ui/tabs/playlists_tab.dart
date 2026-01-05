@@ -75,7 +75,7 @@ class PlaylistsTab extends HookConsumerWidget {
                       leading: const Icon(Symbols.queue_music),
                       title: Text(playlist.name),
                       subtitle: Text(
-                        '${playlist.createdAt.day}/${playlist.createdAt.month}/${playlist.createdAt.year}',
+                        '${AppLocalizations.of(context)!.createdAt} ${playlist.createdAt.day}/${playlist.createdAt.month}/${playlist.createdAt.year}',
                       ),
                       trailing: IconButton(
                         icon: const Icon(Symbols.delete),

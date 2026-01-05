@@ -711,7 +711,7 @@ class _PlayerLyrics extends HookConsumerWidget {
         }
       }
     } catch (e) {
-      return Center(child: Text('Error parsing lyrics: $e'));
+      return Center(child: Text(AppLocalizations.of(context)!.errorLoadingLyrics(e.toString())));
     }
   }
 }
@@ -753,15 +753,15 @@ class _FetchLyricsDialog extends StatelessWidget {
             text: TextSpan(
               style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
               children: [
-                const TextSpan(text: 'Search lyrics with '),
+                TextSpan(text: AppLocalizations.of(context)!.searchLyricsWith(searchTerm.split(' ').first)),
                 TextSpan(
-                  text: searchTerm,
+                  text: ' $searchTerm',
                   style: const TextStyle(fontWeight: FontWeight.bold),
                 ),
               ],
             ),
           ),
-          Text('Where do you want to search lyrics from?'),
+          Text(AppLocalizations.of(context)!.whereToSearchLyrics),
           Card(
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -769,7 +769,7 @@ class _FetchLyricsDialog extends StatelessWidget {
                 ListTile(
                   dense: true,
                   leading: const Icon(Symbols.library_music),
-                  title: const Text('Musixmatch'),
+                        title: Text(AppLocalizations.of(context)!.musixmatch),
                   shape: RoundedRectangleBorder(
                     borderRadius: const BorderRadius.all(Radius.circular(12)),
                   ),
@@ -788,7 +788,7 @@ class _FetchLyricsDialog extends StatelessWidget {
                 ListTile(
                   dense: true,
                   leading: const Icon(Symbols.music_video),
-                  title: const Text('NetEase'),
+                  title: Text(AppLocalizations.of(context)!.netease),
                   shape: RoundedRectangleBorder(
                     borderRadius: const BorderRadius.all(Radius.circular(12)),
                   ),
@@ -807,7 +807,7 @@ class _FetchLyricsDialog extends StatelessWidget {
                 ListTile(
                   dense: true,
                   leading: const Icon(Symbols.library_books),
-                  title: const Text('Lrclib'),
+                  title: Text(AppLocalizations.of(context)!.lrclib),
                   shape: RoundedRectangleBorder(
                     borderRadius: const BorderRadius.all(Radius.circular(12)),
                   ),
@@ -826,7 +826,7 @@ class _FetchLyricsDialog extends StatelessWidget {
                 ListTile(
                   dense: true,
                   leading: const Icon(Symbols.file_upload),
-                  title: const Text('Manual Import'),
+                  title: Text(AppLocalizations.of(context)!.manualImport),
                   shape: RoundedRectangleBorder(
                     borderRadius: const BorderRadius.all(Radius.circular(12)),
                   ),
@@ -910,7 +910,7 @@ class _LyricsAdjustButton extends HookConsumerWidget {
     return IconButton(
       icon: const Icon(Symbols.settings_applications),
       iconSize: 24,
-      tooltip: 'Adjust Lyrics',
+      tooltip: AppLocalizations.of(context)!.adjustLyricsTiming,
       onPressed: () => _showLyricsRefreshDialog(
         context,
         ref,
@@ -974,7 +974,7 @@ class _LyricsAdjustButton extends HookConsumerWidget {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Lyrics Options'),
+        title: Text(AppLocalizations.of(context)!.lyricsOptions),
         content: Column(
           spacing: 8,
           mainAxisSize: MainAxisSize.min,
@@ -988,7 +988,7 @@ class _LyricsAdjustButton extends HookConsumerWidget {
                     Expanded(
                       child: ElevatedButton.icon(
                         icon: const Icon(Symbols.refresh),
-                        label: const Text('Re-fetch'),
+                    label: Text(AppLocalizations.of(context)!.refetch),
                         onPressed: () {
                           Navigator.of(context).pop();
                           final metadata = metadataAsync.value;
@@ -1008,7 +1008,7 @@ class _LyricsAdjustButton extends HookConsumerWidget {
                     Expanded(
                       child: ElevatedButton.icon(
                         icon: const Icon(Symbols.clear),
-                        label: const Text('Clear'),
+                        label: Text(AppLocalizations.of(context)!.clear),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.red,
                           foregroundColor: Colors.white,
@@ -1060,7 +1060,7 @@ class _LyricsAdjustButton extends HookConsumerWidget {
                   width: double.infinity,
                   child: ElevatedButton.icon(
                     icon: const Icon(Symbols.sync),
-                    label: const Text('Live Sync Lyrics'),
+                    label: Text(AppLocalizations.of(context)!.liveLyricsSync),
                     onPressed: () {
                       Navigator.of(context).pop();
                       _showLiveLyricsSyncDialog(
@@ -1077,7 +1077,7 @@ class _LyricsAdjustButton extends HookConsumerWidget {
                   width: double.infinity,
                   child: ElevatedButton.icon(
                     icon: const Icon(Symbols.tune),
-                    label: const Text('Manual Offset'),
+                    label: Text(AppLocalizations.of(context)!.manualOffset),
                     onPressed: () {
                       Navigator.of(context).pop();
                       _showLyricsOffsetDialog(
@@ -1116,17 +1116,17 @@ class _LyricsAdjustButton extends HookConsumerWidget {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Adjust Lyrics Timing'),
+        title: Text(AppLocalizations.of(context)!.adjustLyricsTiming),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Text(
-              'Enter offset in milliseconds.\nPositive values delay lyrics, negative values advance them.',
+            Text(
+              AppLocalizations.of(context)!.enterOffsetMs,
             ),
             const SizedBox(height: 16),
             TextField(
               controller: offsetController,
-              decoration: const InputDecoration(labelText: 'Offset (ms)'),
+              decoration: InputDecoration(labelText: AppLocalizations.of(context)!.offsetMs),
               keyboardType: TextInputType.number,
             ),
           ],
@@ -1196,11 +1196,11 @@ class _ViewToggleButton extends StatelessWidget {
     String getTooltip() {
       switch (viewMode.value) {
         case ViewMode.cover:
-          return 'Show Lyrics';
+          return AppLocalizations.of(context)!.showLyrics;
         case ViewMode.lyrics:
-          return 'Show Queue';
+          return AppLocalizations.of(context)!.showQueue;
         case ViewMode.queue:
-          return 'Show Cover';
+          return AppLocalizations.of(context)!.showCover;
       }
     }
 
@@ -1251,7 +1251,7 @@ class _QueueView extends HookConsumerWidget {
             builder: (context, snapshot) {
               final playlist = snapshot.data;
               if (playlist == null || playlist.medias.isEmpty) {
-                return const Center(child: Text('No tracks in queue'));
+                return Center(child: Text(AppLocalizations.of(context)!.noTracksInQueue));
               }
 
               return ReorderableListView.builder(
@@ -1919,7 +1919,7 @@ class _LiveLyricsSyncDialog extends HookConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Live Lyrics Sync'),
+        title: Text(AppLocalizations.of(context)!.liveLyricsSync),
         leading: IconButton(
           icon: const Icon(Symbols.close),
           onPressed: () => Navigator.of(context).pop(),
@@ -1977,14 +1977,7 @@ class _LiveLyricsSyncDialog extends HookConsumerWidget {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const Text('Offset: '),
-                    Text(
-                      '${tempOffset.value}ms',
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
-                      ),
-                    ),
+                    Text(AppLocalizations.of(context)!.offset(tempOffset.value)),
                   ],
                 ),
               ),
@@ -2000,30 +1993,30 @@ class _LiveLyricsSyncDialog extends HookConsumerWidget {
                   children: [
                     ElevatedButton.icon(
                       icon: const Icon(Symbols.fast_rewind),
-                      label: const Text('-100ms'),
+                      label: Text(AppLocalizations.of(context)!.minus100ms),
                       onPressed: () =>
                           tempOffset.value = (tempOffset.value - 100),
                     ),
                     ElevatedButton.icon(
                       icon: const Icon(Symbols.skip_previous),
-                      label: const Text('-10ms'),
+                      label: Text(AppLocalizations.of(context)!.plus10ms),
                       onPressed: () =>
                           tempOffset.value = (tempOffset.value - 10),
                     ),
                     ElevatedButton.icon(
                       icon: const Icon(Symbols.refresh),
-                      label: const Text('Reset'),
+                      label: Text(AppLocalizations.of(context)!.reset),
                       onPressed: () => tempOffset.value = 0,
                     ),
                     ElevatedButton.icon(
                       icon: const Icon(Symbols.skip_next),
-                      label: const Text('+10ms'),
+                      label: Text(AppLocalizations.of(context)!.plus10ms),
                       onPressed: () =>
                           tempOffset.value = (tempOffset.value + 10),
                     ),
                     ElevatedButton.icon(
                       icon: const Icon(Symbols.fast_forward),
-                      label: const Text('+100ms'),
+                      label: Text(AppLocalizations.of(context)!.plus100ms),
                       onPressed: () =>
                           tempOffset.value = (tempOffset.value + 100),
                     ),
@@ -2036,7 +2029,7 @@ class _LiveLyricsSyncDialog extends HookConsumerWidget {
                 padding: const EdgeInsets.all(16.0),
                 child: Column(
                   children: [
-                    const Text('Fine Adjustment'),
+                    Text(AppLocalizations.of(context)!.fineAdjustment),
                     Slider(
                       value: tempOffset.value.toDouble().clamp(-5000.0, 5000.0),
                       min: -5000,
@@ -2180,7 +2173,7 @@ class _LiveLyricsPreview extends HookConsumerWidget {
       final lyricsData = LyricsData.fromJsonString(track.lyrics!);
 
       if (lyricsData.type != 'timed') {
-        return const Center(child: Text('Only timed lyrics can be synced'));
+        return Center(child: Text(AppLocalizations.of(context)!.onlyTimedLyricsCanBeSynced));
       }
 
       return StreamBuilder<Duration>(
@@ -2261,7 +2254,7 @@ class _LiveLyricsPreview extends HookConsumerWidget {
         },
       );
     } catch (e) {
-      return Center(child: Text('Error loading lyrics: $e'));
+      return Center(child: Text(AppLocalizations.of(context)!.errorLoadingLyrics(e.toString())));
     }
   }
 }

@@ -479,4 +479,28 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get chinese => '中文';
+
+  @override
+  String get settingsTitle => '设置';
+
+  @override
+  String get tracks => '曲目';
+
+  @override
+  String get albums => '专辑';
+
+  @override
+  String get playlists => '播放列表';
+
+  @override
+  String get addRemoteProviderDialog => '添加远程提供商';
+
+  @override
+  String get imported => '已导入';
+
+  @override
+  String get lyricsLines => '歌词';
+
+  @override
+  String get createdAt => '创建于';
 }

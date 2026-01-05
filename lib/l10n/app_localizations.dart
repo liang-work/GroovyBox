@@ -931,6 +931,54 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'中文'**
   String get chinese;
+
+  /// No description provided for @settingsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Settings'**
+  String get settingsTitle;
+
+  /// No description provided for @tracks.
+  ///
+  /// In en, this message translates to:
+  /// **'Tracks'**
+  String get tracks;
+
+  /// No description provided for @albums.
+  ///
+  /// In en, this message translates to:
+  /// **'Albums'**
+  String get albums;
+
+  /// No description provided for @playlists.
+  ///
+  /// In en, this message translates to:
+  /// **'Playlists'**
+  String get playlists;
+
+  /// No description provided for @addRemoteProviderDialog.
+  ///
+  /// In en, this message translates to:
+  /// **'Add Remote Provider'**
+  String get addRemoteProviderDialog;
+
+  /// No description provided for @imported.
+  ///
+  /// In en, this message translates to:
+  /// **'Imported'**
+  String get imported;
+
+  /// No description provided for @lyricsLines.
+  ///
+  /// In en, this message translates to:
+  /// **'lyrics lines for'**
+  String get lyricsLines;
+
+  /// No description provided for @createdAt.
+  ///
+  /// In en, this message translates to:
+  /// **'created at'**
+  String get createdAt;
 }
 
 class _AppLocalizationsDelegate

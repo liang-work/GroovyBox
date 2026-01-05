@@ -491,4 +491,28 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get chinese => '中文';
+
+  @override
+  String get settingsTitle => 'Settings';
+
+  @override
+  String get tracks => 'Tracks';
+
+  @override
+  String get albums => 'Albums';
+
+  @override
+  String get playlists => 'Playlists';
+
+  @override
+  String get addRemoteProviderDialog => 'Add Remote Provider';
+
+  @override
+  String get imported => 'Imported';
+
+  @override
+  String get lyricsLines => 'lyrics lines for';
+
+  @override
+  String get createdAt => 'created at';
 }
