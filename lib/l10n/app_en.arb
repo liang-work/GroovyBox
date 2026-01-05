@@ -392,5 +392,14 @@
   "reset": "Reset",
   "imported": "Imported",
   "lyricsLines":"lyrics lines for",
-  "createdAt": "created at"
+  "createdAt": "created at",
+  "matched": "matched",
+  "notMatched": "not matched",
+  "deleted": "deleted",
+  "confirmDelete": "confirm delete",
+  "thisWillRemoveThemFromYourDevice":"This will remove them from your device.",
+  "added": "added",
+  "to":"to",
+  "unknown":"Unknown",
+  "noPlaylistsAvailable":"No Playlists available"
 }

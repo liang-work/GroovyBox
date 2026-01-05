@@ -419,7 +419,7 @@ abstract class AppLocalizations {
   /// No description provided for @noPlaylistsAvailable.
   ///
   /// In en, this message translates to:
-  /// **'No playlists available. Create one first!'**
+  /// **'No Playlists available'**
   String get noPlaylistsAvailable;
 
   /// No description provided for @addedToPlaylist.
@@ -979,6 +979,54 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'created at'**
   String get createdAt;
+
+  /// No description provided for @matched.
+  ///
+  /// In en, this message translates to:
+  /// **'matched'**
+  String get matched;
+
+  /// No description provided for @notMatched.
+  ///
+  /// In en, this message translates to:
+  /// **'not matched'**
+  String get notMatched;
+
+  /// No description provided for @deleted.
+  ///
+  /// In en, this message translates to:
+  /// **'deleted'**
+  String get deleted;
+
+  /// No description provided for @confirmDelete.
+  ///
+  /// In en, this message translates to:
+  /// **'confirm delete'**
+  String get confirmDelete;
+
+  /// No description provided for @thisWillRemoveThemFromYourDevice.
+  ///
+  /// In en, this message translates to:
+  /// **'This will remove them from your device.'**
+  String get thisWillRemoveThemFromYourDevice;
+
+  /// No description provided for @added.
+  ///
+  /// In en, this message translates to:
+  /// **'added'**
+  String get added;
+
+  /// No description provided for @to.
+  ///
+  /// In en, this message translates to:
+  /// **'to'**
+  String get to;
+
+  /// No description provided for @unknown.
+  ///
+  /// In en, this message translates to:
+  /// **'Unknown'**
+  String get unknown;
 }
 
 class _AppLocalizationsDelegate

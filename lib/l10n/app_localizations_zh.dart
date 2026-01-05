@@ -503,4 +503,28 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get createdAt => '创建于';
+
+  @override
+  String get matched => '匹配的';
+
+  @override
+  String get notMatched => '未匹配的';
+
+  @override
+  String get deleted => '已删除';
+
+  @override
+  String get confirmDelete => '确认删除';
+
+  @override
+  String get thisWillRemoveThemFromYourDevice => '这将从您的设备上删除。';
+
+  @override
+  String get added => '已添加';
+
+  @override
+  String get to => '至';
+
+  @override
+  String get unknown => '未知';
 }

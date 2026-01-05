@@ -191,8 +191,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get importLyrics => 'Import Lyrics';
 
   @override
-  String get noPlaylistsAvailable =>
-      'No playlists available. Create one first!';
+  String get noPlaylistsAvailable => 'No Playlists available';
 
   @override
   String addedToPlaylist(String name) {
@@ -515,4 +514,29 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get createdAt => 'created at';
+
+  @override
+  String get matched => 'matched';
+
+  @override
+  String get notMatched => 'not matched';
+
+  @override
+  String get deleted => 'deleted';
+
+  @override
+  String get confirmDelete => 'confirm delete';
+
+  @override
+  String get thisWillRemoveThemFromYourDevice =>
+      'This will remove them from your device.';
+
+  @override
+  String get added => 'added';
+
+  @override
+  String get to => 'to';
+
+  @override
+  String get unknown => 'Unknown';
 }
