@@ -1,6 +1,5 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_localizations/flutter_localizations.dart';
-import 'package:groovybox/l10n/app_localizations.dart';
 import 'package:groovybox/logic/audio_handler.dart';
 import 'package:groovybox/logic/window_helpers.dart';
 import 'package:groovybox/providers/audio_provider.dart';
@@ -16,6 +15,9 @@ late AudioHandler _audioHandler;
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   MediaKit.ensureInitialized();
+
+  // Initialize EasyLocalization
+  await EasyLocalization.ensureInitialized();
 
   // Initialize window manager for desktop platforms
   if (isDesktopPlatform()) {
@@ -36,14 +38,19 @@ Future<void> main() async {
   setAudioHandler(_audioHandler);
 
   runApp(
-    ProviderScope(
-      child: Builder(
-        builder: (context) {
-          // Get the provider container and set it on the audio handler
-          final container = ProviderScope.containerOf(context);
-          _audioHandler.setProviderContainer(container);
-          return GroovyApp();
-        },
+    EasyLocalization(
+      supportedLocales: const [Locale('en'), Locale('zh')],
+      path: 'assets/locales',
+      fallbackLocale: const Locale('en'),
+      child: ProviderScope(
+        child: Builder(
+          builder: (context) {
+            // Get the provider container and set it on the audio handler
+            final container = ProviderScope.containerOf(context);
+            _audioHandler.setProviderContainer(container);
+            return GroovyApp();
+          },
+        ),
       ),
     ),
   );
@@ -81,16 +88,9 @@ class _GroovyAppState extends ConsumerState<GroovyApp> {
       themeMode: themeMode,
       locale: locale,
       routerConfig: router,
-      localizationsDelegates: const [
-        AppLocalizations.delegate,
-        GlobalMaterialLocalizations.delegate,
-        GlobalWidgetsLocalizations.delegate,
-        GlobalCupertinoLocalizations.delegate,
-      ],
-      supportedLocales: const [
-        Locale('en'), // English
-        Locale('zh'), // Chinese
-      ],
+      localizationsDelegates: context.localizationDelegates,
+      supportedLocales: context.supportedLocales,
     );
   }
 }
+

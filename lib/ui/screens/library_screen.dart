@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'dart:io';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
@@ -6,7 +7,7 @@ import 'package:gap/gap.dart';
 import 'package:groovybox/data/db.dart';
 import 'package:groovybox/data/playlist_repository.dart';
 import 'package:groovybox/data/track_repository.dart';
-import 'package:groovybox/l10n/app_localizations.dart';
+
 import 'package:groovybox/logic/lyrics_parser.dart';
 import 'package:groovybox/logic/window_helpers.dart';
 import 'package:groovybox/providers/audio_provider.dart';
@@ -83,14 +84,14 @@ class LibraryScreen extends HookConsumerWidget {
                   onPressed: clearSelection,
                 ),
                 title: Text(
-                  AppLocalizations.of(context)!.selected(selectedTrackIds.value.length),
+                  context.tr('selected', args: [selectedTrackIds.value.length.toString()]),
                 ).textColor(Theme.of(context).colorScheme.onPrimary),
                 backgroundColor: Theme.of(context).colorScheme.primary,
                 actions: [
                   IconButton(
                     icon: const Icon(Symbols.playlist_add),
                     color: Theme.of(context).colorScheme.onPrimary,
-                    tooltip: AppLocalizations.of(context)!.addToPlaylist,
+                    tooltip: context.tr('addToPlaylist'),
                     onPressed: () {
                       _batchAddToPlaylist(
                         context,
@@ -103,7 +104,7 @@ class LibraryScreen extends HookConsumerWidget {
                   IconButton(
                     icon: const Icon(Symbols.delete),
                     color: Theme.of(context).colorScheme.onPrimary,
-                    tooltip: AppLocalizations.of(context)!.delete,
+                    tooltip: context.tr('delete'),
                     onPressed: () {
                       _batchDelete(
                         context,
@@ -140,7 +141,7 @@ class LibraryScreen extends HookConsumerWidget {
                                 ),
                               ],
                             )
-                          : Text(AppLocalizations.of(context)!.library),
+                          : Text(context.tr('library')),
                       actions: [
                         IconButton(
                           onPressed: () {
@@ -150,7 +151,7 @@ class LibraryScreen extends HookConsumerWidget {
                         ),
                         IconButton(
                           icon: const Icon(Symbols.add_circle_outline),
-                          tooltip: AppLocalizations.of(context)!.importFiles,
+                          tooltip: context.tr('importFiles'),
                           onPressed: () async {
                             final result = await FilePicker.platform.pickFiles(
                               type: FileType.any,
@@ -211,15 +212,15 @@ class LibraryScreen extends HookConsumerWidget {
                 destinations: [
                   NavigationRailDestination(
                     icon: Icon(Symbols.audiotrack),
-                    label: Text(AppLocalizations.of(context)!.tracks),
+                    label: Text(context.tr('tracks')),
                   ),
                   NavigationRailDestination(
                     icon: Icon(Symbols.album),
-                    label: Text(AppLocalizations.of(context)!.albums),
+                    label: Text(context.tr('albums')),
                   ),
                   NavigationRailDestination(
                     icon: Icon(Symbols.queue_music),
-                    label: Text(AppLocalizations.of(context)!.playlists),
+                    label: Text(context.tr('playlists')),
                   ),
                 ],
               ),
@@ -258,13 +259,13 @@ class LibraryScreen extends HookConsumerWidget {
                     onPressed: clearSelection,
                   ),
                   title: Text(
-                    AppLocalizations.of(context)!.selected(selectedTrackIds.value.length),
+                    context.tr('selected', args: [selectedTrackIds.value.length.toString()]),
                   ).textColor(Theme.of(context).colorScheme.onPrimary),
                   backgroundColor: Theme.of(context).colorScheme.primary,
                   actions: [
                     IconButton(
                       icon: const Icon(Symbols.playlist_add),
-                      tooltip: AppLocalizations.of(context)!.addToPlaylist,
+                      tooltip: context.tr('addToPlaylist'),
                       color: Theme.of(context).colorScheme.onPrimary,
                       onPressed: () {
                         _batchAddToPlaylist(
@@ -277,7 +278,7 @@ class LibraryScreen extends HookConsumerWidget {
                     ),
                     IconButton(
                       icon: const Icon(Symbols.delete),
-                      tooltip: AppLocalizations.of(context)!.delete,
+                      tooltip: context.tr('delete'),
                       color: Theme.of(context).colorScheme.onPrimary,
                       onPressed: () {
                         _batchDelete(
@@ -293,12 +294,12 @@ class LibraryScreen extends HookConsumerWidget {
                 )
               : AppBar(
                   centerTitle: true,
-                  title: Text(AppLocalizations.of(context)!.library),
+                  title: Text(context.tr('library')),
                   bottom: TabBar(
                     tabs: [
-                      Tab(text: AppLocalizations.of(context)!.tracks, icon: Icon(Symbols.audiotrack)),
-                      Tab(text: AppLocalizations.of(context)!.albums, icon: Icon(Symbols.album)),
-                      Tab(text: AppLocalizations.of(context)!.playlists, icon: Icon(Symbols.queue_music)),
+                      Tab(text: context.tr('tracks'), icon: Icon(Symbols.audiotrack)),
+                      Tab(text: context.tr('albums'), icon: Icon(Symbols.album)),
+                      Tab(text: context.tr('playlists'), icon: Icon(Symbols.queue_music)),
                     ],
                   ),
                   actions: [
@@ -310,7 +311,7 @@ class LibraryScreen extends HookConsumerWidget {
                     ),
                     IconButton(
                       icon: const Icon(Symbols.add_circle_outline),
-                      tooltip: AppLocalizations.of(context)!.importFiles,
+                      tooltip: context.tr('importFiles'),
                       onPressed: () async {
                         final result = await FilePicker.platform.pickFiles(
                           type: FileType.any,
@@ -392,12 +393,12 @@ class LibraryScreen extends HookConsumerWidget {
         // Calculate hintText
         String hintText;
         if (!snapshot.hasData || snapshot.hasError) {
-          hintText = AppLocalizations.of(context)!.searchTracks;
+          hintText = context.tr('searchTracks');
         } else {
           final tracks = snapshot.data!;
           final totalTracks = tracks.length;
           if (searchQuery.value.isEmpty) {
-            hintText = '${AppLocalizations.of(context)!.searchTracks} ($totalTracks ${AppLocalizations.of(context)!.tracks})';
+            hintText = '${context.tr('searchTracks')} ($totalTracks ${context.tr('tracks')})';
           } else {
             final query = searchQuery.value.toLowerCase();
             final filteredCount = tracks.where((track) {
@@ -421,7 +422,7 @@ class LibraryScreen extends HookConsumerWidget {
               return false;
             }).length;
             hintText =
-                '${AppLocalizations.of(context)!.searchTracks}... ($filteredCount of $totalTracks ${AppLocalizations.of(context)!.tracks})';
+                '${context.tr('searchTracks')}... ($filteredCount of $totalTracks ${context.tr('tracks')})';
           }
         }
 
@@ -434,7 +435,7 @@ class LibraryScreen extends HookConsumerWidget {
         } else {
           final tracks = snapshot.data!;
           if (tracks.isEmpty) {
-            mainContent = Center(child: Text(AppLocalizations.of(context)!.noTracksYet));
+            mainContent = Center(child: Text(context.tr('noTracksYet')));
           } else {
             List<Track> filteredTracks;
             if (searchQuery.value.isEmpty) {
@@ -465,7 +466,7 @@ class LibraryScreen extends HookConsumerWidget {
 
             if (filteredTracks.isEmpty && searchQuery.value.isNotEmpty) {
               mainContent = Center(
-                child: Text(AppLocalizations.of(context)!.noTracksMatchSearch),
+                child: Text(context.tr('noTracksMatchSearch')),
               );
             } else {
               mainContent = ListView.builder(
@@ -492,7 +493,7 @@ class LibraryScreen extends HookConsumerWidget {
                         overflow: TextOverflow.ellipsis,
                       ),
                       subtitle: Text(
-                        '${track.artist ?? AppLocalizations.of(context)!.unknownArtist} â€¢ ${_formatDuration(track.duration)}',
+                        '${track.artist ?? context.tr('unknownArtist')} â€?${_formatDuration(track.duration)}',
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
@@ -514,16 +515,15 @@ class LibraryScreen extends HookConsumerWidget {
                         context: context,
                         builder: (context) {
                           return AlertDialog(
-                            title: Text(AppLocalizations.of(context)!.deleteTrack),
+                            title: Text(context.tr('deleteTrack')),
                             content: Text(
-                              AppLocalizations.of(context)!
-                                  .confirmDeleteTrack(track.title),
+                              context.tr('confirmDeleteTrack', args: [track.title]),
                             ),
                             actions: [
                               TextButton(
                                 onPressed: () =>
                                     Navigator.of(context).pop(false),
-                                child: Text(AppLocalizations.of(context)!.cancel),
+                                child: Text(context.tr('cancel')),
                               ),
                               TextButton(
                                 onPressed: () =>
@@ -531,7 +531,7 @@ class LibraryScreen extends HookConsumerWidget {
                                 style: TextButton.styleFrom(
                                   foregroundColor: Colors.red,
                                 ),
-                                child: Text(AppLocalizations.of(context)!.delete),
+                                child: Text(context.tr('delete')),
                               ),
                             ],
                           );
@@ -545,8 +545,7 @@ class LibraryScreen extends HookConsumerWidget {
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
                           content: Text(
-                            AppLocalizations.of(context)!
-                                .deletedTrack(track.title),
+                            context.tr('deletedTrack', args: [track.title]),
                           ),
                         ),
                       );
@@ -642,7 +641,7 @@ class LibraryScreen extends HookConsumerWidget {
             children: [
               ListTile(
                 leading: const Icon(Symbols.playlist_add),
-                title: Text(AppLocalizations.of(context)!.addToPlaylist),
+                title: Text(context.tr('addToPlaylist')),
                 onTap: () {
                   Navigator.pop(context);
                   _showAddToPlaylistDialog(context, ref, track);
@@ -650,7 +649,7 @@ class LibraryScreen extends HookConsumerWidget {
               ),
               ListTile(
                 leading: const Icon(Symbols.info),
-                title: Text(AppLocalizations.of(context)!.viewDetails),
+                title: Text(context.tr('viewDetails')),
                 onTap: () {
                   Navigator.pop(context);
                   _showTrackDetails(context, ref, track);
@@ -658,7 +657,7 @@ class LibraryScreen extends HookConsumerWidget {
               ),
               ListTile(
                 leading: const Icon(Symbols.edit),
-                title: Text(AppLocalizations.of(context)!.editMetadata),
+                title: Text(context.tr('editMetadata')),
                 onTap: () {
                   Navigator.pop(context);
                   _showEditDialog(context, ref, track);
@@ -666,7 +665,7 @@ class LibraryScreen extends HookConsumerWidget {
               ),
               ListTile(
                 leading: const Icon(Symbols.lyrics),
-                title: Text(AppLocalizations.of(context)!.importLyrics),
+                title: Text(context.tr('importLyrics')),
                 onTap: () {
                   Navigator.pop(context);
                   _importLyricsForTrack(context, ref, track);
@@ -675,7 +674,7 @@ class LibraryScreen extends HookConsumerWidget {
               ListTile(
                 leading: const Icon(Symbols.delete, color: Colors.red),
                 title: Text(
-                  AppLocalizations.of(context)!.deleteTrack,
+                  context.tr('deleteTrack'),
                   style: TextStyle(color: Colors.red),
                 ),
                 onTap: () {
@@ -706,7 +705,7 @@ class LibraryScreen extends HookConsumerWidget {
         // For simplicity, we'll assume the user wants to pick from *current* playlists.
         // Or we can use a Consumer widget inside the dialog.
         return AlertDialog(
-          title: Text(AppLocalizations.of(context)!.addToPlaylist),
+          title: Text(context.tr('addToPlaylist')),
           content: ConstrainedBox(
             constraints: BoxConstraints(
               maxWidth: screenSize.width * 0.8,
@@ -726,7 +725,7 @@ class LibraryScreen extends HookConsumerWidget {
                     final playlists = snapshot.data!;
                     if (playlists.isEmpty) {
                       return Text(
-                        AppLocalizations.of(context)!.noPlaylistsAvailable,
+                        context.tr('noPlaylistsAvailable'),
                       );
                     }
 
@@ -744,8 +743,7 @@ class LibraryScreen extends HookConsumerWidget {
                               ScaffoldMessenger.of(context).showSnackBar(
                                 SnackBar(
                                   content: Text(
-                                    AppLocalizations.of(context)!
-                                        .addedToPlaylist(playlist.name),
+                                    context.tr('addedToPlaylist', args: [playlist.name]),
                                   ),
                                 ),
                               );
@@ -762,7 +760,7 @@ class LibraryScreen extends HookConsumerWidget {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
-              child: Text(AppLocalizations.of(context)!.cancel),
+              child: Text(context.tr('cancel')),
             ),
           ],
         );
@@ -776,9 +774,9 @@ class LibraryScreen extends HookConsumerWidget {
     Track track,
   ) async {
     // Try to get file info
-    String fileSize = AppLocalizations.of(context)!.unknown;
-    String libraryName = AppLocalizations.of(context)!.unknown;
-    String dateAdded = AppLocalizations.of(context)!.unknown;
+    String fileSize = context.tr('unknown');
+    String libraryName = context.tr('unknown');
+    String dateAdded = context.tr('unknown');
 
     try {
       final file = File(track.path);
@@ -812,7 +810,7 @@ class LibraryScreen extends HookConsumerWidget {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text(AppLocalizations.of(context)!.trackDetails),
+        title: Text(context.tr('trackDetails')),
         content: ConstrainedBox(
           constraints: BoxConstraints(maxWidth: screenSize.width * 0.8),
           child: SingleChildScrollView(
@@ -820,16 +818,16 @@ class LibraryScreen extends HookConsumerWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
-                _buildDetailRow(AppLocalizations.of(context)!.title, track.title),
-                _buildDetailRow(AppLocalizations.of(context)!.artist, track.artist ?? 'Unknown'),
-                _buildDetailRow(AppLocalizations.of(context)!.album, track.album ?? 'Unknown'),
-                _buildDetailRow(AppLocalizations.of(context)!.duration, _formatDuration(track.duration)),
-                _buildDetailRow(AppLocalizations.of(context)!.fileSize, fileSize),
-                _buildDetailRow(AppLocalizations.of(context)!.library, libraryName),
-                _buildDetailRow(AppLocalizations.of(context)!.filePath, track.path),
-                _buildDetailRow(AppLocalizations.of(context)!.dateAdded, dateAdded),
+                _buildDetailRow(context.tr('title'), track.title),
+                _buildDetailRow(context.tr('artist'), track.artist ?? 'Unknown'),
+                _buildDetailRow(context.tr('album'), track.album ?? 'Unknown'),
+                _buildDetailRow(context.tr('duration'), _formatDuration(track.duration)),
+                _buildDetailRow(context.tr('fileSize'), fileSize),
+                _buildDetailRow(context.tr('library'), libraryName),
+                _buildDetailRow(context.tr('filePath'), track.path),
+                _buildDetailRow(context.tr('dateAdded'), dateAdded),
                 if (track.artUri != null)
-                  _buildDetailRow(AppLocalizations.of(context)!.albumArt, 'Present'),
+                  _buildDetailRow(context.tr('albumArt'), 'Present'),
               ],
             ),
           ),
@@ -837,7 +835,7 @@ class LibraryScreen extends HookConsumerWidget {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: Text(AppLocalizations.of(context)!.close),
+            child: Text(context.tr('close')),
           ),
         ],
       ),
@@ -874,7 +872,7 @@ class LibraryScreen extends HookConsumerWidget {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text(AppLocalizations.of(context)!.editTrack),
+        title: Text(context.tr('editTrack')),
         content: ConstrainedBox(
           constraints: BoxConstraints(maxWidth: screenSize.width * 0.8),
           child: Column(
@@ -883,15 +881,15 @@ class LibraryScreen extends HookConsumerWidget {
             children: [
               TextField(
                 controller: titleController,
-                decoration: InputDecoration(labelText: AppLocalizations.of(context)!.title),
+                decoration: InputDecoration(labelText: context.tr('title')),
               ),
               TextField(
                 controller: artistController,
-                decoration: InputDecoration(labelText: AppLocalizations.of(context)!.artist),
+                decoration: InputDecoration(labelText: context.tr('artist')),
               ),
               TextField(
                 controller: albumController,
-                decoration: InputDecoration(labelText: AppLocalizations.of(context)!.album),
+                decoration: InputDecoration(labelText: context.tr('album')),
               ),
             ],
           ),
@@ -899,7 +897,7 @@ class LibraryScreen extends HookConsumerWidget {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: Text(AppLocalizations.of(context)!.cancel),
+            child: Text(context.tr('cancel')),
           ),
           TextButton(
             onPressed: () {
@@ -913,7 +911,7 @@ class LibraryScreen extends HookConsumerWidget {
                   );
               Navigator.pop(context);
             },
-            child: Text(AppLocalizations.of(context)!.save),
+            child: Text(context.tr('save')),
           ),
         ],
       ),
@@ -939,7 +937,7 @@ class LibraryScreen extends HookConsumerWidget {
       context: context,
       builder: (context) {
         return AlertDialog(
-          title: Text(AppLocalizations.of(context)!.addToPlaylist),
+          title: Text(context.tr('addToPlaylist')),
           content: ConstrainedBox(
             constraints: BoxConstraints(
               maxWidth: screenSize.width * 0.8,
@@ -958,7 +956,7 @@ class LibraryScreen extends HookConsumerWidget {
                     }
                     final playlists = snapshot.data!;
                     if (playlists.isEmpty) {
-                      return Text(AppLocalizations.of(context)!.noPlaylistsAvailable);
+                      return Text(context.tr('noPlaylistsAvailable'));
                     }
 
                     return SingleChildScrollView(
@@ -980,7 +978,7 @@ class LibraryScreen extends HookConsumerWidget {
                               ScaffoldMessenger.of(context).showSnackBar(
                                 SnackBar(
                                   content: Text(
-                                    '${AppLocalizations.of(context)!.added} ${trackIds.length} ${AppLocalizations.of(context)!.tracks} ${AppLocalizations.of(context)!.to} ${playlist.name}',
+                                    '${context.tr('added')} ${trackIds.length} ${context.tr('tracks')} ${context.tr('to')} ${playlist.name}',
                                   ),
                                 ),
                               );
@@ -997,7 +995,7 @@ class LibraryScreen extends HookConsumerWidget {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
-              child: Text(AppLocalizations.of(context)!.cancel),
+              child: Text(context.tr('cancel')),
             ),
           ],
         );
@@ -1014,20 +1012,20 @@ class LibraryScreen extends HookConsumerWidget {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text(AppLocalizations.of(context)!.deleteTracks),
+        title: Text(context.tr('deleteTracks')),
         content: Text(
-          '${AppLocalizations.of(context)!.confirmDelete} ${trackIds.length} ${AppLocalizations.of(context)!.tracks}? '
-          '${AppLocalizations.of(context)!.thisWillRemoveThemFromYourDevice}',
+          '${context.tr('confirmDelete')} ${trackIds.length} ${context.tr('tracks')}? '
+          '${context.tr('thisWillRemoveThemFromYourDevice')}',
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: Text(AppLocalizations.of(context)!.cancel),
+            child: Text(context.tr('cancel')),
           ),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
             style: TextButton.styleFrom(foregroundColor: Colors.red),
-            child: Text(AppLocalizations.of(context)!.delete),
+            child: Text(context.tr('delete')),
           ),
         ],
       ),
@@ -1043,7 +1041,7 @@ class LibraryScreen extends HookConsumerWidget {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            '${AppLocalizations.of(context)!.deleted} ${trackIds.length} ${AppLocalizations.of(context)!.tracks}',
+            '${context.tr('deleted')} ${trackIds.length} ${context.tr('tracks')}',
           ),
         ),
       );
@@ -1077,7 +1075,7 @@ class LibraryScreen extends HookConsumerWidget {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            '${AppLocalizations.of(context)!.imported} ${lyricsData.lines.length} ${AppLocalizations.of(context)!.lyricsLines} for "${track.title}"',
+            '${context.tr('imported')} ${lyricsData.lines.length} ${context.tr('lyricsLines')} for "${track.title}"',
           ),
         ),
       );
@@ -1128,7 +1126,7 @@ class LibraryScreen extends HookConsumerWidget {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(
-          '${AppLocalizations.of(context)!.batchImportComplete} $matched ${AppLocalizations.of(context)!.matched}, $notMatched ${AppLocalizations.of(context)!.notMatched}',
+          '${context.tr('batchImportComplete')} $matched ${context.tr('matched')}, $notMatched ${context.tr('notMatched')}',
         ),
       ),
     );

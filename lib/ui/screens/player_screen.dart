@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'dart:io';
 import 'dart:math' as math;
 import 'dart:ui';
@@ -11,7 +12,7 @@ import 'package:drift/drift.dart' as drift;
 import 'package:gap/gap.dart';
 import 'package:groovybox/data/db.dart' as db;
 import 'package:groovybox/data/track_repository.dart';
-import 'package:groovybox/l10n/app_localizations.dart';
+
 import 'package:groovybox/logic/lrc_providers.dart';
 import 'package:groovybox/logic/lyrics_parser.dart';
 import 'package:groovybox/logic/metadata_service.dart';
@@ -69,7 +70,7 @@ class PlayerScreen extends HookConsumerWidget {
         final index = snapshot.data?.index ?? 0;
         final medias = snapshot.data?.medias ?? [];
         if (medias.isEmpty || index < 0 || index >= medias.length) {
-          return Center(child: Text(AppLocalizations.of(context)!.noMediaSelected));
+          return Center(child: Text(context.tr('noMediaSelected')));
         }
         final media = medias[index];
 
@@ -615,7 +616,7 @@ class _PlayerLyrics extends HookConsumerWidget {
       return Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Text(AppLocalizations.of(context)!.noLyricsAvailable),
+          Text(context.tr('noLyricsAvailable')),
           const SizedBox(height: 16),
 
           if (lyricsFetcher.isLoading)
@@ -626,7 +627,7 @@ class _PlayerLyrics extends HookConsumerWidget {
           else
             ElevatedButton.icon(
               icon: const Icon(Symbols.download),
-              label: Text(AppLocalizations.of(context)!.fetchLyrics),
+              label: Text(context.tr('fetchLyrics')),
               onPressed: () => _showFetchLyricsDialog(
                 context,
                 ref,
@@ -711,7 +712,7 @@ class _PlayerLyrics extends HookConsumerWidget {
         }
       }
     } catch (e) {
-      return Center(child: Text(AppLocalizations.of(context)!.errorLoadingLyrics(e.toString())));
+      return Center(child: Text(context.tr('errorLoadingLyrics', args: [e.toString()])));
     }
   }
 }
@@ -743,7 +744,7 @@ class _FetchLyricsDialog extends StatelessWidget {
             .trim();
 
     return AlertDialog(
-      title: Text(AppLocalizations.of(context)!.fetchLyrics),
+      title: Text(context.tr('fetchLyrics')),
       content: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -753,7 +754,7 @@ class _FetchLyricsDialog extends StatelessWidget {
             text: TextSpan(
               style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
               children: [
-                TextSpan(text: AppLocalizations.of(context)!.searchLyricsWith(searchTerm.split(' ').first)),
+                TextSpan(text: context.tr('searchLyricsWith', args: [searchTerm.split(' ').first])),
                 TextSpan(
                   text: ' $searchTerm',
                   style: const TextStyle(fontWeight: FontWeight.bold),
@@ -761,7 +762,7 @@ class _FetchLyricsDialog extends StatelessWidget {
               ],
             ),
           ),
-          Text(AppLocalizations.of(context)!.whereToSearchLyrics),
+          Text(context.tr('whereToSearchLyrics')),
           Card(
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -769,7 +770,7 @@ class _FetchLyricsDialog extends StatelessWidget {
                 ListTile(
                   dense: true,
                   leading: const Icon(Symbols.library_music),
-                        title: Text(AppLocalizations.of(context)!.musixmatch),
+                        title: Text(context.tr('musixmatch')),
                   shape: RoundedRectangleBorder(
                     borderRadius: const BorderRadius.all(Radius.circular(12)),
                   ),
@@ -788,7 +789,7 @@ class _FetchLyricsDialog extends StatelessWidget {
                 ListTile(
                   dense: true,
                   leading: const Icon(Symbols.music_video),
-                  title: Text(AppLocalizations.of(context)!.netease),
+                  title: Text(context.tr('netease')),
                   shape: RoundedRectangleBorder(
                     borderRadius: const BorderRadius.all(Radius.circular(12)),
                   ),
@@ -807,7 +808,7 @@ class _FetchLyricsDialog extends StatelessWidget {
                 ListTile(
                   dense: true,
                   leading: const Icon(Symbols.library_books),
-                  title: Text(AppLocalizations.of(context)!.lrclib),
+                  title: Text(context.tr('lrclib')),
                   shape: RoundedRectangleBorder(
                     borderRadius: const BorderRadius.all(Radius.circular(12)),
                   ),
@@ -826,7 +827,7 @@ class _FetchLyricsDialog extends StatelessWidget {
                 ListTile(
                   dense: true,
                   leading: const Icon(Symbols.file_upload),
-                  title: Text(AppLocalizations.of(context)!.manualImport),
+                  title: Text(context.tr('manualImport')),
                   shape: RoundedRectangleBorder(
                     borderRadius: const BorderRadius.all(Radius.circular(12)),
                   ),
@@ -843,7 +844,7 @@ class _FetchLyricsDialog extends StatelessWidget {
       actions: [
         TextButton(
           onPressed: () => Navigator.of(context).pop(),
-          child: Text(AppLocalizations.of(context)!.cancel),
+          child: Text(context.tr('cancel')),
         ),
       ],
     );
@@ -910,7 +911,7 @@ class _LyricsAdjustButton extends HookConsumerWidget {
     return IconButton(
       icon: const Icon(Symbols.settings_applications),
       iconSize: 24,
-      tooltip: AppLocalizations.of(context)!.adjustLyricsTiming,
+      tooltip: context.tr('adjustLyricsTiming'),
       onPressed: () => _showLyricsRefreshDialog(
         context,
         ref,
@@ -974,7 +975,7 @@ class _LyricsAdjustButton extends HookConsumerWidget {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text(AppLocalizations.of(context)!.lyricsOptions),
+        title: Text(context.tr('lyricsOptions')),
         content: Column(
           spacing: 8,
           mainAxisSize: MainAxisSize.min,
@@ -988,7 +989,7 @@ class _LyricsAdjustButton extends HookConsumerWidget {
                     Expanded(
                       child: ElevatedButton.icon(
                         icon: const Icon(Symbols.refresh),
-                    label: Text(AppLocalizations.of(context)!.refetch),
+                    label: Text(context.tr('refetch')),
                         onPressed: () {
                           Navigator.of(context).pop();
                           final metadata = metadataAsync.value;
@@ -1008,7 +1009,7 @@ class _LyricsAdjustButton extends HookConsumerWidget {
                     Expanded(
                       child: ElevatedButton.icon(
                         icon: const Icon(Symbols.clear),
-                        label: Text(AppLocalizations.of(context)!.clear),
+                        label: Text(context.tr('clear')),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.red,
                           foregroundColor: Colors.white,
@@ -1060,7 +1061,7 @@ class _LyricsAdjustButton extends HookConsumerWidget {
                   width: double.infinity,
                   child: ElevatedButton.icon(
                     icon: const Icon(Symbols.sync),
-                    label: Text(AppLocalizations.of(context)!.liveLyricsSync),
+                    label: Text(context.tr('liveLyricsSync')),
                     onPressed: () {
                       Navigator.of(context).pop();
                       _showLiveLyricsSyncDialog(
@@ -1077,7 +1078,7 @@ class _LyricsAdjustButton extends HookConsumerWidget {
                   width: double.infinity,
                   child: ElevatedButton.icon(
                     icon: const Icon(Symbols.tune),
-                    label: Text(AppLocalizations.of(context)!.manualOffset),
+                    label: Text(context.tr('manualOffset')),
                     onPressed: () {
                       Navigator.of(context).pop();
                       _showLyricsOffsetDialog(
@@ -1096,7 +1097,7 @@ class _LyricsAdjustButton extends HookConsumerWidget {
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
-            child: Text(AppLocalizations.of(context)!.cancel),
+            child: Text(context.tr('cancel')),
           ),
         ],
       ),
@@ -1116,17 +1117,17 @@ class _LyricsAdjustButton extends HookConsumerWidget {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text(AppLocalizations.of(context)!.adjustLyricsTiming),
+        title: Text(context.tr('adjustLyricsTiming')),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(
-              AppLocalizations.of(context)!.enterOffsetMs,
+              context.tr('enterOffsetMs'),
             ),
             const SizedBox(height: 16),
             TextField(
               controller: offsetController,
-              decoration: InputDecoration(labelText: AppLocalizations.of(context)!.offsetMs),
+              decoration: InputDecoration(labelText: context.tr('offsetMs')),
               keyboardType: TextInputType.number,
             ),
           ],
@@ -1134,7 +1135,7 @@ class _LyricsAdjustButton extends HookConsumerWidget {
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
-            child: Text(AppLocalizations.of(context)!.cancel),
+            child: Text(context.tr('cancel')),
           ),
           TextButton(
             onPressed: () async {
@@ -1196,11 +1197,11 @@ class _ViewToggleButton extends StatelessWidget {
     String getTooltip() {
       switch (viewMode.value) {
         case ViewMode.cover:
-          return AppLocalizations.of(context)!.showLyrics;
+          return context.tr('showLyrics');
         case ViewMode.lyrics:
-          return AppLocalizations.of(context)!.showQueue;
+          return context.tr('showQueue');
         case ViewMode.queue:
-          return AppLocalizations.of(context)!.showCover;
+          return context.tr('showCover');
       }
     }
 
@@ -1251,7 +1252,7 @@ class _QueueView extends HookConsumerWidget {
             builder: (context, snapshot) {
               final playlist = snapshot.data;
               if (playlist == null || playlist.medias.isEmpty) {
-                return Center(child: Text(AppLocalizations.of(context)!.noTracksInQueue));
+                return Center(child: Text(context.tr('noTracksInQueue')));
               }
 
               return ReorderableListView.builder(
@@ -1919,7 +1920,7 @@ class _LiveLyricsSyncDialog extends HookConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(AppLocalizations.of(context)!.liveLyricsSync),
+        title: Text(context.tr('liveLyricsSync')),
         leading: IconButton(
           icon: const Icon(Symbols.close),
           onPressed: () => Navigator.of(context).pop(),
@@ -1977,7 +1978,7 @@ class _LiveLyricsSyncDialog extends HookConsumerWidget {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Text(AppLocalizations.of(context)!.offset(tempOffset.value)),
+                    Text(context.tr('offset', args: [tempOffset.value.toString()])),
                   ],
                 ),
               ),
@@ -1993,30 +1994,30 @@ class _LiveLyricsSyncDialog extends HookConsumerWidget {
                   children: [
                     ElevatedButton.icon(
                       icon: const Icon(Symbols.fast_rewind),
-                      label: Text(AppLocalizations.of(context)!.minus100ms),
+                      label: Text(context.tr('minus100ms')),
                       onPressed: () =>
                           tempOffset.value = (tempOffset.value - 100),
                     ),
                     ElevatedButton.icon(
                       icon: const Icon(Symbols.skip_previous),
-                      label: Text(AppLocalizations.of(context)!.plus10ms),
+                      label: Text(context.tr('plus10ms')),
                       onPressed: () =>
                           tempOffset.value = (tempOffset.value - 10),
                     ),
                     ElevatedButton.icon(
                       icon: const Icon(Symbols.refresh),
-                      label: Text(AppLocalizations.of(context)!.reset),
+                      label: Text(context.tr('reset')),
                       onPressed: () => tempOffset.value = 0,
                     ),
                     ElevatedButton.icon(
                       icon: const Icon(Symbols.skip_next),
-                      label: Text(AppLocalizations.of(context)!.plus10ms),
+                      label: Text(context.tr('plus10ms')),
                       onPressed: () =>
                           tempOffset.value = (tempOffset.value + 10),
                     ),
                     ElevatedButton.icon(
                       icon: const Icon(Symbols.fast_forward),
-                      label: Text(AppLocalizations.of(context)!.plus100ms),
+                      label: Text(context.tr('plus100ms')),
                       onPressed: () =>
                           tempOffset.value = (tempOffset.value + 100),
                     ),
@@ -2029,7 +2030,7 @@ class _LiveLyricsSyncDialog extends HookConsumerWidget {
                 padding: const EdgeInsets.all(16.0),
                 child: Column(
                   children: [
-                    Text(AppLocalizations.of(context)!.fineAdjustment),
+                    Text(context.tr('fineAdjustment')),
                     Slider(
                       value: tempOffset.value.toDouble().clamp(-5000.0, 5000.0),
                       min: -5000,
@@ -2173,7 +2174,7 @@ class _LiveLyricsPreview extends HookConsumerWidget {
       final lyricsData = LyricsData.fromJsonString(track.lyrics!);
 
       if (lyricsData.type != 'timed') {
-        return Center(child: Text(AppLocalizations.of(context)!.onlyTimedLyricsCanBeSynced));
+        return Center(child: Text(context.tr('onlyTimedLyricsCanBeSynced')));
       }
 
       return StreamBuilder<Duration>(
@@ -2254,7 +2255,7 @@ class _LiveLyricsPreview extends HookConsumerWidget {
         },
       );
     } catch (e) {
-      return Center(child: Text(AppLocalizations.of(context)!.errorLoadingLyrics(e.toString())));
+      return Center(child: Text(context.tr('errorLoadingLyrics', args: [e.toString()])));
     }
   }
 }

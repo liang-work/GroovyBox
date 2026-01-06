@@ -1,7 +1,8 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:gap/gap.dart';
 import 'package:groovybox/data/track_repository.dart';
-import 'package:groovybox/l10n/app_localizations.dart';
+
 import 'package:groovybox/providers/locale_provider.dart';
 import 'package:groovybox/providers/settings_provider.dart';
 import 'package:groovybox/providers/watch_folder_provider.dart';
@@ -21,7 +22,7 @@ class SettingsScreen extends ConsumerWidget {
     final remoteProvidersAsync = ref.watch(remoteProvidersProvider);
 
     return Scaffold(
-      appBar: AppBar(title: Text(AppLocalizations.of(context)!.settingsTitle)),
+      appBar: AppBar(title: Text(context.tr('settingsTitle'))),
       body: settingsAsync.when(
         data: (settings) => Align(
           alignment: Alignment.topCenter,
@@ -40,16 +41,16 @@ class SettingsScreen extends ConsumerWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          AppLocalizations.of(context)!.autoScan,
+                          context.tr('autoScan'),
                           style: const TextStyle(
                             fontSize: 18,
                             fontWeight: FontWeight.bold,
                           ),
                         ).padding(horizontal: 16, top: 16),
                         SwitchListTile(
-                          title: Text(AppLocalizations.of(context)!.autoScanMusicLibraries),
+                          title: Text(context.tr('autoScanMusicLibraries')),
                           subtitle: Text(
-                            AppLocalizations.of(context)!.autoScanDescription,
+                            context.tr('autoScanDescription'),
                           ),
                           shape: const RoundedRectangleBorder(
                             borderRadius: BorderRadius.all(Radius.circular(8)),
@@ -60,9 +61,9 @@ class SettingsScreen extends ConsumerWidget {
                           },
                         ),
                         SwitchListTile(
-                          title: Text(AppLocalizations.of(context)!.watchForChanges),
+                          title: Text(context.tr('watchForChanges')),
                           subtitle: Text(
-                            AppLocalizations.of(context)!.watchForChangesDescription,
+                            context.tr('watchForChangesDescription'),
                           ),
                           shape: const RoundedRectangleBorder(
                             borderRadius: BorderRadius.all(Radius.circular(8)),
@@ -92,7 +93,7 @@ class SettingsScreen extends ConsumerWidget {
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
                                 Text(
-                                  AppLocalizations.of(context)!.musicLibraries,
+                                  context.tr('musicLibraries'),
                                   style: const TextStyle(
                                     fontSize: 18,
                                     fontWeight: FontWeight.bold,
@@ -104,7 +105,7 @@ class SettingsScreen extends ConsumerWidget {
                                       onPressed: () =>
                                           _scanLibraries(context, ref),
                                       icon: const Icon(Symbols.refresh),
-                                      tooltip: AppLocalizations.of(context)!.scanLibraries,
+                                      tooltip: context.tr('scanLibraries'),
                                       visualDensity: const VisualDensity(
                                         horizontal: -4,
                                         vertical: -4,
@@ -114,7 +115,7 @@ class SettingsScreen extends ConsumerWidget {
                                       onPressed: () =>
                                           _addMusicLibrary(context, ref),
                                       icon: const Icon(Symbols.add),
-                                      tooltip: AppLocalizations.of(context)!.addMusicLibrary,
+                                      tooltip: context.tr('addMusicLibrary'),
                                       visualDensity: const VisualDensity(
                                         horizontal: -4,
                                         vertical: -4,
@@ -125,7 +126,7 @@ class SettingsScreen extends ConsumerWidget {
                               ],
                             ),
                             Text(
-                              AppLocalizations.of(context)!.addMusicLibraryDescription,
+                              context.tr('addMusicLibraryDescription'),
                               style: const TextStyle(
                                 color: Colors.grey,
                                 fontSize: 14,
@@ -136,7 +137,7 @@ class SettingsScreen extends ConsumerWidget {
                         watchFoldersAsync.when(
                           data: (folders) => folders.isEmpty
                               ? Text(
-                                  AppLocalizations.of(context)!.noMusicLibrariesAdded,
+                                  context.tr('noMusicLibrariesAdded'),
                                   style: const TextStyle(
                                     color: Colors.grey,
                                     fontSize: 14,
@@ -210,7 +211,7 @@ class SettingsScreen extends ConsumerWidget {
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
                                 Text(
-                                  AppLocalizations.of(context)!.remoteProviders,
+                                  context.tr('remoteProviders'),
                                   style: const TextStyle(
                                     fontSize: 18,
                                     fontWeight: FontWeight.bold,
@@ -222,7 +223,7 @@ class SettingsScreen extends ConsumerWidget {
                                       onPressed: () =>
                                           _indexRemoteProviders(context, ref),
                                       icon: const Icon(Symbols.refresh),
-                                      tooltip: AppLocalizations.of(context)!.indexRemoteProviders,
+                                      tooltip: context.tr('indexRemoteProviders'),
                                       visualDensity: const VisualDensity(
                                         horizontal: -4,
                                         vertical: -4,
@@ -232,7 +233,7 @@ class SettingsScreen extends ConsumerWidget {
                                       onPressed: () =>
                                           _addRemoteProvider(context, ref),
                                       icon: const Icon(Symbols.add),
-                                      tooltip: AppLocalizations.of(context)!.addRemoteProvider,
+                                      tooltip: context.tr('addRemoteProvider'),
                                       visualDensity: const VisualDensity(
                                         horizontal: -4,
                                         vertical: -4,
@@ -243,7 +244,7 @@ class SettingsScreen extends ConsumerWidget {
                               ],
                             ),
                             Text(
-                              AppLocalizations.of(context)!.remoteProvidersDescription,
+                              context.tr('remoteProvidersDescription'),
                               style: const TextStyle(
                                 color: Colors.grey,
                                 fontSize: 14,
@@ -254,7 +255,7 @@ class SettingsScreen extends ConsumerWidget {
                         remoteProvidersAsync.when(
                           data: (providers) => providers.isEmpty
                               ? Text(
-                                  AppLocalizations.of(context)!.noRemoteProvidersAdded,
+                                  context.tr('noRemoteProvidersAdded'),
                                   style: const TextStyle(
                                     color: Colors.grey,
                                     fontSize: 14,
@@ -322,20 +323,20 @@ class SettingsScreen extends ConsumerWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          AppLocalizations.of(context)!.playerSettings,
+                          context.tr('playerSettings'),
                           style: const TextStyle(
                             fontSize: 18,
                             fontWeight: FontWeight.bold,
                           ),
                         ).padding(horizontal: 16, top: 16),
                         Text(
-                          AppLocalizations.of(context)!.playerSettingsDescription,
+                          context.tr('playerSettingsDescription'),
                           style: const TextStyle(color: Colors.grey, fontSize: 14),
                         ).padding(horizontal: 16, bottom: 8),
                         ListTile(
-                          title: Text(AppLocalizations.of(context)!.defaultPlayerScreen),
+                          title: Text(context.tr('defaultPlayerScreen')),
                           subtitle: Text(
-                            AppLocalizations.of(context)!.defaultPlayerScreenDescription,
+                            context.tr('defaultPlayerScreenDescription'),
                           ),
                           trailing: DropdownButtonHideUnderline(
                             child: DropdownButton<DefaultPlayerScreen>(
@@ -359,9 +360,9 @@ class SettingsScreen extends ConsumerWidget {
                           ),
                         ),
                         ListTile(
-                          title: Text(AppLocalizations.of(context)!.lyricsMode),
+                          title: Text(context.tr('lyricsMode')),
                           subtitle: Text(
-                            AppLocalizations.of(context)!.lyricsModeDescription,
+                            context.tr('lyricsModeDescription'),
                           ),
                           trailing: DropdownButtonHideUnderline(
                             child: DropdownButton<LyricsMode>(
@@ -383,9 +384,9 @@ class SettingsScreen extends ConsumerWidget {
                           ),
                         ),
                         SwitchListTile(
-                          title: Text(AppLocalizations.of(context)!.continuePlaying),
+                          title: Text(context.tr('continuePlaying')),
                           subtitle: Text(
-                            AppLocalizations.of(context)!.continuePlayingDescription,
+                            context.tr('continuePlayingDescription'),
                           ),
                           shape: const RoundedRectangleBorder(
                             borderRadius: BorderRadius.all(Radius.circular(8)),
@@ -409,27 +410,27 @@ class SettingsScreen extends ConsumerWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          AppLocalizations.of(context)!.appSettings,
+                          context.tr('appSettings'),
                           style: const TextStyle(
                             fontSize: 18,
                             fontWeight: FontWeight.bold,
                           ),
                         ).padding(horizontal: 16, top: 16),
                         Text(
-                          AppLocalizations.of(context)!.appSettingsDescription,
+                          context.tr('appSettingsDescription'),
                           style: const TextStyle(color: Colors.grey, fontSize: 14),
                         ).padding(horizontal: 16, bottom: 8),
                         ListTile(
-                          title: Text(AppLocalizations.of(context)!.language),
+                          title: Text(context.tr('language')),
                           subtitle: Text(
-                            AppLocalizations.of(context)!.languageDescription,
+                            context.tr('languageDescription'),
                           ),
                           trailing: DropdownButtonHideUnderline(
                             child: DropdownButton<Locale>(
                               value: ref.watch(localeProvider),
                               onChanged: (Locale? value) {
                                 if (value != null) {
-                                  ref.read(localeProvider.notifier).setLocale(value);
+                                  ref.read(localeProvider.notifier).setLocale(context, value);
                                 }
                               },
                               items: const [
@@ -457,20 +458,20 @@ class SettingsScreen extends ConsumerWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          AppLocalizations.of(context)!.databaseManagement,
+                          context.tr('databaseManagement'),
                           style: const TextStyle(
                             fontSize: 18,
                             fontWeight: FontWeight.bold,
                           ),
                         ).padding(horizontal: 16, top: 16),
                         Text(
-                          AppLocalizations.of(context)!.databaseManagementDescription,
+                          context.tr('databaseManagementDescription'),
                           style: const TextStyle(color: Colors.grey, fontSize: 14),
                         ).padding(horizontal: 16, bottom: 8),
                         ListTile(
-                          title: Text(AppLocalizations.of(context)!.resetTrackDatabase),
+                          title: Text(context.tr('resetTrackDatabase')),
                           subtitle: Text(
-                            AppLocalizations.of(context)!.resetTrackDatabaseDescription,
+                            context.tr('resetTrackDatabaseDescription'),
                           ),
                           trailing: ElevatedButton(
                             onPressed: () => _resetTrackDatabase(context, ref),
@@ -478,7 +479,7 @@ class SettingsScreen extends ConsumerWidget {
                               backgroundColor: Colors.red,
                               foregroundColor: Colors.white,
                             ),
-                            child: Text(AppLocalizations.of(context)!.reset),
+                            child: Text(context.tr('reset')),
                           ),
                         ),
                         const SizedBox(height: 8),
@@ -507,14 +508,14 @@ class SettingsScreen extends ConsumerWidget {
           await service.addWatchFolder(path, recursive: true);
           if (context.mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text(AppLocalizations.of(context)!.addedMusicLibrary(path))),
+              SnackBar(content: Text(context.tr('addedMusicLibrary', args: [path]))),
             );
           }
         } catch (e) {
           if (context.mounted) {
             ScaffoldMessenger.of(
               context,
-            ).showSnackBar(SnackBar(content: Text(AppLocalizations.of(context)!.errorAddingLibrary(e.toString()))));
+            ).showSnackBar(SnackBar(content: Text(context.tr('errorAddingLibrary', args: [e.toString()]))));
           }
         }
       }
@@ -527,14 +528,14 @@ class SettingsScreen extends ConsumerWidget {
       await service.scanWatchFolders();
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(AppLocalizations.of(context)!.librariesScannedSuccessfully)),
+          SnackBar(content: Text(context.tr('librariesScannedSuccessfully'))),
         );
       }
     } catch (e) {
       if (context.mounted) {
         ScaffoldMessenger.of(
           context,
-        ).showSnackBar(SnackBar(content: Text(AppLocalizations.of(context)!.errorScanningLibraries(e.toString()))));
+        ).showSnackBar(SnackBar(content: Text(context.tr('errorScanningLibraries', args: [e.toString()]))));
       }
     }
   }
@@ -552,7 +553,7 @@ class SettingsScreen extends ConsumerWidget {
             if (context.mounted) {
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
-                  content: Text(AppLocalizations.of(context)!.noActiveRemoteProviders),
+                  content: Text(context.tr('noActiveRemoteProviders')),
                 ),
               );
             }
@@ -571,7 +572,7 @@ class SettingsScreen extends ConsumerWidget {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
                 content: Text(
-                  AppLocalizations.of(context)!.indexedRemoteProviders(activeProviders.length),
+                  context.tr('indexedRemoteProviders', args: [activeProviders.length.toString()]),
                 ),
               ),
             );
@@ -605,27 +606,27 @@ class SettingsScreen extends ConsumerWidget {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text(AppLocalizations.of(context)!.addRemoteProviderDialog),
+        title: Text(context.tr('addRemoteProviderDialog')),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             TextField(
               controller: serverUrlController,
               decoration: InputDecoration(
-                labelText: AppLocalizations.of(context)!.serverUrl,
-                hintText: AppLocalizations.of(context)!.serverUrlHint,
+                labelText: context.tr('serverUrl'),
+                hintText: context.tr('serverUrlHint'),
               ),
               keyboardType: TextInputType.url,
             ),
             const SizedBox(height: 16),
             TextField(
               controller: usernameController,
-              decoration: InputDecoration(labelText: AppLocalizations.of(context)!.username),
+              decoration: InputDecoration(labelText: context.tr('username')),
             ),
             const SizedBox(height: 16),
             TextField(
               controller: passwordController,
-              decoration: InputDecoration(labelText: AppLocalizations.of(context)!.password),
+              decoration: InputDecoration(labelText: context.tr('password')),
               obscureText: true,
             ),
           ],
@@ -633,7 +634,7 @@ class SettingsScreen extends ConsumerWidget {
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
-            child: Text(AppLocalizations.of(context)!.cancel),
+            child: Text(context.tr('cancel')),
           ),
           TextButton(
             onPressed: () async {
@@ -643,7 +644,7 @@ class SettingsScreen extends ConsumerWidget {
 
               if (serverUrl.isEmpty || username.isEmpty || password.isEmpty) {
                 ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text(AppLocalizations.of(context)!.allFieldsRequired)),
+                  SnackBar(content: Text(context.tr('allFieldsRequired'))),
                 );
                 return;
               }
@@ -655,19 +656,19 @@ class SettingsScreen extends ConsumerWidget {
                   Navigator.of(context).pop();
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
-                      content: Text(AppLocalizations.of(context)!.addedRemoteProvider(serverUrl)),
+                      content: Text(context.tr('addedRemoteProvider', args: [serverUrl])),
                     ),
                   );
                 }
               } catch (e) {
                 if (context.mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text(AppLocalizations.of(context)!.errorAddingProvider(e.toString()))),
+                    SnackBar(content: Text(context.tr('errorAddingProvider', args: [e.toString()]))),
                   );
                 }
               }
             },
-            child: Text(AppLocalizations.of(context)!.add),
+            child: Text(context.tr('add')),
           ),
         ],
       ),
@@ -678,14 +679,14 @@ class SettingsScreen extends ConsumerWidget {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text(AppLocalizations.of(context)!.resetTrackDatabase),
+        title: Text(context.tr('resetTrackDatabase')),
         content: Text(
-          AppLocalizations.of(context)!.confirmResetTrackDatabase,
+          context.tr('confirmResetTrackDatabase'),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
-            child: Text(AppLocalizations.of(context)!.cancel),
+            child: Text(context.tr('cancel')),
           ),
           TextButton(
             onPressed: () async {
@@ -698,20 +699,20 @@ class SettingsScreen extends ConsumerWidget {
                 if (context.mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
-                      content: Text(AppLocalizations.of(context)!.trackDatabaseReset),
+                      content: Text(context.tr('trackDatabaseReset')),
                     ),
                   );
                 }
               } catch (e) {
                 if (context.mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text(AppLocalizations.of(context)!.errorResettingDatabase(e.toString()))),
+                    SnackBar(content: Text(context.tr('errorResettingDatabase', args: [e.toString()]))),
                   );
                 }
               }
             },
             style: TextButton.styleFrom(foregroundColor: Colors.red),
-            child: Text(AppLocalizations.of(context)!.reset),
+            child: Text(context.tr('reset')),
           ),
         ],
       ),

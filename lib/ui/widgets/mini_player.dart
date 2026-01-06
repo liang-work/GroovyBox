@@ -1,7 +1,8 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:gap/gap.dart';
 import 'package:groovybox/data/db.dart' as db;
-import 'package:groovybox/l10n/app_localizations.dart';
+
 import 'package:groovybox/providers/audio_provider.dart';
 import 'package:groovybox/ui/screens/player_screen.dart';
 import 'package:groovybox/ui/widgets/track_tile.dart';
@@ -174,7 +175,7 @@ class _MobileMiniPlayer extends HookConsumerWidget {
                               overflow: TextOverflow.ellipsis,
                             ),
                             Text(
-                              currentMetadata?.artist ?? AppLocalizations.of(context)!.unknownArtist,
+                              currentMetadata?.artist ?? context.tr('unknownArtist'),
                               style: Theme.of(context).textTheme.bodySmall,
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
@@ -408,7 +409,7 @@ class _DesktopMiniPlayer extends HookConsumerWidget {
                                     overflow: TextOverflow.ellipsis,
                                   ),
                                   Text(
-                                    currentMetadata?.artist ?? AppLocalizations.of(context)!.unknownArtist,
+                                    currentMetadata?.artist ?? context.tr('unknownArtist'),
                                     style: Theme.of(
                                       context,
                                     ).textTheme.bodySmall,
@@ -604,7 +605,7 @@ class _DesktopMiniPlayer extends HookConsumerWidget {
               padding: const EdgeInsets.fromLTRB(24, 12, 24, 8),
               child: Row(
                 children: [
-                  Text(AppLocalizations.of(context)!.queue, style: TextStyle(fontSize: 20)),
+                  Text(context.tr('queue'), style: TextStyle(fontSize: 20)),
                   const Spacer(),
                   IconButton(
                     icon: const Icon(Symbols.close),
@@ -621,7 +622,7 @@ class _DesktopMiniPlayer extends HookConsumerWidget {
                 builder: (context, snapshot) {
                   final playlist = snapshot.data;
                   if (playlist == null || playlist.medias.isEmpty) {
-                    return Center(child: Text(AppLocalizations.of(context)!.noTracksInQueue));
+                    return Center(child: Text(context.tr('noTracksInQueue')));
                   }
 
                   return ReorderableListView.builder(
@@ -678,7 +679,7 @@ class _DesktopMiniPlayer extends HookConsumerWidget {
                               title: Uri.parse(media.uri).pathSegments.last,
                               artist:
                                   media.extras?['artist'] as String? ??
-                                  AppLocalizations.of(context)!.unknownArtist,
+                                  context.tr('unknownArtist'),
                               album: media.extras?['album'] as String?,
                               duration: null,
                               artUri: null,
@@ -727,7 +728,7 @@ class _DesktopMiniPlayer extends HookConsumerWidget {
                                       ).pathSegments.last,
                                       artist:
                                           media.extras?['artist'] as String? ??
-                                          AppLocalizations.of(context)!.unknownArtist,
+                                          context.tr('unknownArtist'),
                                       album: media.extras?['album'] as String?,
                                       duration: null,
                                       artUri: null,
@@ -756,3 +757,5 @@ class _DesktopMiniPlayer extends HookConsumerWidget {
     );
   }
 }
+
+

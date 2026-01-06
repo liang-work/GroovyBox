@@ -1,6 +1,6 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:groovybox/data/db.dart' as db;
-import 'package:groovybox/l10n/app_localizations.dart';
 import 'package:groovybox/ui/widgets/universal_image.dart';
 import 'package:material_symbols_icons/symbols.dart';
 import 'package:styled_widget/styled_widget.dart';
@@ -49,7 +49,7 @@ class TrackTile extends StatelessWidget {
         leading: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            ?leading,
+            if (leading != null) leading!,
             AspectRatio(
               aspectRatio: 1,
               child: UniversalImage(
@@ -74,7 +74,7 @@ class TrackTile extends StatelessWidget {
           ),
         ),
         subtitle: Text(
-          '${track.artist ?? AppLocalizations.of(context)!.unknownArtist} â€¢ ${_formatDuration(track.duration)}',
+          '${track.artist ?? context.tr('unknownArtist')} â€?${_formatDuration(track.duration)}',
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
           style: TextStyle(

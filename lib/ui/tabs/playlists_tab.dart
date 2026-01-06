@@ -1,7 +1,8 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:groovybox/data/db.dart';
 import 'package:groovybox/data/playlist_repository.dart';
-import 'package:groovybox/l10n/app_localizations.dart';
+
 import 'package:groovybox/ui/screens/playlist_detail_screen.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:material_symbols_icons/symbols.dart';
@@ -20,30 +21,30 @@ class PlaylistsTab extends HookConsumerWidget {
           ListTile(
             leading: const Icon(Symbols.add),
             trailing: const Icon(Symbols.chevron_right).padding(right: 8),
-            title: Text(AppLocalizations.of(context)!.createOne),
-            subtitle: Text(AppLocalizations.of(context)!.addNewPlaylist),
+            title: Text(context.tr('createOne')),
+            subtitle: Text(context.tr('addNewPlaylist')),
             onTap: () async {
               final nameController = TextEditingController();
               final name = await showDialog<String>(
                 context: context,
                 builder: (context) => AlertDialog(
-                  title: Text(AppLocalizations.of(context)!.newPlaylist),
+                  title: Text(context.tr('newPlaylist')),
                   content: TextField(
                     controller: nameController,
                     decoration: InputDecoration(
-                      labelText: AppLocalizations.of(context)!.playlistName,
+                      labelText: context.tr('playlistName'),
                     ),
                     autofocus: true,
                   ),
                   actions: [
                     TextButton(
                       onPressed: () => Navigator.pop(context),
-                      child: Text(AppLocalizations.of(context)!.cancel),
+                      child: Text(context.tr('cancel')),
                     ),
                     TextButton(
                       onPressed: () =>
                           Navigator.pop(context, nameController.text),
-                      child: Text(AppLocalizations.of(context)!.create),
+                      child: Text(context.tr('create')),
                     ),
                   ],
                 ),
@@ -64,7 +65,7 @@ class PlaylistsTab extends HookConsumerWidget {
                 final playlists = snapshot.data!;
 
                 if (playlists.isEmpty) {
-                  return Center(child: Text(AppLocalizations.of(context)!.noPlaylistsYet));
+                  return Center(child: Text(context.tr('noPlaylistsYet')));
                 }
 
                 return ListView.builder(
@@ -75,7 +76,7 @@ class PlaylistsTab extends HookConsumerWidget {
                       leading: const Icon(Symbols.queue_music),
                       title: Text(playlist.name),
                       subtitle: Text(
-                        '${AppLocalizations.of(context)!.createdAt} ${playlist.createdAt.day}/${playlist.createdAt.month}/${playlist.createdAt.year}',
+                        '${context.tr('createdAt')} ${playlist.createdAt.day}/${playlist.createdAt.month}/${playlist.createdAt.year}',
                       ),
                       trailing: IconButton(
                         icon: const Icon(Symbols.delete),
@@ -101,3 +102,5 @@ class PlaylistsTab extends HookConsumerWidget {
     );
   }
 }
+
+
