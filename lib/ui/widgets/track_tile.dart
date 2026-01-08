@@ -74,7 +74,7 @@ class TrackTile extends StatelessWidget {
           ),
         ),
         subtitle: Text(
-          '${track.artist ?? context.tr('unknownArtist')} â€?${_formatDuration(track.duration)}',
+          '${track.artist ?? context.tr('unknownArtist')} - ${_formatDuration(track.duration)}',
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
           style: TextStyle(

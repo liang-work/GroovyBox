@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:groovybox/logic/audio_handler.dart';
 import 'package:groovybox/logic/window_helpers.dart';
 import 'package:groovybox/providers/audio_provider.dart';
-import 'package:groovybox/providers/locale_provider.dart';
 import 'package:groovybox/providers/theme_provider.dart';
 import 'package:groovybox/router.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
@@ -67,18 +66,7 @@ class _GroovyAppState extends ConsumerState<GroovyApp> {
   @override
   Widget build(BuildContext context) {
     final themeMode = ref.watch(themeProvider);
-    final locale = ref.watch(localeProvider);
     final router = ref.watch(routerProvider);
-
-    // Listen to locale changes and force rebuild when locale changes
-    ref.listen(localeProvider, (previous, next) {
-      if (previous != next) {
-        // Force rebuild of the entire app when locale changes
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          setState(() {});
-        });
-      }
-    });
 
     return MaterialApp.router(
       title: 'GroovyBox',
@@ -86,11 +74,9 @@ class _GroovyAppState extends ConsumerState<GroovyApp> {
       theme: ref.watch(lightThemeProvider),
       darkTheme: ref.watch(darkThemeProvider),
       themeMode: themeMode,
-      locale: locale,
       routerConfig: router,
       localizationsDelegates: context.localizationDelegates,
       supportedLocales: context.supportedLocales,
     );
   }
 }
-
