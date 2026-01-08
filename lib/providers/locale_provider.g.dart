@@ -13,7 +13,7 @@ part of 'locale_provider.dart';
 final localeProvider = LocaleNotifierProvider._();
 
 final class LocaleNotifierProvider
-    extends $NotifierProvider<LocaleNotifier, Locale> {
+    extends $AsyncNotifierProvider<LocaleNotifier, Locale> {
   LocaleNotifierProvider._()
     : super(
         from: null,
@@ -31,29 +31,21 @@ final class LocaleNotifierProvider
   @$internal
   @override
   LocaleNotifier create() => LocaleNotifier();
-
-  /// {@macro riverpod.override_with_value}
-  Override overrideWithValue(Locale value) {
-    return $ProviderOverride(
-      origin: this,
-      providerOverride: $SyncValueProvider<Locale>(value),
-    );
-  }
 }
 
-String _$localeNotifierHash() => r'60db537ea3a9685b0eb20df4d15da07c9c024f3b';
+String _$localeNotifierHash() => r'1da62d4650ef0dd2f6a331033cf991796e673035';
 
-abstract class _$LocaleNotifier extends $Notifier<Locale> {
-  Locale build();
+abstract class _$LocaleNotifier extends $AsyncNotifier<Locale> {
+  FutureOr<Locale> build();
   @$mustCallSuper
   @override
   void runBuild() {
-    final ref = this.ref as $Ref<Locale, Locale>;
+    final ref = this.ref as $Ref<AsyncValue<Locale>, Locale>;
     final element =
         ref.element
             as $ClassProviderElement<
-              AnyNotifier<Locale, Locale>,
-              Locale,
+              AnyNotifier<AsyncValue<Locale>, Locale>,
+              AsyncValue<Locale>,
               Object?,
               Object?
             >;

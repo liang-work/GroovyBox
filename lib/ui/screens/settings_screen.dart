@@ -420,31 +420,36 @@ class SettingsScreen extends ConsumerWidget {
                           context.tr('appSettingsDescription'),
                           style: const TextStyle(color: Colors.grey, fontSize: 14),
                         ).padding(horizontal: 16, bottom: 8),
-                        ListTile(
-                          title: Text(context.tr('language')),
-                          subtitle: Text(
-                            context.tr('languageDescription'),
-                          ),
-                          trailing: DropdownButtonHideUnderline(
-                            child: DropdownButton<Locale>(
-                              value: ref.watch(localeProvider),
-                              onChanged: (Locale? value) {
+                        ref.watch(localeProvider).when(
+                          data: (locale) => ListTile(
+                            title: Text(context.tr('language')),
+                            subtitle: Text(
+                              context.tr('languageDescription'),
+                            ),
+                            trailing: DropdownButtonHideUnderline(
+                              child: DropdownButton<Locale>(
+                                value: locale,
+                              onChanged: (Locale? value) async {
                                 if (value != null) {
-                                  ref.read(localeProvider.notifier).setLocale(context, value);
+                                  await context.setLocale(value);
+                                  await ref.read(localeProvider.notifier).setLocale(value);
                                 }
                               },
-                              items: const [
-                                DropdownMenuItem(
-                                  value: Locale('en'),
-                                  child: Text('English'),
-                                ),
-                                DropdownMenuItem(
-                                  value: Locale('zh'),
-                                  child: Text('中文'),
-                                ),
-                              ],
+                                items: const [
+                                  DropdownMenuItem(
+                                    value: Locale('en'),
+                                    child: Text('English'),
+                                  ),
+                                  DropdownMenuItem(
+                                    value: Locale('zh'),
+                                    child: Text('中文'),
+                                  ),
+                                ],
+                              ),
                             ),
                           ),
+                          loading: () => const CircularProgressIndicator(),
+                          error: (error, _) => Text('Error loading locale: $error'),
                         ),
                         const SizedBox(height: 8),
                       ],
