@@ -84,7 +84,7 @@ class LibraryScreen extends HookConsumerWidget {
                   onPressed: clearSelection,
                 ),
                 title: Text(
-                  context.tr('selected', args: [selectedTrackIds.value.length.toString()]),
+                  context.tr('selected').replaceAll('{}', selectedTrackIds.value.length.toString()),
                 ).textColor(Theme.of(context).colorScheme.onPrimary),
                 backgroundColor: Theme.of(context).colorScheme.primary,
                 actions: [
@@ -259,7 +259,7 @@ class LibraryScreen extends HookConsumerWidget {
                     onPressed: clearSelection,
                   ),
                   title: Text(
-                    context.tr('selected', args: [selectedTrackIds.value.length.toString()]),
+                    context.tr('selected').replaceAll('{}', selectedTrackIds.value.length.toString()),
                   ).textColor(Theme.of(context).colorScheme.onPrimary),
                   backgroundColor: Theme.of(context).colorScheme.primary,
                   actions: [
@@ -398,7 +398,7 @@ class LibraryScreen extends HookConsumerWidget {
           final tracks = snapshot.data!;
           final totalTracks = tracks.length;
           if (searchQuery.value.isEmpty) {
-            hintText = context.tr('searchTracksWithCount', args: [totalTracks.toString()]);
+            hintText = context.tr('searchTracksWithCount').replaceAll('{}', totalTracks.toString());
           } else {
             final query = searchQuery.value.toLowerCase();
             final filteredCount = tracks.where((track) {
@@ -421,7 +421,9 @@ class LibraryScreen extends HookConsumerWidget {
               }
               return false;
             }).length;
-            hintText = context.tr('searchTracksFiltered', args: [filteredCount.toString(), totalTracks.toString()]);
+            hintText = context.tr('searchTracksFiltered')
+                .replaceAll('{}', filteredCount.toString())
+                .replaceAll('{}', totalTracks.toString());
           }
         }
 
@@ -516,7 +518,7 @@ class LibraryScreen extends HookConsumerWidget {
                           return AlertDialog(
                             title: Text(context.tr('deleteTrack')),
                             content: Text(
-                              context.tr('confirmDeleteTrack', args: [track.title]),
+                              context.tr('confirmDeleteTrack').replaceAll('{}', track.title),
                             ),
                             actions: [
                               TextButton(
@@ -544,7 +546,7 @@ class LibraryScreen extends HookConsumerWidget {
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
                           content: Text(
-                            context.tr('deletedTrack', args: [track.title]),
+                            context.tr('deletedTrack').replaceAll('{}', track.title),
                           ),
                         ),
                       );
@@ -742,7 +744,7 @@ class LibraryScreen extends HookConsumerWidget {
                               ScaffoldMessenger.of(context).showSnackBar(
                                 SnackBar(
                                   content: Text(
-                                    context.tr('addedToPlaylist', args: [playlist.name]),
+                                    context.tr('addedToPlaylist').replaceAll('{}', playlist.name),
                                   ),
                                 ),
                               );

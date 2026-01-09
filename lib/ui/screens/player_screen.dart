@@ -712,7 +712,7 @@ class _PlayerLyrics extends HookConsumerWidget {
         }
       }
     } catch (e) {
-      return Center(child: Text(context.tr('errorLoadingLyrics', args: [e.toString()])));
+      return Center(child: Text(context.tr('errorLoadingLyrics').replaceAll('{}', e.toString())));
     }
   }
 }
@@ -754,7 +754,7 @@ class _FetchLyricsDialog extends StatelessWidget {
             text: TextSpan(
               style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
               children: [
-                TextSpan(text: context.tr('searchLyricsWith', args: [searchTerm.split(' ').first])),
+                TextSpan(text: context.tr('searchLyricsWith').replaceAll('{}', searchTerm.split(' ').first)),
                 TextSpan(
                   text: ' $searchTerm',
                   style: const TextStyle(fontWeight: FontWeight.bold),
@@ -1978,7 +1978,7 @@ class _LiveLyricsSyncDialog extends HookConsumerWidget {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Text(context.tr('offset', args: [tempOffset.value.toString()])),
+                    Text(context.tr('offset').replaceAll('{}', tempOffset.value.toString())),
                   ],
                 ),
               ),
