@@ -398,7 +398,7 @@ class LibraryScreen extends HookConsumerWidget {
           final tracks = snapshot.data!;
           final totalTracks = tracks.length;
           if (searchQuery.value.isEmpty) {
-            hintText = '${context.tr('searchTracks')} ($totalTracks ${context.tr('tracks')})';
+            hintText = context.tr('searchTracksWithCount', args: [totalTracks.toString()]);
           } else {
             final query = searchQuery.value.toLowerCase();
             final filteredCount = tracks.where((track) {
@@ -421,8 +421,7 @@ class LibraryScreen extends HookConsumerWidget {
               }
               return false;
             }).length;
-            hintText =
-                '${context.tr('searchTracks')}... ($filteredCount of $totalTracks ${context.tr('tracks')})';
+            hintText = context.tr('searchTracksFiltered', args: [filteredCount.toString(), totalTracks.toString()]);
           }
         }
 

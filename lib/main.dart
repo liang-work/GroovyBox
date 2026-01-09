@@ -6,6 +6,7 @@ import 'package:groovybox/providers/audio_provider.dart';
 import 'package:groovybox/providers/theme_provider.dart';
 import 'package:groovybox/router.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:audio_service/audio_service.dart' as audio_service;
 
@@ -75,6 +76,7 @@ class _GroovyAppState extends ConsumerState<GroovyApp> {
       darkTheme: ref.watch(darkThemeProvider),
       themeMode: themeMode,
       routerConfig: router,
+      locale: context.locale,
       localizationsDelegates: context.localizationDelegates,
       supportedLocales: context.supportedLocales,
     );

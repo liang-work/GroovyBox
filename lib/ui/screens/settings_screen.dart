@@ -12,7 +12,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:material_symbols_icons/symbols.dart';
 import 'package:styled_widget/styled_widget.dart';
 
-class SettingsScreen extends ConsumerWidget {
+class SettingsScreen extends HookConsumerWidget {
   const SettingsScreen({super.key});
 
   @override
@@ -428,19 +428,21 @@ class SettingsScreen extends ConsumerWidget {
                           trailing: DropdownButtonHideUnderline(
                             child: DropdownButton<Locale>(
                               value: context.locale,
-                              onChanged: (Locale? value) async {
+                              onChanged: (Locale? value) {
                                 if (value != null) {
-                                  await context.setLocale(value);
+                                  EasyLocalization.of(context)!.setLocale(value);
+                                } else {
+                                  EasyLocalization.of(context)!.resetLocale();
                                 }
                               },
-                              items: const [
+                              items: [
                                 DropdownMenuItem(
-                                  value: Locale('en'),
-                                  child: Text('English'),
+                                  value: const Locale('en'),
+                                  child: Text(context.tr('english')),
                                 ),
                                 DropdownMenuItem(
-                                  value: Locale('zh'),
-                                  child: Text('中文'),
+                                  value: const Locale('zh'),
+                                  child: Text(context.tr('chinese')),
                                 ),
                               ],
                             ),
@@ -513,9 +515,7 @@ class SettingsScreen extends ConsumerWidget {
           }
         } catch (e) {
           if (context.mounted) {
-            ScaffoldMessenger.of(
-              context,
-            ).showSnackBar(SnackBar(content: Text(context.tr('errorAddingLibrary', args: [e.toString()]))));
+            ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(context.tr('errorAddingLibrary', args: [e.toString()]))));
           }
         }
       }
