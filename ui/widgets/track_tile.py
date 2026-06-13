@@ -1,0 +1,73 @@
+import flet as ft
+from typing import Optional, Callable
+from data.models import Track
+from logic.metadata_service import format_duration
+from logic.localize import tr
+from ui.widgets.universal_image import UniversalImage
+
+
+def TrackTile(
+    track: Track,
+    on_tap: Optional[Callable] = None,
+    on_long_press: Optional[Callable] = None,
+    is_playing: bool = False,
+    show_trailing: bool = False,
+    on_trailing_pressed: Optional[Callable] = None,
+    leading: Optional[ft.Control] = None,
+    padding: float = 8,
+) -> ft.Container:
+
+    bg = ft.Colors.with_opacity(0.15, ft.Colors.PRIMARY) if is_playing else ft.Colors.TRANSPARENT
+    title_color = ft.Colors.PRIMARY if is_playing else ft.Colors.ON_SURFACE
+    title_weight = ft.FontWeight.BOLD if is_playing else ft.FontWeight.NORMAL
+
+    subtitle = f"{track.artist or tr('unknownArtist', 'Unknown Artist')} \u2022 {format_duration(track.duration)}"
+
+    tile = ft.ListTile(
+        leading=ft.Row(
+            tight=True,
+            controls=[
+                leading or ft.Container(width=0),
+                UniversalImage(
+                    uri=track.art_uri,
+                    width=48,
+                    height=48,
+                    border_radius=8,
+                    fallback_icon=ft.Icons.MUSIC_NOTE,
+                    fallback_icon_size=24,
+                ),
+            ],
+        ),
+        title=ft.Text(
+            track.title,
+            max_lines=1,
+            overflow=ft.TextOverflow.ELLIPSIS,
+            color=title_color,
+            weight=title_weight,
+        ),
+        subtitle=ft.Text(
+            subtitle,
+            max_lines=1,
+            overflow=ft.TextOverflow.ELLIPSIS,
+            color=ft.Colors.with_opacity(0.6, ft.Colors.ON_SURFACE),
+            size=12,
+        ),
+        trailing=(
+            ft.IconButton(
+                icon=ft.Icons.MORE_VERT,
+                icon_size=20,
+                on_click=on_trailing_pressed,
+            )
+            if show_trailing
+            else (ft.Icon(ft.Icons.PLAY_ARROW, color=ft.Colors.PRIMARY, size=20) if is_playing else None)
+        ),
+        on_click=on_tap,
+        on_long_press=on_long_press,
+    )
+
+    return ft.Container(
+        content=tile,
+        bgcolor=bg,
+        border_radius=8,
+        padding=ft.Padding(16, padding - 8, 16, padding - 8) if padding != 8 else ft.Padding(16, 0, 16, 0),
+    )
