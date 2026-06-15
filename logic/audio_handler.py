@@ -5,6 +5,7 @@ import random
 import asyncio
 from typing import Optional, Callable, List
 from data.models import Track, CurrentTrackData
+from logic.logger import logger
 
 
 class AudioPlayer:
@@ -26,9 +27,13 @@ class AudioPlayer:
         self.on_queue_change: Optional[Callable] = None
         self.on_loading_change: Optional[Callable] = None
 
-        self.audio = None  # Will be created lazily (flet_audio.Audio blocks FilePicker if created too early)
-        self._timer_active = False
+        self.audio = None
+
+        self._timer_active = True
         self._start_position_poll()
+
+    def set_audio(self, audio):
+        self.audio = audio
 
     def _start_position_poll(self):
         def poll():
@@ -44,34 +49,19 @@ class AudioPlayer:
                     except Exception:
                         pass
                 time.sleep(0.25)
-        self._timer_active = True
         t = threading.Thread(target=poll, daemon=True)
         t.start()
 
     def stop_timer(self):
         self._timer_active = False
 
-    def _ensure_audio(self):
-        if self.audio is None:
-            self.audio = flet_audio.Audio(
-                autoplay=False,
-                volume=self._volume,
-                balance=0,
-                on_loaded=self._on_loaded,
-                on_duration_change=self._on_duration_changed,
-                on_position_change=self._on_position_changed,
-                on_state_change=self._on_state_changed,
-            )
-            self.page.overlay.append(self.audio)
-            self.page._services.register_service(self.audio)
-            self.page.update()
-
     def _on_loaded(self, e):
-        pass
+        logger.debug("Audio loaded")
 
     def _on_duration_changed(self, e):
         try:
             self._duration_ms = e.duration.in_milliseconds
+            logger.debug(f"Duration changed: {self._duration_ms}ms")
         except (ValueError, TypeError):
             pass
 
@@ -85,6 +75,7 @@ class AudioPlayer:
 
     def _on_state_changed(self, e):
         state = e.state
+        logger.debug(f"Audio state changed: {state}")
         if state == flet_audio.AudioState.COMPLETED:
             self._on_track_ended()
         elif state == flet_audio.AudioState.PLAYING:
@@ -119,6 +110,7 @@ class AudioPlayer:
                 self.on_loading_change(False)
 
     def play_track(self, track: Track):
+        logger.info(f"play_track: {track.title} | path={track.path}")
         self.queue = [track]
         self.current_index = 0
         asyncio.create_task(self._load_current_async())
@@ -126,20 +118,25 @@ class AudioPlayer:
     def play_tracks(self, tracks: List[Track], initial_index: int = 0):
         if not tracks:
             return
+        logger.info(f"play_tracks: {len(tracks)} tracks, start index={initial_index}")
         self.queue = list(tracks)
         self.current_index = initial_index
         asyncio.create_task(self._load_current_async())
 
     async def _load_current_async(self):
         if self.current_index < 0 or self.current_index >= len(self.queue):
+            logger.warning(f"_load_current_async: invalid index {self.current_index}")
             return
         track = self.queue[self.current_index]
+        logger.info(f"_load_current_async: index={self.current_index} track={track.title} path={track.path}")
         self._loading = True
         if self.on_loading_change:
             self.on_loading_change(True)
-        self._ensure_audio()
         self.audio.source = track.path
-        await asyncio.sleep(0.05)
+        logger.debug(f"Set audio source to: {track.path}")
+        self.page.update()
+        await asyncio.sleep(0.1)
+        logger.debug("Calling audio.play()...")
         await self.audio.play()
 
         if self.on_track_change:
@@ -158,12 +155,10 @@ class AudioPlayer:
 
     def play_current(self):
         if self.current_index >= 0 and self.current_index < len(self.queue):
-            self._ensure_audio()
             asyncio.create_task(self.audio.seek(0))
             asyncio.create_task(self.audio.resume())
 
     def toggle_play_pause(self):
-        self._ensure_audio()
         if self._is_playing:
             asyncio.create_task(self.audio.pause())
         else:
@@ -199,12 +194,10 @@ class AudioPlayer:
         asyncio.create_task(self._load_current_async())
 
     def seek(self, position_ms: int):
-        self._ensure_audio()
         asyncio.create_task(self.audio.seek(position_ms))
 
     def set_volume(self, volume: float):
         self._volume = max(0.0, min(1.0, volume))
-        self._ensure_audio()
         self.audio.volume = self._volume
 
     def get_current_track(self) -> Optional[Track]:

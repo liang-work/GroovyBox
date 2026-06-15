@@ -7,6 +7,7 @@ from logic.localize import tr
 from logic.metadata_service import format_duration
 from ui.widgets.track_tile import TrackTile
 from ui.widgets.universal_image import UniversalImage
+from logic.logger import logger
 
 
 class LibraryScreen(ft.Column):
@@ -283,7 +284,10 @@ class LibraryScreen(ft.Column):
     def _play_track(self, track):
         app = self._get_app()
         if app:
+            logger.info(f"LibraryScreen._play_track: {track.title}")
             app.audio_player.play_track(track)
+        else:
+            logger.error("LibraryScreen._play_track: app is None")
 
     def _show_track_options(self, track):
         def do_add_to_pl(e):

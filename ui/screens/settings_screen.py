@@ -3,6 +3,7 @@ import threading
 from data import db
 from data import track_repository as trepo
 from logic.localize import tr, load_locale, get_locale
+from logic.logger import logger
 
 
 def SettingsScreen(page: ft.Page) -> ft.Column:
@@ -51,16 +52,8 @@ def SettingsScreen(page: ft.Page) -> ft.Column:
         refresh()
 
     async def add_library(e):
-        fp = None
-        for ctrl in page.overlay:
-            if isinstance(ctrl, ft.FilePicker):
-                fp = ctrl
-                break
-        if fp is None:
-            fp = ft.FilePicker()
-            page.overlay.append(fp)
-            page.update()
-        path = await fp.get_directory_path()
+        from logic.file_dialog import pick_directory
+        path = await pick_directory(title="Select music library folder")
         if path:
             import os
             name = os.path.basename(path)
@@ -155,6 +148,19 @@ def SettingsScreen(page: ft.Page) -> ft.Column:
         conn.commit()
         conn.close()
         refresh()
+
+    async def export_logs(e):
+        from logic.file_dialog import save_file
+        path = await save_file(title="Export logs", default_name="groovybox_logs.txt", extensions=["txt"])
+        if path:
+            from logic.logger import export_logs as do_export
+            try:
+                do_export(path)
+                page.show_dialog(ft.SnackBar(ft.Text(tr("logsExported", path))))
+                logger.info(f"Logs exported to {path}")
+            except Exception as ex:
+                page.show_dialog(ft.SnackBar(ft.Text(tr("errorExportingLogs", str(ex)))))
+                logger.error(f"Failed to export logs: {ex}")
 
     content = ft.Column(
         scroll=ft.ScrollMode.AUTO,
@@ -290,11 +296,31 @@ def SettingsScreen(page: ft.Page) -> ft.Column:
                     ],
                 ),
             ),
+            # Logs Section
+            ft.Container(
+                bgcolor=ft.Colors.SURFACE_CONTAINER,
+                border_radius=12,
+                padding=16,
+                content=ft.Column(
+                    controls=[
+                        ft.Text("Logs", size=18, weight=ft.FontWeight.BOLD),
+                        ft.Text("View and export application logs.", size=12, color=ft.Colors.GREY),
+                        ft.ListTile(
+                            title=ft.Text(tr("exportLogs")),
+                            trailing=ft.ElevatedButton(
+                                tr("exportLogs"),
+                                on_click=export_logs,
+                            ),
+                        ),
+                    ],
+                ),
+            ),
             ft.Container(height=80),
         ],
     )
 
     return ft.Column(
+        expand=True,
         scroll=ft.ScrollMode.AUTO,
         controls=[ft.Container(
             expand=True,

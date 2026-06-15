@@ -89,4 +89,4 @@ def PlaylistsScreen(page: ft.Page) -> ft.Control:
         else:
             page.update()
 
-    return ft.Column(tight=True, controls=tiles, scroll=ft.ScrollMode.AUTO)
+    return ft.Column(controls=tiles, scroll=ft.ScrollMode.AUTO)

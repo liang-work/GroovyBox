@@ -1,4 +1,5 @@
 import flet as ft
+from logic.logger import logger
 from logic.localize import tr, load_locale
 from data import db
 from logic.metadata_service import get_metadata
@@ -21,10 +22,6 @@ class GroovyBoxApp:
 
         from logic.audio_handler import AudioPlayer
         self.audio_player = AudioPlayer(page)
-
-        self.file_picker = ft.FilePicker()
-        page.overlay.append(self.file_picker)
-        page._services.register_service(self.file_picker)
 
         self.audio_player.on_track_change = self._on_track_change
         self.audio_player.on_loading_change = self._on_loading_change
@@ -110,8 +107,19 @@ class GroovyBoxApp:
         route = self.page.route
         self.page.views.clear()
 
+        import flet_audio
         from ui.shell import ShellView
-        self.shell = ShellView(self.page)
+        audio = flet_audio.Audio(
+            autoplay=False,
+            volume=self.audio_player._volume,
+            balance=0,
+            on_loaded=self.audio_player._on_loaded,
+            on_duration_change=self.audio_player._on_duration_changed,
+            on_position_change=self.audio_player._on_position_changed,
+            on_state_change=self.audio_player._on_state_changed,
+        )
+        self.audio_player.set_audio(audio)
+        self.shell = ShellView(self.page, services=[audio])
 
         if route == "/" or route == "/library":
             from ui.screens.library_screen import LibraryScreen

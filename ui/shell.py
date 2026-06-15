@@ -1,5 +1,6 @@
 import flet as ft
 from logic.localize import tr
+from logic.logger import logger
 from data.track_repository import AUDIO_EXTENSIONS, LYRICS_EXTENSIONS
 from ui.widgets.mini_player import MiniPlayerWidget
 
@@ -65,26 +66,21 @@ class ShellView(ft.View):
 
     async def _import_files(self, e):
         all_ext = list(AUDIO_EXTENSIONS | LYRICS_EXTENSIONS)
-        fp = None
-        for ctrl in self._page.overlay:
-            if isinstance(ctrl, ft.FilePicker):
-                fp = ctrl
-                break
-        if fp is None:
-            fp = ft.FilePicker()
-            self._page.overlay.append(fp)
-            self._page.update()
-        files = await fp.pick_files(allow_multiple=True, allowed_extensions=all_ext)
-        if not files:
+        from logic.file_dialog import pick_files
+        paths = await pick_files(title="Select files to import", extensions=all_ext)
+        if not paths:
+            logger.debug("_import_files: no files selected")
             return
-        paths = [f.path for f in files]
+        logger.info(f"_import_files: selected {len(paths)} files: {paths}")
         from data import track_repository as trepo
 
         audio_paths = [p for p in paths if p.split(".")[-1].lower() in {"mp3", "m4a", "wav", "flac", "aac", "ogg", "wma", "m4p", "aiff", "au", "dss"}]
         lyrics_paths = [p for p in paths if p.split(".")[-1].lower() in {"lrc", "srt", "txt"}]
+        logger.debug(f"_import_files: audio={len(audio_paths)} lyrics={len(lyrics_paths)}")
 
         if audio_paths:
             trepo.import_files(audio_paths, callback=lambda: self._page.update())
+            logger.info(f"Imported {len(audio_paths)} audio files")
 
         if lyrics_paths:
             import os
@@ -107,7 +103,9 @@ class ShellView(ft.View):
                     matched += 1
                 else:
                     not_matched += 1
-            self._page.show_dialog(ft.SnackBar(ft.Text(f"Batch import: {matched} matched, {not_matched} not matched")))
+            msg = f"Batch import: {matched} matched, {not_matched} not matched"
+            logger.info(msg)
+            self._page.show_dialog(ft.SnackBar(ft.Text(msg)))
 
         self._page.update()
         if self.app:
