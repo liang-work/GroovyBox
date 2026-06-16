@@ -1,3 +1,4 @@
+import asyncio
 import flet as ft
 import json
 from data.models import Track, CurrentTrackData
@@ -304,7 +305,7 @@ def _jump_to(page, index):
     app = page.session.store.get("app")
     if app and app.audio_player:
         app.audio_player.current_index = index
-        app.audio_player._load_current()
+        asyncio.create_task(app.audio_player._load_current_async())
 
 
 def _toggle_shuffle(page):

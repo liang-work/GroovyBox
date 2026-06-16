@@ -1,15 +1,18 @@
-import flet as ft
-import flet_audio
 import threading
-import random
+import queue
 import asyncio
+import os
+import time
+import random
+import pygame
+import mutagen
 from typing import Optional, Callable, List
 from data.models import Track, CurrentTrackData
 from logic.logger import logger
 
 
 class AudioPlayer:
-    def __init__(self, page: ft.Page):
+    def __init__(self, page):
         self.page = page
         self.queue: List[Track] = []
         self.current_index = -1
@@ -27,93 +30,117 @@ class AudioPlayer:
         self.on_queue_change: Optional[Callable] = None
         self.on_loading_change: Optional[Callable] = None
 
-        self.audio = None
+        pygame.mixer.init(frequency=44100, size=-16, channels=2)
+        logger.debug("Pygame mixer initialized")
 
+        self._cmd_queue: queue.Queue = queue.Queue()
+        self._worker = threading.Thread(target=self._worker_loop, daemon=True)
+        self._worker.start()
+        logger.debug("Audio worker thread started")
+
+        self._was_busy = False
         self._timer_active = True
-        self._start_position_poll()
+        self._poll_thread = threading.Thread(target=self._poll_loop, daemon=True)
+        self._poll_thread.start()
 
-    def set_audio(self, audio):
-        self.audio = audio
-
-    def _start_position_poll(self):
-        def poll():
-            import time
-            while self._timer_active:
-                if self._is_playing and self.audio is not None:
+    def _worker_loop(self):
+        while True:
+            cmd, args = self._cmd_queue.get()
+            if cmd == "quit":
+                break
+            try:
+                if cmd == "load_play":
+                    path = args[0]
                     try:
-                        pos = self.audio.get_current_position()
-                        if pos is not None:
-                            self._position_ms = pos.in_milliseconds
-                            if self.on_position_change:
-                                self.on_position_change(pos.in_milliseconds)
-                    except Exception:
-                        pass
-                time.sleep(0.25)
-        t = threading.Thread(target=poll, daemon=True)
-        t.start()
+                        pygame.mixer.music.load(path)
+                    except pygame.error:
+                        f = open(path, "rb")
+                        pygame.mixer.music.load(f)
+                        f.close()
+                    pygame.mixer.music.set_volume(self._volume)
+                    pygame.mixer.music.play()
+                elif cmd == "pause":
+                    pygame.mixer.music.pause()
+                elif cmd == "resume":
+                    pygame.mixer.music.unpause()
+                elif cmd == "seek":
+                    pos_ms = args[0]
+                    pygame.mixer.music.play(start=pos_ms / 1000.0)
+                    pygame.mixer.music.set_volume(self._volume)
+                elif cmd == "set_volume":
+                    pygame.mixer.music.set_volume(args[0])
+            except Exception as ex:
+                logger.error(f"Audio worker error: {ex}")
+            self._cmd_queue.task_done()
 
-    def stop_timer(self):
-        self._timer_active = False
+    def _send_cmd(self, cmd, *args):
+        self._cmd_queue.put((cmd, args))
 
-    def _on_loaded(self, e):
-        logger.debug("Audio loaded")
-
-    def _on_duration_changed(self, e):
-        try:
-            self._duration_ms = e.duration.in_milliseconds
-            logger.debug(f"Duration changed: {self._duration_ms}ms")
-        except (ValueError, TypeError):
-            pass
-
-    def _on_position_changed(self, e):
-        try:
-            self._position_ms = e.position
-        except (ValueError, TypeError):
-            pass
-        if self.on_position_change:
-            self.on_position_change(self._position_ms)
-
-    def _on_state_changed(self, e):
-        state = e.state
-        logger.debug(f"Audio state changed: {state}")
-        if state == flet_audio.AudioState.COMPLETED:
-            self._on_track_ended()
-        elif state == flet_audio.AudioState.PLAYING:
-            self._is_playing = True
-            self._loading = False
-            if self.on_loading_change:
-                self.on_loading_change(False)
-            if self.on_play_state_change:
-                self.on_play_state_change(True)
-        elif state == flet_audio.AudioState.PAUSED:
-            self._is_playing = False
-            if self.on_play_state_change:
-                self.on_play_state_change(False)
-        elif state == flet_audio.AudioState.STOPPED:
-            self._is_playing = False
-            if self.on_play_state_change:
-                self.on_play_state_change(False)
-
-    def _on_track_ended(self):
-        if self.repeat_mode == "one":
-            self.play_current()
-        elif self.current_index < len(self.queue) - 1:
-            self.next()
-        elif self.repeat_mode == "all" and self.queue:
-            self.current_index = 0
-            asyncio.create_task(self._load_current_async())
+    def _run_on_ui(self, fn, *args):
+        if asyncio.iscoroutinefunction(fn):
+            loop = None
+            try:
+                loop = asyncio.get_running_loop()
+            except RuntimeError:
+                pass
+            if loop and loop.is_running():
+                asyncio.run_coroutine_threadsafe(fn(*args), loop)
+                return
+            asyncio.run(fn(*args))
         else:
-            self._is_playing = False
-            if self.on_play_state_change:
-                self.on_play_state_change(False)
-            if self.on_loading_change:
-                self.on_loading_change(False)
+            try:
+                fn(*args)
+            except Exception as ex:
+                logger.error(f"_run_on_ui error: {ex}")
+
+    def _poll_loop(self):
+        while self._timer_active:
+            try:
+                busy = pygame.mixer.music.get_busy()
+                pos = pygame.mixer.music.get_pos()
+                if busy and pos >= 0:
+                    self._position_ms = pos
+                    if self.on_position_change:
+                        self._run_on_ui(self.on_position_change, pos)
+
+                if self._was_busy and not busy and self._is_playing:
+                    self._run_on_ui(self._on_track_ended)
+
+                self._was_busy = busy
+
+                if not busy and self._is_playing:
+                    self._is_playing = False
+                    if self.on_play_state_change:
+                        self._run_on_ui(self.on_play_state_change, False)
+            except Exception:
+                pass
+            time.sleep(0.25)
+
+    def shutdown(self):
+        self._timer_active = False
+        self._send_cmd("quit")
+        self._worker.join(timeout=2)
+        try:
+            pygame.mixer.music.stop()
+            pygame.mixer.quit()
+        except Exception:
+            pass
+        logger.debug("Audio player shut down")
+
+    def _get_duration(self, path: str) -> int:
+        try:
+            mf = mutagen.File(path)
+            if mf is not None and mf.info is not None:
+                return int(mf.info.length * 1000)
+        except Exception as ex:
+            logger.warning(f"Could not read duration for {path}: {ex}")
+        return 0
 
     def play_track(self, track: Track):
-        logger.info(f"play_track: {track.title} | path={track.path}")
+        logger.info(f"play_track: {track.title}")
         self.queue = [track]
         self.current_index = 0
-        asyncio.create_task(self._load_current_async())
+        self._load_current()
 
     def play_tracks(self, tracks: List[Track], initial_index: int = 0):
         if not tracks:
@@ -121,26 +148,38 @@ class AudioPlayer:
         logger.info(f"play_tracks: {len(tracks)} tracks, start index={initial_index}")
         self.queue = list(tracks)
         self.current_index = initial_index
-        asyncio.create_task(self._load_current_async())
+        self._load_current()
 
-    async def _load_current_async(self):
+    def _load_current(self):
         if self.current_index < 0 or self.current_index >= len(self.queue):
-            logger.warning(f"_load_current_async: invalid index {self.current_index}")
+            logger.warning(f"_load_current: invalid index {self.current_index}")
             return
         track = self.queue[self.current_index]
-        logger.info(f"_load_current_async: index={self.current_index} track={track.title} path={track.path}")
+        logger.info(f"_load_current: index={self.current_index} track={track.title}")
+
+        path = track.path
+        if not os.path.exists(path):
+            logger.error(f"File not found: {path}")
+            return
+
         self._loading = True
         if self.on_loading_change:
-            self.on_loading_change(True)
-        self.audio.source = track.path
-        logger.debug(f"Set audio source to: {track.path}")
-        self.page.update()
-        await asyncio.sleep(0.1)
-        logger.debug("Calling audio.play()...")
-        await self.audio.play()
+            self._run_on_ui(self.on_loading_change, True)
 
+        self._duration_ms = self._get_duration(path)
+        logger.debug(f"Duration: {self._duration_ms}ms")
+
+        self._send_cmd("load_play", path)
+        self._position_ms = 0
+        self._is_playing = True
+        self._loading = False
+
+        if self.on_loading_change:
+            self._run_on_ui(self.on_loading_change, False)
+        if self.on_play_state_change:
+            self._run_on_ui(self.on_play_state_change, True)
         if self.on_track_change:
-            self.on_track_change(CurrentTrackData(
+            self._run_on_ui(self.on_track_change, CurrentTrackData(
                 id=track.id,
                 title=track.title,
                 artist=track.artist,
@@ -151,21 +190,29 @@ class AudioPlayer:
                 lyrics_offset=track.lyrics_offset,
             ))
         if self.on_queue_change:
-            self.on_queue_change()
+            self._run_on_ui(self.on_queue_change)
 
     def play_current(self):
         if self.current_index >= 0 and self.current_index < len(self.queue):
-            asyncio.create_task(self.audio.seek(0))
-            asyncio.create_task(self.audio.resume())
+            self._send_cmd("seek", 0)
+            self._is_playing = True
+            if self.on_play_state_change:
+                self._run_on_ui(self.on_play_state_change, True)
 
     def toggle_play_pause(self):
         if self._is_playing:
-            asyncio.create_task(self.audio.pause())
+            self._send_cmd("pause")
+            self._is_playing = False
+            if self.on_play_state_change:
+                self._run_on_ui(self.on_play_state_change, False)
         else:
             if self.current_index >= 0 and self.current_index < len(self.queue):
-                asyncio.create_task(self.audio.resume())
+                self._send_cmd("resume")
+                self._is_playing = True
+                if self.on_play_state_change:
+                    self._run_on_ui(self.on_play_state_change, True)
             elif self.queue:
-                asyncio.create_task(self._load_current_async())
+                self._load_current()
 
     def next(self):
         if not self.queue:
@@ -181,9 +228,9 @@ class AudioPlayer:
                 self.current_index = len(self.queue) - 1
                 self._is_playing = False
                 if self.on_play_state_change:
-                    self.on_play_state_change(False)
+                    self._run_on_ui(self.on_play_state_change, False)
                 return
-        asyncio.create_task(self._load_current_async())
+        self._load_current()
 
     def previous(self):
         if not self.queue:
@@ -191,19 +238,36 @@ class AudioPlayer:
         self.current_index -= 1
         if self.current_index < 0:
             self.current_index = 0
-        asyncio.create_task(self._load_current_async())
+        self._load_current()
 
     def seek(self, position_ms: int):
-        asyncio.create_task(self.audio.seek(position_ms))
+        self._send_cmd("seek", position_ms)
+        self._position_ms = position_ms
 
     def set_volume(self, volume: float):
         self._volume = max(0.0, min(1.0, volume))
-        self.audio.volume = self._volume
+        self._send_cmd("set_volume", self._volume)
 
     def get_current_track(self) -> Optional[Track]:
         if 0 <= self.current_index < len(self.queue):
             return self.queue[self.current_index]
         return None
+
+    def _on_track_ended(self):
+        logger.debug("Track ended naturally")
+        if self.repeat_mode == "one":
+            self.play_current()
+        elif self.current_index < len(self.queue) - 1:
+            self.next()
+        elif self.repeat_mode == "all" and self.queue:
+            self.current_index = 0
+            self._load_current()
+        else:
+            self._is_playing = False
+            if self.on_play_state_change:
+                self._run_on_ui(self.on_play_state_change, False)
+            if self.on_loading_change:
+                self._run_on_ui(self.on_loading_change, False)
 
     @property
     def is_playing(self) -> bool:

@@ -6,8 +6,8 @@ from ui.widgets.mini_player import MiniPlayerWidget
 
 
 class ShellView(ft.View):
-    def __init__(self, page: ft.Page, services: list = None):
-        super().__init__(route="/", padding=0, spacing=0, services=services or [])
+    def __init__(self, page: ft.Page):
+        super().__init__(route="/", padding=0, spacing=0)
         self._page = page
         self.app = page.session.store.get("app")
 
@@ -80,7 +80,7 @@ class ShellView(ft.View):
 
         if audio_paths:
             trepo.import_files(audio_paths, callback=lambda: self._page.update())
-            logger.info(f"Imported {len(audio_paths)} audio files")
+            logger.info(f"Import started for {len(audio_paths)} audio files")
 
         if lyrics_paths:
             import os

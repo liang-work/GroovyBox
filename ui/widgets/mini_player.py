@@ -54,6 +54,13 @@ class MiniPlayerWidget(ft.Container):
             app.audio_player.repeat_mode = modes[idx]
             self.refresh()
 
+    def _repeat_color(self):
+        app = self._page.session.store.get("app")
+        mode = app.audio_player.repeat_mode if app and app.audio_player else "none"
+        if mode in ("one", "all"):
+            return ft.Colors.PRIMARY
+        return ft.Colors.with_opacity(0.4, ft.Colors.ON_SURFACE)
+
     def _toggle_shuffle_helper(self):
         app = self._page.session.store.get("app")
         if app and app.audio_player:
@@ -224,7 +231,7 @@ class MiniPlayerWidget(ft.Container):
                                         tight=True,
                                         alignment=ft.MainAxisAlignment.CENTER,
                                         controls=[
-                                            ft.IconButton(ft.Icons.REPEAT, icon_size=20, icon_color=repeat_color(), on_click=lambda _: self._on_toggle_repeat() if self._on_toggle_repeat else None),
+                                            ft.IconButton(ft.Icons.REPEAT, icon_size=20, icon_color=self._repeat_color(), on_click=lambda _: self._on_toggle_repeat() if self._on_toggle_repeat else None),
                                             ft.IconButton(ft.Icons.SKIP_PREVIOUS, icon_size=24, on_click=lambda _: self._on_prev() if self._on_prev else None),
                                             ft.Container(
                                                 padding=ft.Padding(8, 0, 8, 0),

@@ -107,19 +107,8 @@ class GroovyBoxApp:
         route = self.page.route
         self.page.views.clear()
 
-        import flet_audio
         from ui.shell import ShellView
-        audio = flet_audio.Audio(
-            autoplay=False,
-            volume=self.audio_player._volume,
-            balance=0,
-            on_loaded=self.audio_player._on_loaded,
-            on_duration_change=self.audio_player._on_duration_changed,
-            on_position_change=self.audio_player._on_position_changed,
-            on_state_change=self.audio_player._on_state_changed,
-        )
-        self.audio_player.set_audio(audio)
-        self.shell = ShellView(self.page, services=[audio])
+        self.shell = ShellView(self.page)
 
         if route == "/" or route == "/library":
             from ui.screens.library_screen import LibraryScreen
