@@ -29,6 +29,9 @@ class MiniPlayerWidget(ft.Container):
         self.inner = ft.Column(tight=True, spacing=0)
         self.content = self.inner
 
+        self._pos_slider = None
+        self._play_btn = None
+
     @property
     def page(self):
         return self._page
@@ -88,6 +91,9 @@ class MiniPlayerWidget(ft.Container):
         self.height = 72 + (self._page.padding.bottom if self._page.padding else 0)
         is_desktop = self._page.width > 800
 
+        self._pos_slider = None
+        self._play_btn = None
+
         if is_desktop:
             self.inner.controls = [self._build_desktop()]
         else:
@@ -95,20 +101,26 @@ class MiniPlayerWidget(ft.Container):
 
         self.update()
 
-    def _progress(self) -> ft.Control:
+    def refresh_position(self, pos_ms: int, dur_ms: int):
+        self._position_ms = pos_ms
+        self._duration_ms = dur_ms
+        if self._pos_slider:
+            max_val = max(dur_ms, 1)
+            self._pos_slider.min = 0
+            self._pos_slider.max = float(max_val)
+            self._pos_slider.value = float(max(0, min(pos_ms, max_val)))
+            self._pos_slider.update()
+
+    def refresh_play_state(self, is_playing: bool):
+        self._is_playing = is_playing
+        if self._play_btn:
+            self._play_btn.icon = ft.Icons.PAUSE_ROUNDED if is_playing else ft.Icons.PLAY_ARROW_ROUNDED
+            self._play_btn.update()
+
+    def _build_slider(self) -> ft.Slider:
         max_val = max(self._duration_ms, 1)
         pos = max(0, min(self._position_ms, max_val))
-
-        if self._is_loading:
-            return ft.Container(
-                height=4,
-                content=ft.ProgressBar(
-                    color=ft.Colors.PRIMARY,
-                    bgcolor=ft.Colors.with_opacity(0.1, ft.Colors.ON_SURFACE),
-                ),
-            )
-
-        return ft.Slider(
+        self._pos_slider = ft.Slider(
             value=float(pos),
             min=0, max=float(max_val),
             divisions=1000,
@@ -118,17 +130,39 @@ class MiniPlayerWidget(ft.Container):
             inactive_color=ft.Colors.with_opacity(0.15, ft.Colors.ON_SURFACE),
             on_change=lambda e: self._on_seek(int(e.control.value)) if self._on_seek else None,
         )
+        return self._pos_slider
+
+    def _build_progress(self) -> ft.Control:
+        if self._is_loading:
+            return ft.Container(
+                height=4,
+                content=ft.ProgressBar(
+                    color=ft.Colors.PRIMARY,
+                    bgcolor=ft.Colors.with_opacity(0.1, ft.Colors.ON_SURFACE),
+                ),
+            )
+        return self._build_slider()
+
+    def _build_play_button(self, icon_size: int = 28) -> ft.IconButton:
+        self._play_btn = ft.IconButton(
+            icon=ft.Icons.PAUSE_ROUNDED if self._is_playing else ft.Icons.PLAY_ARROW_ROUNDED,
+            icon_size=icon_size,
+            on_click=lambda _: self._on_toggle_play() if self._on_toggle_play else None,
+            bgcolor=ft.Colors.PRIMARY_CONTAINER,
+        )
+        return self._play_btn
 
     def _build_mobile(self):
         return ft.Container(
             height=self.height,
             padding=ft.Padding(0, 0, 0, self._page.padding.bottom if self._page.padding else 0),
+            on_click=lambda _: self._on_open_player() if self._on_open_player else None,
             bgcolor=ft.Colors.SURFACE_CONTAINER_HIGHEST,
             border=ft.Border(top=ft.BorderSide(color=ft.Colors.OUTLINE_VARIANT, width=1)),
             content=ft.Column(
                 tight=True, spacing=0,
                 controls=[
-                    self._progress(),
+                    self._build_progress(),
                     ft.Container(
                         expand=True,
                         content=ft.Row(
@@ -151,7 +185,6 @@ class MiniPlayerWidget(ft.Container):
                                     padding=ft.Padding(12, 0, 12, 0),
                                     content=ft.Column(
                                         tight=True, spacing=2,
-                                        
                                         controls=[
                                             ft.Text(self.current_track.title or "", weight=ft.FontWeight.BOLD, max_lines=1, overflow=ft.TextOverflow.ELLIPSIS, size=14),
                                             ft.Text(self.current_track.artist or "", max_lines=1, overflow=ft.TextOverflow.ELLIPSIS, size=12, color=ft.Colors.with_opacity(0.7, ft.Colors.ON_SURFACE)),
@@ -161,12 +194,7 @@ class MiniPlayerWidget(ft.Container):
                                 ft.IconButton(ft.Icons.SKIP_PREVIOUS, icon_size=24, on_click=lambda _: self._on_prev() if self._on_prev else None),
                                 ft.Container(
                                     padding=ft.Padding(4, 0, 4, 0),
-                                    content=ft.IconButton(
-                                        icon=ft.Icons.PAUSE_ROUNDED if self._is_playing else ft.Icons.PLAY_ARROW_ROUNDED,
-                                        icon_size=28,
-                                        on_click=lambda _: self._on_toggle_play() if self._on_toggle_play else None,
-                                        bgcolor=ft.Colors.PRIMARY_CONTAINER,
-                                    ),
+                                    content=self._build_play_button(icon_size=28),
                                 ),
                                 ft.IconButton(ft.Icons.OPEN_IN_FULL, icon_size=20, on_click=lambda _: self._on_open_player() if self._on_open_player else None),
                             ],
@@ -180,12 +208,13 @@ class MiniPlayerWidget(ft.Container):
         return ft.Container(
             height=self.height,
             padding=ft.Padding(0, 0, 0, self._page.padding.bottom if self._page.padding else 0),
+            on_click=lambda _: self._on_open_player() if self._on_open_player else None,
             bgcolor=ft.Colors.SURFACE_CONTAINER_HIGHEST,
             border=ft.Border(top=ft.BorderSide(color=ft.Colors.OUTLINE_VARIANT, width=1)),
             content=ft.Column(
                 tight=True, spacing=0,
                 controls=[
-                    self._progress(),
+                    self._build_progress(),
                     ft.Container(
                         expand=True,
                         content=ft.Row(
@@ -213,7 +242,6 @@ class MiniPlayerWidget(ft.Container):
                                                 padding=ft.Padding(12, 0, 12, 0),
                                                 content=ft.Column(
                                                     tight=True, spacing=2,
-                                                    
                                                     controls=[
                                                         ft.Text(self.current_track.title or "", weight=ft.FontWeight.BOLD, max_lines=1, overflow=ft.TextOverflow.ELLIPSIS, size=14),
                                                         ft.Text(self.current_track.artist or "", max_lines=1, overflow=ft.TextOverflow.ELLIPSIS, size=12, color=ft.Colors.with_opacity(0.7, ft.Colors.ON_SURFACE)),
@@ -233,12 +261,7 @@ class MiniPlayerWidget(ft.Container):
                                             ft.IconButton(ft.Icons.SKIP_PREVIOUS, icon_size=24, on_click=lambda _: self._on_prev() if self._on_prev else None),
                                             ft.Container(
                                                 padding=ft.Padding(8, 0, 8, 0),
-                                                content=ft.IconButton(
-                                                    icon=ft.Icons.PAUSE_ROUNDED if self._is_playing else ft.Icons.PLAY_ARROW_ROUNDED,
-                                                    icon_size=32,
-                                                    on_click=lambda _: self._on_toggle_play() if self._on_toggle_play else None,
-                                                    bgcolor=ft.Colors.PRIMARY_CONTAINER,
-                                                ),
+                                                content=self._build_play_button(icon_size=32),
                                             ),
                                             ft.IconButton(ft.Icons.SKIP_NEXT, icon_size=24, on_click=lambda _: self._on_next() if self._on_next else None),
                                             ft.IconButton(ft.Icons.QUEUE_MUSIC, icon_size=20, on_click=lambda _: self._on_open_player() if self._on_open_player else None),

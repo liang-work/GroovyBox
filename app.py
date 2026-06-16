@@ -65,10 +65,28 @@ class GroovyBoxApp:
         self._refresh_ui()
 
     def _on_play_state_change(self, playing):
-        self._refresh_ui()
+        if self.shell:
+            try:
+                self.shell.mini_player.refresh_play_state(playing)
+                if self.page.route == "/player" and self.shell.content_view.controls:
+                    ctrl = self.shell.content_view.controls[0]
+                    if hasattr(ctrl, 'refresh_play_state'):
+                        ctrl.refresh_play_state(playing)
+                self.page.update()
+            except Exception as ex:
+                logger.warning(f"_on_play_state_change skipped: {ex}")
 
     def _on_position_change(self, pos_ms):
-        self._refresh_ui()
+        if self.shell:
+            try:
+                self.shell.mini_player.refresh_position(pos_ms, self.audio_player.duration_ms)
+                if self.page.route == "/player" and self.shell.content_view.controls:
+                    ctrl = self.shell.content_view.controls[0]
+                    if hasattr(ctrl, 'refresh_position'):
+                        ctrl.refresh_position(pos_ms, self.audio_player.duration_ms)
+                self.page.update()
+            except Exception as ex:
+                logger.warning(f"_on_position_change skipped: {ex}")
 
     def _update_metadata(self, path):
         from data import track_repository as trepo
@@ -93,6 +111,10 @@ class GroovyBoxApp:
             try:
                 self.shell.content_view.update()
                 self.shell.mini_player.refresh()
+                if self.page.route == "/player" and self.shell.content_view.controls:
+                    ctrl = self.shell.content_view.controls[0]
+                    if hasattr(ctrl, 'refresh'):
+                        ctrl.refresh()
                 self.page.update()
             except Exception as ex:
                 logger.warning(f"_refresh_ui skipped: {ex}")
@@ -109,6 +131,7 @@ class GroovyBoxApp:
     def _sync_views(self):
         route = self.page.route
         self.page.views.clear()
+        self.page.on_keyboard_event = None
 
         from ui.shell import ShellView
         self.shell = ShellView(self.page)
