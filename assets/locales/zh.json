@@ -153,6 +153,7 @@
   "added": "已添加",
   "to": "至",
   "unknown": "未知",
+  "back": "返回",
   "exportLogs": "导出日志",
   "logsExported": "日志已导出到 {}",
   "errorExportingLogs": "导出日志时出错：{}"

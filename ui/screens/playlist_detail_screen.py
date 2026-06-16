@@ -6,7 +6,7 @@ from ui.widgets.track_tile import TrackTile
 
 class PlaylistDetailView(ft.Container):
     def __init__(self, page: ft.Page, playlist):
-        super().__init__()
+        super().__init__(expand=True)
         self._page = page
         self.playlist = playlist
         self._build()

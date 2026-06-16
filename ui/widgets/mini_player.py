@@ -2,6 +2,7 @@ import flet as ft
 from typing import Optional, Callable
 from data.models import CurrentTrackData
 from logic.localize import tr
+from logic.logger import logger
 
 
 class MiniPlayerWidget(ft.Container):
@@ -64,6 +65,61 @@ class MiniPlayerWidget(ft.Container):
             return ft.Colors.PRIMARY
         return ft.Colors.with_opacity(0.4, ft.Colors.ON_SURFACE)
 
+    def _shuffle_color(self):
+        app = self._page.session.store.get("app")
+        if app and app.audio_player and app.audio_player.shuffle:
+            return ft.Colors.PRIMARY
+        return ft.Colors.with_opacity(0.4, ft.Colors.ON_SURFACE)
+
+    def _open_queue(self, e):
+        app = self._page.session.store.get("app")
+        if not app or not app.audio_player:
+            return
+        queue = app.audio_player.playlist or []
+        controls = []
+        for i, t in enumerate(queue):
+            is_current = t.id == app.current_track.id if app.current_track else False
+            controls.append(
+                ft.ListTile(
+                    leading=ft.Icon(ft.Icons.MUSIC_NOTE_ROUNDED if not is_current else ft.Icons.PLAY_ARROW_ROUNDED, color=ft.Colors.PRIMARY if is_current else None),
+                    title=ft.Text(t.title or "?", weight=ft.FontWeight.BOLD if is_current else ft.FontWeight.NORMAL),
+                    subtitle=ft.Text(t.artist or ""),
+                    on_click=lambda _, idx=i: self._on_queue_select(idx),
+                )
+            )
+        if not controls:
+            controls.append(ft.Container(ft.Text(tr("noTracksInQueue")), padding=20))
+        bs = ft.BottomSheet(
+            ft.Container(
+                padding=ft.Padding(0, 8, 0, self._page.padding.bottom if self._page.padding else 0),
+                content=ft.Column(
+                    tight=True,
+                    controls=[
+                        ft.Row(
+                            tight=True,
+                            controls=[
+                                ft.Container(expand=True),
+                                ft.Text(tr("queue"), weight=ft.FontWeight.BOLD, size=16),
+                                ft.Container(expand=True),
+                                ft.IconButton(ft.Icons.CLOSE, icon_size=20, on_click=lambda e: self._page.close(e.control)),
+                            ],
+                        ),
+                        ft.Divider(height=1),
+                        ft.Container(
+                            height=self._page.height * 0.4 if self._page.height else 300,
+                            content=ft.ListView(controls=controls, spacing=0),
+                        ),
+                    ],
+                ),
+            ),
+        )
+        self._page.open(bs)
+
+    def _on_queue_select(self, idx: int):
+        app = self._page.session.store.get("app")
+        if app and app.audio_player:
+            app.audio_player.play_index(idx)
+
     def _toggle_shuffle_helper(self):
         app = self._page.session.store.get("app")
         if app and app.audio_player:
@@ -88,7 +144,11 @@ class MiniPlayerWidget(ft.Container):
         self.repeat_mode = player.repeat_mode
         self.shuffle = player.shuffle
 
-        self.height = 72 + (self._page.padding.bottom if self._page.padding else 0)
+        try:
+            bottom_pad = self._page.padding.bottom if self._page.padding else 0
+        except RuntimeError:
+            bottom_pad = 0
+        self.height = 72 + bottom_pad
         is_desktop = self._page.width > 800
 
         self._pos_slider = None
@@ -182,7 +242,7 @@ class MiniPlayerWidget(ft.Container):
                                 ),
                                 ft.Container(
                                     expand=True,
-                                    padding=ft.Padding(12, 0, 12, 0),
+                                    padding=ft.Padding(8, 0, 8, 0),
                                     content=ft.Column(
                                         tight=True, spacing=2,
                                         controls=[
@@ -191,12 +251,15 @@ class MiniPlayerWidget(ft.Container):
                                         ],
                                     ),
                                 ),
-                                ft.IconButton(ft.Icons.SKIP_PREVIOUS, icon_size=24, on_click=lambda _: self._on_prev() if self._on_prev else None),
+                                ft.IconButton(ft.Icons.SKIP_PREVIOUS, icon_size=22, on_click=lambda _: self._on_prev() if self._on_prev else None),
                                 ft.Container(
-                                    padding=ft.Padding(4, 0, 4, 0),
+                                    padding=ft.Padding(2, 0, 2, 0),
                                     content=self._build_play_button(icon_size=28),
                                 ),
-                                ft.IconButton(ft.Icons.OPEN_IN_FULL, icon_size=20, on_click=lambda _: self._on_open_player() if self._on_open_player else None),
+                                ft.IconButton(ft.Icons.SKIP_NEXT, icon_size=22, on_click=lambda _: self._on_next() if self._on_next else None),
+                                ft.IconButton(ft.Icons.SHUFFLE, icon_size=18, icon_color=self._shuffle_color(), on_click=lambda _: self._on_toggle_shuffle() if self._on_toggle_shuffle else None),
+                                ft.IconButton(ft.Icons.REPEAT, icon_size=18, icon_color=self._repeat_color(), on_click=lambda _: self._on_toggle_repeat() if self._on_toggle_repeat else None),
+                                ft.IconButton(ft.Icons.QUEUE_MUSIC, icon_size=20, on_click=self._open_queue),
                             ],
                         ),
                     ),

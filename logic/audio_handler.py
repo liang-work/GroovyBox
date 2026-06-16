@@ -49,6 +49,17 @@ class AudioPlayer:
             cmd, args = self._cmd_queue.get()
             if cmd == "quit":
                 break
+            if cmd == "seek":
+                while True:
+                    try:
+                        next_cmd, next_args = self._cmd_queue.get_nowait()
+                        if next_cmd == "seek":
+                            cmd, args = next_cmd, next_args
+                            continue
+                        self._cmd_queue.put((next_cmd, next_args))
+                    except queue.Empty:
+                        break
+                    break
             try:
                 if cmd == "load_play":
                     path = args[0]

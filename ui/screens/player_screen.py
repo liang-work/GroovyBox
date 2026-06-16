@@ -139,6 +139,15 @@ class PlayerScreen(ft.Container):
             controls=[
                 inner,
                 ft.Container(
+                    left=8, top=8,
+                    content=ft.IconButton(
+                        icon=ft.Icons.ARROW_BACK,
+                        icon_size=24,
+                        on_click=lambda _: self._page.go("/library"),
+                        tooltip=tr("back"),
+                    ),
+                ),
+                ft.Container(
                     right=8, top=8,
                     content=ft.IconButton(
                         icon=_get_view_icon(self._view_mode),

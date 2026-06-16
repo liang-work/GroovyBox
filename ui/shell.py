@@ -73,17 +73,20 @@ class ShellView(ft.View):
             return
         logger.info(f"_import_files: selected {len(paths)} files: {paths}")
         from data import track_repository as trepo
+        import os
 
         audio_paths = [p for p in paths if p.split(".")[-1].lower() in {"mp3", "m4a", "wav", "flac", "aac", "ogg", "wma", "m4p", "aiff", "au", "dss"}]
         lyrics_paths = [p for p in paths if p.split(".")[-1].lower() in {"lrc", "srt", "txt"}]
         logger.debug(f"_import_files: audio={len(audio_paths)} lyrics={len(lyrics_paths)}")
 
+        reload_needed = False
+
         if audio_paths:
-            trepo.import_files(audio_paths, callback=lambda: self._page.update())
+            trepo.import_files(audio_paths, callback=lambda: self._page.run_task(self._reload_after_import))
             logger.info(f"Import started for {len(audio_paths)} audio files")
+            reload_needed = True
 
         if lyrics_paths:
-            import os
             all_tracks = trepo.watch_all_tracks()
             matched = 0
             not_matched = 0
@@ -106,7 +109,14 @@ class ShellView(ft.View):
             msg = f"Batch import: {matched} matched, {not_matched} not matched"
             logger.info(msg)
             self._page.show_dialog(ft.SnackBar(ft.Text(msg)))
+            reload_needed = True
 
+        if not audio_paths and reload_needed:
+            self._page.update()
+            if self.app:
+                self.app._reload_ui()
+
+    async def _reload_after_import(self):
         self._page.update()
         if self.app:
             self.app._reload_ui()

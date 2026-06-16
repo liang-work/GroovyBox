@@ -152,6 +152,7 @@
   "to":"to",
   "unknown":"Unknown",
   "noPlaylistsAvailable":"No Playlists available",
+  "back": "Back",
   "exportLogs": "Export Logs",
   "logsExported": "Logs exported to {}",
   "errorExportingLogs": "Error exporting logs: {}"

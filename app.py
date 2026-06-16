@@ -65,28 +65,32 @@ class GroovyBoxApp:
         self._refresh_ui()
 
     def _on_play_state_change(self, playing):
-        if self.shell:
-            try:
+        try:
+            if self.shell:
                 self.shell.mini_player.refresh_play_state(playing)
-                if self.page.route == "/player" and self.shell.content_view.controls:
-                    ctrl = self.shell.content_view.controls[0]
-                    if hasattr(ctrl, 'refresh_play_state'):
-                        ctrl.refresh_play_state(playing)
-                self.page.update()
-            except Exception as ex:
-                logger.warning(f"_on_play_state_change skipped: {ex}")
+            self._call_player_method("refresh_play_state", playing)
+            self.page.update()
+        except Exception as ex:
+            logger.warning(f"_on_play_state_change skipped: {ex}")
 
     def _on_position_change(self, pos_ms):
-        if self.shell:
-            try:
-                self.shell.mini_player.refresh_position(pos_ms, self.audio_player.duration_ms)
-                if self.page.route == "/player" and self.shell.content_view.controls:
-                    ctrl = self.shell.content_view.controls[0]
-                    if hasattr(ctrl, 'refresh_position'):
-                        ctrl.refresh_position(pos_ms, self.audio_player.duration_ms)
-                self.page.update()
-            except Exception as ex:
-                logger.warning(f"_on_position_change skipped: {ex}")
+        try:
+            dur_ms = self.audio_player.duration_ms if self.audio_player else 0
+            if self.shell:
+                self.shell.mini_player.refresh_position(pos_ms, dur_ms)
+            self._call_player_method("refresh_position", pos_ms, dur_ms)
+            self.page.update()
+        except Exception as ex:
+            logger.warning(f"_on_position_change skipped: {ex}")
+
+    def _call_player_method(self, method_name, *args):
+        if len(self.page.views) > 0:
+            top = self.page.views[-1]
+            if getattr(top, 'route', None) == "/player" and top.controls:
+                ctrl = top.controls[0]
+                method = getattr(ctrl, method_name, None)
+                if method:
+                    method(*args)
 
     def _update_metadata(self, path):
         from data import track_repository as trepo
@@ -107,17 +111,14 @@ class GroovyBoxApp:
         self._sync_views()
 
     def _refresh_ui(self):
-        if self.shell:
-            try:
+        try:
+            if self.shell:
                 self.shell.content_view.update()
                 self.shell.mini_player.refresh()
-                if self.page.route == "/player" and self.shell.content_view.controls:
-                    ctrl = self.shell.content_view.controls[0]
-                    if hasattr(ctrl, 'refresh'):
-                        ctrl.refresh()
-                self.page.update()
-            except Exception as ex:
-                logger.warning(f"_refresh_ui skipped: {ex}")
+            self._call_player_method("refresh")
+            self.page.update()
+        except Exception as ex:
+            logger.warning(f"_refresh_ui skipped: {ex}")
 
     def _on_route_change(self, e):
         self._sync_views()
@@ -130,9 +131,21 @@ class GroovyBoxApp:
 
     def _sync_views(self):
         route = self.page.route
-        self.page.views.clear()
         self.page.on_keyboard_event = None
 
+        if route == "/player":
+            self.page.views.clear()
+            from ui.screens.player_screen import PlayerScreen
+            v = ft.View(
+                route="/player",
+                padding=0, spacing=0,
+                controls=[PlayerScreen(self.page)],
+            )
+            self.page.views.append(v)
+            self.page.update()
+            return
+
+        self.page.views.clear()
         from ui.shell import ShellView
         self.shell = ShellView(self.page)
 
@@ -147,9 +160,6 @@ class GroovyBoxApp:
             else:
                 from ui.screens.library_screen import LibraryScreen
                 content = LibraryScreen(self.page)
-        elif route == "/player":
-            from ui.screens.player_screen import PlayerScreen
-            content = PlayerScreen(self.page)
         elif route == "/settings":
             from ui.screens.settings_screen import SettingsScreen
             content = SettingsScreen(self.page)
@@ -176,4 +186,5 @@ class GroovyBoxApp:
         self.shell.content_view.controls = [content]
         self.shell.mini_player.bind(self)
         self.page.views.append(self.shell)
+        self.shell.mini_player.refresh()
         self.page.update()
