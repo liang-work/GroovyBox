@@ -17,46 +17,44 @@ class PlaylistDetailView(ft.Container):
     def _build(self):
         tracks = prepo.watch_playlist_tracks(self.playlist.id)
 
-        self.controls = [
-            ft.Column(
-                expand=True,
-                scroll=ft.ScrollMode.AUTO,
-                controls=[
-                    ft.Container(
-                        padding=8,
-                        content=ft.IconButton(ft.Icons.ARROW_BACK, on_click=lambda e: self._go_back()),
+        self.content = ft.Column(
+            expand=True,
+            scroll=ft.ScrollMode.AUTO,
+            controls=[
+                ft.Container(
+                    padding=8,
+                    content=ft.IconButton(ft.Icons.ARROW_BACK, on_click=lambda e: self._go_back()),
+                ),
+                ft.Container(
+                    padding=ft.Padding(16, 0, 16, 0),
+                    content=ft.Row(
+                        tight=True,
+                        alignment=ft.MainAxisAlignment.CENTER,
+                        controls=[
+                            ft.FilledButton(tr("playAll"), icon=ft.Icons.PLAY_ARROW, on_click=lambda e: self._play_all()),
+                            ft.Container(width=12),
+                            ft.OutlinedButton(tr("addToQueue"), icon=ft.Icons.QUEUE_MUSIC, on_click=lambda e: self._add_to_queue(tracks)),
+                        ],
                     ),
-                    ft.Container(
-                        padding=ft.Padding(16, 0, 16, 0),
-                        content=ft.Row(
-                            tight=True,
-                            alignment=ft.MainAxisAlignment.CENTER,
-                            controls=[
-                                ft.FilledButton(tr("playAll"), icon=ft.Icons.PLAY_ARROW, on_click=lambda e: self._play_all()),
-                                ft.Container(width=12),
-                                ft.OutlinedButton(tr("addToQueue"), icon=ft.Icons.QUEUE_MUSIC, on_click=lambda e: self._add_to_queue(tracks)),
-                            ],
-                        ),
+                ),
+                ft.Container(
+                    expand=True,
+                    padding=ft.Padding(16, 0, 16, 0),
+                    content=ft.ListView(
+                        spacing=4,
+                        controls=[
+                            TrackTile(
+                                track=t,
+                                leading=ft.Text(str(i + 1).zfill(2), color=ft.Colors.GREY, size=14),
+                                on_tap=lambda e, idx=i: self._play_at(tracks, idx),
+                                padding=4,
+                            )
+                            for i, t in enumerate(tracks)
+                        ] + [ft.Container(height=80)],
                     ),
-                    ft.Container(
-                        expand=True,
-                        padding=ft.Padding(16, 0, 16, 0),
-                        content=ft.ListView(
-                            spacing=4,
-                            controls=[
-                                TrackTile(
-                                    track=t,
-                                    leading=ft.Text(str(i + 1).zfill(2), color=ft.Colors.GREY, size=14),
-                                    on_tap=lambda e, idx=i: self._play_at(tracks, idx),
-                                    padding=4,
-                                )
-                                for i, t in enumerate(tracks)
-                            ] + [ft.Container(height=80)],
-                        ),
-                    ),
-                ],
-            ),
-        ]
+                ),
+            ],
+        )
 
     def _go_back(self):
         self._page.views.pop()

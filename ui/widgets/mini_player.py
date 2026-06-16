@@ -75,20 +75,39 @@ class MiniPlayerWidget(ft.Container):
         app = self._page.session.store.get("app")
         if not app or not app.audio_player:
             return
-        queue = app.audio_player.playlist or []
-        controls = []
+        player = app.audio_player
+        queue = player.queue or []
+        tracks = []
+
+        def on_reorder(e):
+            old_idx = e.old_index if hasattr(e, 'old_index') else e.oldIndex
+            new_idx = e.new_index if hasattr(e, 'new_index') else e.newIndex
+            if old_idx < new_idx:
+                for i in range(old_idx, new_idx):
+                    player.queue[i], player.queue[i + 1] = player.queue[i + 1], player.queue[i]
+            elif old_idx > new_idx:
+                for i in range(old_idx, new_idx, -1):
+                    player.queue[i], player.queue[i - 1] = player.queue[i - 1], player.queue[i]
+            if player.current_index == old_idx:
+                player.current_index = new_idx
+            elif old_idx < player.current_index <= new_idx:
+                player.current_index -= 1
+            elif new_idx <= player.current_index < old_idx:
+                player.current_index += 1
+            self._open_queue(e)
+
         for i, t in enumerate(queue):
             is_current = t.id == app.current_track.id if app.current_track else False
-            controls.append(
-                ft.ListTile(
-                    leading=ft.Icon(ft.Icons.MUSIC_NOTE_ROUNDED if not is_current else ft.Icons.PLAY_ARROW_ROUNDED, color=ft.Colors.PRIMARY if is_current else None),
-                    title=ft.Text(t.title or "?", weight=ft.FontWeight.BOLD if is_current else ft.FontWeight.NORMAL),
-                    subtitle=ft.Text(t.artist or ""),
+            tile = ft.Container(
+                content=ft.ListTile(
+                    leading=ft.Icon(ft.Icons.PLAY_ARROW_ROUNDED if is_current else ft.Icons.MUSIC_NOTE_ROUNDED, color=ft.Colors.PRIMARY if is_current else None),
+                    title=ft.Text(t.title or "?", weight=ft.FontWeight.BOLD if is_current else ft.FontWeight.NORMAL, max_lines=1, overflow=ft.TextOverflow.ELLIPSIS),
+                    subtitle=ft.Text(t.artist or "", max_lines=1, overflow=ft.TextOverflow.ELLIPSIS),
                     on_click=lambda _, idx=i: self._on_queue_select(idx),
-                )
+                ),
             )
-        if not controls:
-            controls.append(ft.Container(ft.Text(tr("noTracksInQueue")), padding=20))
+            tracks.append(tile)
+
         bs = ft.BottomSheet(
             ft.Container(
                 padding=ft.Padding(0, 8, 0, self._page.padding.bottom if self._page.padding else 0),
@@ -101,24 +120,36 @@ class MiniPlayerWidget(ft.Container):
                                 ft.Container(expand=True),
                                 ft.Text(tr("queue"), weight=ft.FontWeight.BOLD, size=16),
                                 ft.Container(expand=True),
-                                ft.IconButton(ft.Icons.CLOSE, icon_size=20, on_click=lambda e: self._page.close(e.control)),
+                                ft.IconButton(ft.Icons.CLOSE, icon_size=20, on_click=lambda e: self._page.pop_dialog()),
                             ],
                         ),
                         ft.Divider(height=1),
                         ft.Container(
-                            height=self._page.height * 0.4 if self._page.height else 300,
-                            content=ft.ListView(controls=controls, spacing=0),
+                            height=self._page.height * 0.5 if self._page.height else 300,
+                            content=ft.ReorderableListView(
+                                expand=True,
+                                controls=tracks,
+                                on_reorder=on_reorder if len(tracks) > 1 else None,
+                                show_default_drag_handles=True,
+                            ) if tracks else ft.Container(
+                                expand=True, alignment=ft.Alignment(0, 0),
+                                content=ft.Text(tr("noTracksInQueue"), color=ft.Colors.GREY),
+                            ),
                         ),
                     ],
                 ),
             ),
         )
-        self._page.open(bs)
+        self._page.show_dialog(bs)
 
     def _on_queue_select(self, idx: int):
         app = self._page.session.store.get("app")
         if app and app.audio_player:
-            app.audio_player.play_index(idx)
+            player = app.audio_player
+            if 0 <= idx < len(player.queue):
+                player.current_index = idx
+                player._load_current()
+            self._page.pop_dialog()
 
     def _toggle_shuffle_helper(self):
         app = self._page.session.store.get("app")
@@ -327,7 +358,7 @@ class MiniPlayerWidget(ft.Container):
                                                 content=self._build_play_button(icon_size=32),
                                             ),
                                             ft.IconButton(ft.Icons.SKIP_NEXT, icon_size=24, on_click=lambda _: self._on_next() if self._on_next else None),
-                                            ft.IconButton(ft.Icons.QUEUE_MUSIC, icon_size=20, on_click=lambda _: self._on_open_player() if self._on_open_player else None),
+                                            ft.IconButton(ft.Icons.QUEUE_MUSIC, icon_size=20, on_click=self._open_queue),
                                         ],
                                     ),
                                 ),

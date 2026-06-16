@@ -190,11 +190,27 @@ class LibraryScreen(ft.Column):
             self._page.pop_dialog()
             self._show_batch_add_to_playlist()
 
+        def do_batch_add_queue(e):
+            self._page.pop_dialog()
+            app = self._get_app()
+            if not app:
+                return
+            all_tracks = trepo.watch_all_tracks()
+            selected = [t for t in all_tracks if t.id in self.selected_ids]
+            for t in selected:
+                app.audio_player.queue.append(t)
+            if app.audio_player.on_queue_change:
+                app.audio_player.on_queue_change()
+            self.selected_ids.clear()
+            self._build()
+            self.update()
+
         def do_batch_menu(e):
             bs = ft.BottomSheet(
                 content=ft.Column(
                     tight=True,
                     controls=[
+                        ft.ListTile(leading=ft.Icon(ft.Icons.QUEUE_MUSIC), title=ft.Text(tr("addToQueue")), on_click=do_batch_add_queue),
                         ft.ListTile(leading=ft.Icon(ft.Icons.PLAYLIST_ADD), title=ft.Text(tr("addToPlaylist")), on_click=do_batch_add_playlist),
                         ft.ListTile(leading=ft.Icon(ft.Icons.DELETE, color=ft.Colors.RED), title=ft.Text(tr("delete"), color=ft.Colors.RED), on_click=do_batch_delete),
                     ],
