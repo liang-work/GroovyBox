@@ -90,9 +90,12 @@ class GroovyBoxApp:
 
     def _refresh_ui(self):
         if self.shell:
-            self.shell.content_view.update()
-            self.shell.mini_player.refresh()
-            self.page.update()
+            try:
+                self.shell.content_view.update()
+                self.shell.mini_player.refresh()
+                self.page.update()
+            except Exception as ex:
+                logger.warning(f"_refresh_ui skipped: {ex}")
 
     def _on_route_change(self, e):
         self._sync_views()

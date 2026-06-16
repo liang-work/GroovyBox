@@ -38,6 +38,7 @@ class AudioPlayer:
         self._worker.start()
         logger.debug("Audio worker thread started")
 
+        self._seek_base_ms = 0
         self._was_busy = False
         self._timer_active = True
         self._poll_thread = threading.Thread(target=self._poll_loop, daemon=True)
@@ -99,19 +100,14 @@ class AudioPlayer:
                 busy = pygame.mixer.music.get_busy()
                 pos = pygame.mixer.music.get_pos()
                 if busy and pos >= 0:
-                    self._position_ms = pos
+                    self._position_ms = self._seek_base_ms + pos
                     if self.on_position_change:
-                        self._run_on_ui(self.on_position_change, pos)
+                        self._run_on_ui(self.on_position_change, self._position_ms)
 
                 if self._was_busy and not busy and self._is_playing:
                     self._run_on_ui(self._on_track_ended)
 
                 self._was_busy = busy
-
-                if not busy and self._is_playing:
-                    self._is_playing = False
-                    if self.on_play_state_change:
-                        self._run_on_ui(self.on_play_state_change, False)
             except Exception:
                 pass
             time.sleep(0.25)
@@ -169,6 +165,7 @@ class AudioPlayer:
         self._duration_ms = self._get_duration(path)
         logger.debug(f"Duration: {self._duration_ms}ms")
 
+        self._seek_base_ms = 0
         self._send_cmd("load_play", path)
         self._position_ms = 0
         self._is_playing = True
@@ -241,6 +238,7 @@ class AudioPlayer:
         self._load_current()
 
     def seek(self, position_ms: int):
+        self._seek_base_ms = position_ms
         self._send_cmd("seek", position_ms)
         self._position_ms = position_ms
 

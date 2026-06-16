@@ -1,4 +1,3 @@
-import asyncio
 import flet as ft
 import json
 from data.models import Track, CurrentTrackData
@@ -12,7 +11,7 @@ from logic.metadata_service import format_duration
 def PlayerScreen(page: ft.Page) -> ft.Container:
     app = page.session.store.get("app")
     player = app.audio_player if app else None
-    view_mode = page.session.store.get("player_view", "cover")
+    view_mode = page.session.store.get("player_view") or "cover"
 
     def cycle_view(e):
         nonlocal view_mode
@@ -87,15 +86,18 @@ def _build_cover_view(page, track, meta, player):
     title = meta.title if meta and meta.title else (track.title if track else "")
     artist = meta.artist if meta and meta.artist else (track.artist or "")
 
+    has_art = track and track.art_uri
+    art_content = ft.Image(
+        src=track.art_uri,
+        fit=ft.BoxFit.COVER,
+        error_content=ft.Icon(ft.Icons.MUSIC_NOTE, size=80, color=ft.Colors.with_opacity(0.7, ft.Colors.ON_SURFACE)),
+    ) if has_art else ft.Icon(ft.Icons.MUSIC_NOTE, size=80, color=ft.Colors.with_opacity(0.7, ft.Colors.ON_SURFACE))
+
     art = ft.Container(
         width=280, height=280,
         border_radius=24,
         shadow=ft.BoxShadow(blur_radius=20, color=ft.Colors.with_opacity(0.3, ft.Colors.SHADOW)),
-        content=ft.Image(
-            src=track.art_uri if track and track.art_uri else None,
-            fit=ft.BoxFit.COVER,
-            error_content=ft.Icon(ft.Icons.MUSIC_NOTE, size=80, color=ft.Colors.with_opacity(0.7, ft.Colors.ON_SURFACE)),
-        ),
+        content=art_content,
         bgcolor=ft.Colors.SURFACE_CONTAINER,
         clip_behavior=ft.ClipBehavior.ANTI_ALIAS,
     )
@@ -305,7 +307,7 @@ def _jump_to(page, index):
     app = page.session.store.get("app")
     if app and app.audio_player:
         app.audio_player.current_index = index
-        asyncio.create_task(app.audio_player._load_current_async())
+        app.audio_player._load_current()
 
 
 def _toggle_shuffle(page):

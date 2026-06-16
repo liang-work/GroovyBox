@@ -123,7 +123,6 @@ class MiniPlayerWidget(ft.Container):
         return ft.Container(
             height=self.height,
             padding=ft.Padding(0, 0, 0, self._page.padding.bottom if self._page.padding else 0),
-            on_click=lambda _: self._on_open_player() if self._on_open_player else None,
             bgcolor=ft.Colors.SURFACE_CONTAINER_HIGHEST,
             border=ft.Border(top=ft.BorderSide(color=ft.Colors.OUTLINE_VARIANT, width=1)),
             content=ft.Column(
@@ -169,7 +168,7 @@ class MiniPlayerWidget(ft.Container):
                                         bgcolor=ft.Colors.PRIMARY_CONTAINER,
                                     ),
                                 ),
-                                ft.Container(width=12),
+                                ft.IconButton(ft.Icons.OPEN_IN_FULL, icon_size=20, on_click=lambda _: self._on_open_player() if self._on_open_player else None),
                             ],
                         ),
                     ),
@@ -181,7 +180,6 @@ class MiniPlayerWidget(ft.Container):
         return ft.Container(
             height=self.height,
             padding=ft.Padding(0, 0, 0, self._page.padding.bottom if self._page.padding else 0),
-            on_click=lambda _: self._on_open_player() if self._on_open_player else None,
             bgcolor=ft.Colors.SURFACE_CONTAINER_HIGHEST,
             border=ft.Border(top=ft.BorderSide(color=ft.Colors.OUTLINE_VARIANT, width=1)),
             content=ft.Column(
