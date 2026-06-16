@@ -1,6 +1,8 @@
 import flet as ft
+import os
 from data import playlist_repository as prepo
 from logic.localize import tr
+from logic.logger import logger
 from ui.widgets.track_tile import TrackTile
 
 
@@ -32,8 +34,10 @@ class PlaylistDetailView(ft.Container):
                         alignment=ft.MainAxisAlignment.CENTER,
                         controls=[
                             ft.FilledButton(tr("playAll"), icon=ft.Icons.PLAY_ARROW, on_click=lambda e: self._play_all()),
-                            ft.Container(width=12),
+                            ft.Container(width=8),
                             ft.OutlinedButton(tr("addToQueue"), icon=ft.Icons.QUEUE_MUSIC, on_click=lambda e: self._add_to_queue(tracks)),
+                            ft.Container(width=8),
+                            ft.OutlinedButton(tr("export"), icon=ft.Icons.FILE_DOWNLOAD, on_click=lambda e: self._show_export_dialog()),
                         ],
                     ),
                 ),
@@ -55,6 +59,69 @@ class PlaylistDetailView(ft.Container):
                 ),
             ],
         )
+
+    def _show_export_dialog(self):
+        use_relpath_cb = ft.Checkbox(label=tr("useRelativePaths"), value=False)
+        include_lyrics_cb = ft.Checkbox(label=tr("includeLyricsAndCovers"), value=False)
+        as_zip_cb = ft.Checkbox(label=tr("packageAsZip"), value=False)
+        path_text = ft.Text("", size=12, color=ft.Colors.with_opacity(0.7, ft.Colors.ON_SURFACE))
+
+        async def pick_path(e):
+            from logic.file_dialog import save_file
+            ext = ".zip" if as_zip_cb.value else ".m3u"
+            p = await save_file(
+                title=tr("export"),
+                default_name=f"{self.playlist.name or 'playlist'}{ext}",
+                extensions=["zip" if as_zip_cb.value else "m3u"],
+            )
+            if p:
+                path_text.value = p
+                path_text.update()
+
+        def do_export(e):
+            if not path_text.value:
+                return
+            try:
+                from logic.playlist_exporter import export_playlist
+                out = export_playlist(
+                    self.playlist.id,
+                    path_text.value,
+                    use_relpath=use_relpath_cb.value,
+                    include_lyrics=include_lyrics_cb.value,
+                    include_covers=include_lyrics_cb.value,
+                    as_zip=as_zip_cb.value,
+                )
+                self._page.pop_dialog()
+                self._page.show_dialog(ft.SnackBar(ft.Text(tr("exported").replace("{}", os.path.basename(out)))))
+            except Exception as ex:
+                logger.error(f"Export failed: {ex}")
+                self._page.show_dialog(ft.SnackBar(ft.Text(f"{tr('error').replace('{}', str(ex))}")))
+
+        dlg = ft.AlertDialog(
+            title=ft.Text(tr("export")),
+            content=ft.Column(
+                tight=True, width=320,
+                controls=[
+                    ft.Row(
+                        tight=True,
+                        controls=[
+                            ft.ElevatedButton(tr("choosePath"), icon=ft.Icons.FOLDER_OPEN, on_click=pick_path),
+                            ft.Container(expand=True),
+                            path_text,
+                        ],
+                    ),
+                    ft.Container(height=8),
+                    use_relpath_cb,
+                    include_lyrics_cb,
+                    as_zip_cb,
+                ],
+            ),
+            actions=[
+                ft.TextButton(tr("cancel"), on_click=lambda e: self._page.pop_dialog()),
+                ft.FilledButton(tr("export"), on_click=do_export),
+            ],
+        )
+        self._page.show_dialog(dlg)
 
     def _go_back(self):
         self._page.views.pop()

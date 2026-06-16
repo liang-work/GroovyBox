@@ -58,25 +58,56 @@ class ShellView(ft.View):
                         ft.Icons.ADD_CIRCLE_OUTLINE,
                         icon_size=20,
                         tooltip=tr("importFiles"),
-                        on_click=self._import_files,
+                        on_click=self._show_import_menu,
                     ),
                 ],
             ),
         )
 
-    async def _import_files(self, e):
-        all_ext = list(AUDIO_EXTENSIONS | LYRICS_EXTENSIONS)
+    def _show_import_menu(self, e):
+        def do_files(e):
+            self._page.pop_dialog()
+            self._page.run_task(self._import_files)
+
+        def do_folder(e):
+            self._page.pop_dialog()
+            self._page.run_task(self._import_folder)
+
+        def do_playlist(e):
+            self._page.pop_dialog()
+            self._page.run_task(self._import_playlist_file)
+
+        def do_zip(e):
+            self._page.pop_dialog()
+            self._page.run_task(self._import_zip)
+
+        bs = ft.BottomSheet(
+            content=ft.Column(
+                tight=True,
+                controls=[
+                    ft.ListTile(leading=ft.Icon(ft.Icons.AUDIOTRACK), title=ft.Text(tr("importAudioFiles")), on_click=do_files),
+                    ft.ListTile(leading=ft.Icon(ft.Icons.FOLDER_OPEN), title=ft.Text(tr("importFolder")), on_click=do_folder),
+                    ft.ListTile(leading=ft.Icon(ft.Icons.QUEUE_MUSIC), title=ft.Text(tr("importPlaylist")), on_click=do_playlist),
+                    ft.ListTile(leading=ft.Icon(ft.Icons.FOLDER_ZIP), title=ft.Text(tr("importZip")), on_click=do_zip),
+                ],
+            ),
+        )
+        self._page.show_dialog(bs)
+
+    async def _import_files(self, paths=None):
         from logic.file_dialog import pick_files
-        paths = await pick_files(title="Select files to import", extensions=all_ext)
+        all_ext = list(AUDIO_EXTENSIONS | LYRICS_EXTENSIONS)
+        if paths is None:
+            paths = await pick_files(title="Select files to import", extensions=all_ext)
         if not paths:
             logger.debug("_import_files: no files selected")
             return
-        logger.info(f"_import_files: selected {len(paths)} files: {paths}")
+        logger.info(f"_import_files: selected {len(paths)} files")
         from data import track_repository as trepo
         import os
 
-        audio_paths = [p for p in paths if p.split(".")[-1].lower() in {"mp3", "m4a", "wav", "flac", "aac", "ogg", "wma", "m4p", "aiff", "au", "dss"}]
-        lyrics_paths = [p for p in paths if p.split(".")[-1].lower() in {"lrc", "srt", "txt"}]
+        audio_paths = [p for p in paths if p.split(".")[-1].lower() in AUDIO_EXTENSIONS]
+        lyrics_paths = [p for p in paths if p.split(".")[-1].lower() in LYRICS_EXTENSIONS]
         logger.debug(f"_import_files: audio={len(audio_paths)} lyrics={len(lyrics_paths)}")
 
         reload_needed = False
@@ -87,34 +118,91 @@ class ShellView(ft.View):
             reload_needed = True
 
         if lyrics_paths:
-            all_tracks = trepo.watch_all_tracks()
-            matched = 0
-            not_matched = 0
-            for lp in lyrics_paths:
-                base = os.path.splitext(os.path.basename(lp))[0].lower()
-                match = None
-                for t in all_tracks:
-                    if t.title.lower() == base or base in t.title.lower() or t.title.lower() in base:
-                        match = t
-                        break
-                if match:
-                    with open(lp, "r", encoding="utf-8", errors="replace") as f:
-                        content = f.read()
-                    from logic.lyrics_parser import parse, lyrics_to_json
-                    ldata = parse(content, os.path.basename(lp))
-                    trepo.update_lyrics(match.id, lyrics_to_json(ldata))
-                    matched += 1
-                else:
-                    not_matched += 1
-            msg = f"Batch import: {matched} matched, {not_matched} not matched"
-            logger.info(msg)
-            self._page.show_dialog(ft.SnackBar(ft.Text(msg)))
+            await self._import_lyrics_files(lyrics_paths)
             reload_needed = True
 
         if not audio_paths and reload_needed:
             self._page.update()
             if self.app:
                 self.app._reload_ui()
+
+    async def _import_folder(self):
+        from logic.file_dialog import pick_directory
+        folder = await pick_directory(title=tr("importFolder"))
+        if not folder:
+            return
+        logger.info(f"_import_folder: {folder}")
+        from data import track_repository as trepo
+        trepo.scan_directory(folder, callback=lambda: self._page.run_task(self._reload_after_import))
+        if self.app:
+            self.app._reload_ui()
+
+    async def _import_playlist_file(self):
+        from logic.file_dialog import pick_files
+        paths = await pick_files(title=tr("importPlaylist"), extensions=["m3u", "m3u8", "pls"])
+        if not paths:
+            return
+        from logic.playlist_parser import parse_playlist
+        from data import track_repository as trepo
+        all_audio = []
+        for pp in paths:
+            all_audio.extend(parse_playlist(pp))
+        if all_audio:
+            trepo.import_files(all_audio, callback=lambda: self._page.run_task(self._reload_after_import))
+            logger.info(f"Import playlist: {len(all_audio)} files found")
+        if self.app:
+            self.app._reload_ui()
+
+    async def _import_zip(self):
+        from logic.file_dialog import pick_files
+        paths = await pick_files(title=tr("importZip"), extensions=["zip"])
+        if not paths:
+            return
+        from logic.zip_importer import extract_zip
+        from data import track_repository as trepo
+        import tempfile
+        all_audio = []
+        all_lyrics = []
+        for zp in paths:
+            dest = tempfile.mkdtemp(prefix="groovybox_zip_")
+            audio_files, lyrics_files, playlist_files = extract_zip(zp, dest)
+            all_audio.extend(audio_files)
+            all_lyrics.extend(lyrics_files)
+            for pp in playlist_files:
+                from logic.playlist_parser import parse_playlist
+                all_audio.extend(parse_playlist(pp))
+        if all_audio:
+            trepo.import_files(all_audio, callback=lambda: self._page.run_task(self._reload_after_import))
+        if all_lyrics:
+            await self._import_lyrics_files(all_lyrics)
+        if self.app:
+            self.app._reload_ui()
+
+    async def _import_lyrics_files(self, lyrics_paths):
+        from logic.encoding_helper import read_with_encoding
+        from data import track_repository as trepo
+        import os
+        all_tracks = trepo.watch_all_tracks()
+        matched = 0
+        not_matched = 0
+        for lp in lyrics_paths:
+            base = os.path.splitext(os.path.basename(lp))[0].lower()
+            match = None
+            for t in all_tracks:
+                if t.title.lower() == base or base in t.title.lower() or t.title.lower() in base:
+                    match = t
+                    break
+            if match:
+                content = read_with_encoding(lp)
+                from logic.lyrics_parser import parse, lyrics_to_json
+                ldata = parse(content, os.path.basename(lp))
+                trepo.update_lyrics(match.id, lyrics_to_json(ldata))
+                matched += 1
+            else:
+                not_matched += 1
+        msg = f"Batch import: {matched} matched, {not_matched} not matched"
+        logger.info(msg)
+        self._page.show_dialog(ft.SnackBar(ft.Text(msg)))
 
     async def _reload_after_import(self):
         self._page.update()

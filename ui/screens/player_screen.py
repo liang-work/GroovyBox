@@ -2,6 +2,7 @@ import flet as ft
 from logic.localize import tr
 from logic.lyrics_parser import lyrics_from_json
 from logic.metadata_service import format_duration
+from data import track_repository as trepo
 
 
 class PlayerScreen(ft.Container):
@@ -17,6 +18,8 @@ class PlayerScreen(ft.Container):
         self._pos_text = None
         self._dur_text = None
         self._play_btn = None
+        self._prev_view_mode = None
+        self._last_lyrics_idx = -1
 
         page.on_keyboard_event = self._on_keyboard
         self._initialized = False
@@ -53,9 +56,18 @@ class PlayerScreen(ft.Container):
             self._page.go("/library")
 
     def cycle_view(self, e=None):
-        modes = ["cover", "lyrics", "queue"]
-        idx = (modes.index(self._view_mode) + 1) % 3
+        modes = ["cover", "lyrics"]
+        idx = (modes.index(self._view_mode) + 1) % 2 if self._view_mode in modes else 0
         self._view_mode = modes[idx]
+        self._page.session.store.set("player_view", self._view_mode)
+        self._rebuild()
+
+    def toggle_queue(self, e=None):
+        if self._view_mode == "queue":
+            self._view_mode = self._prev_view_mode or "cover"
+        else:
+            self._prev_view_mode = self._view_mode
+            self._view_mode = "queue"
         self._page.session.store.set("player_view", self._view_mode)
         self._rebuild()
 
@@ -75,6 +87,28 @@ class PlayerScreen(ft.Container):
         if self._dur_text:
             self._dur_text.value = format_duration(dur_ms)
             self._dur_text.update()
+
+        if self._view_mode == "lyrics":
+            player = self._get_player()
+            if player and player.queue:
+                track = player.get_current_track()
+                if track and track.lyrics and player.duration_ms > 0:
+                    offset = track.lyrics_offset
+                    adj_pos = pos_ms + offset
+                    new_idx = 0
+                    try:
+                        from logic.lyrics_parser import lyrics_from_json
+                        data = lyrics_from_json(track.lyrics)
+                        if data and data.type == "timed":
+                            for i, ln in enumerate(data.lines):
+                                if (ln.time_ms or 0) <= adj_pos:
+                                    new_idx = i
+                                else:
+                                    break
+                    except Exception:
+                        pass
+                    if new_idx != self._last_lyrics_idx:
+                        self._rebuild()
 
     def refresh_play_state(self, is_playing: bool):
         if self._play_btn:
@@ -134,6 +168,20 @@ class PlayerScreen(ft.Container):
         else:
             inner = self._build_split_view(track, meta, player, "queue") if is_desktop else self._build_queue_view(player)
 
+        volume = ft.Row(
+            tight=True,
+            controls=[
+                ft.Icon(ft.Icons.VOLUME_UP, size=14, color=ft.Colors.with_opacity(0.7, ft.Colors.ON_SURFACE)),
+                ft.Container(
+                    width=100,
+                    content=ft.Slider(
+                        value=player.volume * 100, min=0, max=100, divisions=100,
+                        on_change=lambda e: player.set_volume(e.control.value / 100),
+                    ),
+                ),
+            ],
+        )
+
         return ft.Stack(
             expand=True,
             controls=[
@@ -149,12 +197,33 @@ class PlayerScreen(ft.Container):
                 ),
                 ft.Container(
                     right=8, top=8,
-                    content=ft.IconButton(
-                        icon=_get_view_icon(self._view_mode),
-                        icon_size=24,
-                        on_click=self.cycle_view,
-                        tooltip=_get_view_tooltip(self._view_mode),
+                    content=ft.Row(
+                        tight=True,
+                        controls=[
+                            ft.IconButton(
+                                icon=_get_view_icon(self._view_mode),
+                                icon_size=24,
+                                on_click=self.cycle_view,
+                                tooltip=_get_view_tooltip(self._view_mode),
+                            ),
+                            ft.IconButton(
+                                icon=ft.Icons.QUEUE_MUSIC,
+                                icon_size=24,
+                                on_click=self.toggle_queue,
+                                tooltip=tr("showCover") if self._view_mode == "queue" else tr("showQueue"),
+                                icon_color=ft.Colors.PRIMARY if self._view_mode == "queue" else None,
+                            ),
+                        ],
                     ),
+                ),
+                ft.Container(
+                    left=0, right=0, bottom=8,
+                    content=ft.Row(
+                        tight=True,
+                        alignment=ft.MainAxisAlignment.CENTER,
+                        controls=[volume],
+                    ),
+                    visible=self._view_mode != "lyrics",
                 ),
             ],
         )
@@ -223,19 +292,6 @@ class PlayerScreen(ft.Container):
         )
 
         progress = self._build_progress_slider(player)
-        volume = ft.Row(
-            tight=True,
-            controls=[
-                ft.Icon(ft.Icons.VOLUME_UP, size=16),
-                ft.Container(
-                    width=120,
-                    content=ft.Slider(
-                        value=player.volume * 100, min=0, max=100, divisions=100,
-                        on_change=lambda e: player.set_volume(e.control.value / 100),
-                    ),
-                ),
-            ],
-        )
 
         col = ft.Column(
             alignment=ft.MainAxisAlignment.CENTER,
@@ -250,8 +306,7 @@ class PlayerScreen(ft.Container):
                 ft.Container(height=12),
                 progress,
                 ctrl_row,
-                volume if not compact else ft.Container(),
-                ft.Container(height=24 if not compact else 8),
+                ft.Container(height=16),
             ],
         )
 
@@ -316,9 +371,47 @@ class PlayerScreen(ft.Container):
             )
 
         if data.type == "timed":
-            return self._build_timed_lyrics(data, player, track.lyrics_offset)
+            lyrics_content = self._build_timed_lyrics(data, player, track.lyrics_offset)
         else:
-            return self._build_plain_lyrics(data)
+            lyrics_content = self._build_plain_lyrics(data)
+
+        track_id = track.id
+        offset = track.lyrics_offset
+
+        def adjust_offset(delta):
+            new_offset = offset + delta
+            trepo.update_lyrics_offset(track_id, new_offset)
+            player.current_track.lyrics_offset = new_offset if hasattr(player, 'current_track') else None
+            self._rebuild()
+
+        offset_bar = ft.Container(
+            padding=ft.Padding(16, 8, 16, 8),
+            bgcolor=ft.Colors.with_opacity(0.8, ft.Colors.SURFACE),
+            content=ft.Row(
+                tight=True,
+                alignment=ft.MainAxisAlignment.CENTER,
+                controls=[
+                    ft.Text(f"{tr('offset').format(str(offset))}", size=12, weight=ft.FontWeight.BOLD),
+                    ft.Container(width=8),
+                    ft.IconButton(ft.Icons.FAST_REWIND, icon_size=16, tooltip="-100ms", on_click=lambda e: adjust_offset(-100)),
+                    ft.IconButton(ft.Icons.KEYBOARD_ARROW_LEFT, icon_size=16, tooltip="-10ms", on_click=lambda e: adjust_offset(-10)),
+                    ft.TextButton(tr("reset"), on_click=lambda e: adjust_offset(-offset)),
+                    ft.IconButton(ft.Icons.KEYBOARD_ARROW_RIGHT, icon_size=16, tooltip="+10ms", on_click=lambda e: adjust_offset(10)),
+                    ft.IconButton(ft.Icons.FAST_FORWARD, icon_size=16, tooltip="+100ms", on_click=lambda e: adjust_offset(100)),
+                ],
+            ),
+        )
+
+        return ft.Stack(
+            expand=True,
+            controls=[
+                lyrics_content,
+                ft.Container(
+                    left=0, right=0, bottom=0,
+                    content=offset_bar,
+                ),
+            ],
+        )
 
     def _build_timed_lyrics(self, data, player, offset):
         pos = player.position_ms + offset
@@ -328,46 +421,58 @@ class PlayerScreen(ft.Container):
                 current_idx = i
             else:
                 break
+        self._last_lyrics_idx = current_idx
 
-        ITEM_HEIGHT = 40
-
+        total = len(data.lines)
+        VISIBLE = 3
         lines = []
-        for i, line in enumerate(data.lines):
-            is_active = i == current_idx
-            fsize = 20 if is_active else 16
-            fw = ft.FontWeight.BOLD if is_active else ft.FontWeight.NORMAL
 
-            if is_active:
+        for i, line in enumerate(data.lines):
+            dist = abs(i - current_idx)
+
+            if dist == 0:
+                opacity = 1.0
+                fsize = 20
+                fw = ft.FontWeight.BOLD
+                height = 48
+            elif dist <= VISIBLE:
+                opacity = 1.0 - (dist / (VISIBLE + 1)) * 0.7
+                fsize = 16
+                fw = ft.FontWeight.NORMAL
+                height = 36
+            else:
+                continue
+
+            if dist == 0:
                 start = line.time_ms or 0
-                end = (data.lines[i + 1].time_ms or start) if i < len(data.lines) - 1 else player.duration_ms
+                end = (data.lines[i + 1].time_ms or start) if i < total - 1 else player.duration_ms
                 progress = max(0.0, min(1.0, (pos - start) / (end - start))) if end > start else 0.0
                 active_color = ft.Colors.PRIMARY
                 inactive_color = ft.Colors.with_opacity(0.5, ft.Colors.ON_SURFACE)
 
                 txt = ft.Container(
-                    height=ITEM_HEIGHT,
-                    padding=ft.Padding(32, 6, 32, 6),
-                    alignment=ft.Alignment(-1, 0),
+                    height=height,
+                    padding=ft.Padding(32, 4, 32, 4),
+                    alignment=ft.Alignment(0, 0),
                     content=ft.ShaderMask(
                         shader=ft.LinearGradient(
-                            begin=ft.Alignment(-1, 0),
-                            end=ft.Alignment(1, 0),
+                            begin=ft.Alignment(-1, 0), end=ft.Alignment(1, 0),
                             colors=[active_color, inactive_color],
                             stops=[progress, progress],
                         ),
-                        content=ft.Text(line.text, size=fsize, weight=fw, max_lines=1, overflow=ft.TextOverflow.ELLIPSIS),
+                        content=ft.Text(line.text, size=fsize, weight=fw, max_lines=2, overflow=ft.TextOverflow.ELLIPSIS, text_align=ft.TextAlign.CENTER),
                         blend_mode=ft.BlendMode.SRC_IN,
                     ),
                     on_click=lambda e, t=line.time_ms: player.seek(t) if t else None,
                 )
             else:
                 txt = ft.Container(
-                    height=ITEM_HEIGHT,
-                    padding=ft.Padding(32, 6, 32, 6),
-                    alignment=ft.Alignment(-1, 0),
+                    height=height,
+                    padding=ft.Padding(32, 2, 32, 2),
+                    alignment=ft.Alignment(0, 0),
                     content=ft.Text(line.text, size=fsize, weight=fw,
-                                    color=ft.Colors.with_opacity(0.7, ft.Colors.ON_SURFACE),
-                                    max_lines=1, overflow=ft.TextOverflow.ELLIPSIS),
+                                    color=ft.Colors.with_opacity(opacity, ft.Colors.ON_SURFACE),
+                                    max_lines=1, overflow=ft.TextOverflow.ELLIPSIS, text_align=ft.TextAlign.CENTER),
                     on_click=lambda e, t=line.time_ms: player.seek(t) if t else None,
                 )
 
@@ -375,10 +480,11 @@ class PlayerScreen(ft.Container):
 
         return ft.Container(
             expand=True,
-            padding=ft.Padding(0, 80, 0, 80),
-            content=ft.ListView(
+            padding=ft.Padding(0, 40, 0, 40),
+            content=ft.Column(
                 expand=True,
-                spacing=2,
+                alignment=ft.MainAxisAlignment.CENTER,
+                horizontal_alignment=ft.CrossAxisAlignment.CENTER,
                 controls=lines,
             ),
         )
@@ -466,13 +572,11 @@ class PlayerScreen(ft.Container):
 
 
 def _get_view_icon(mode: str) -> str:
-    icons = {"cover": ft.Icons.ALBUM, "lyrics": ft.Icons.LYRICS, "queue": ft.Icons.QUEUE_MUSIC}
-    return icons.get(mode, ft.Icons.ALBUM)
+    return ft.Icons.LYRICS if mode == "cover" else ft.Icons.ALBUM
 
 
 def _get_view_tooltip(mode: str) -> str:
-    tips = {"cover": tr("showLyrics"), "lyrics": tr("showQueue"), "queue": tr("showCover")}
-    return tips.get(mode, "")
+    return tr("showLyrics") if mode == "cover" else tr("showCover")
 
 
 def _build_progress_slider(page, player):
