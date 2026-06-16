@@ -1,8 +1,10 @@
 import flet as ft
+import os
 from logic.localize import tr
-from logic.lyrics_parser import lyrics_from_json
+from logic.lyrics_parser import lyrics_from_json, lyrics_to_json
 from logic.metadata_service import format_duration
 from data import track_repository as trepo
+from logic.logger import logger
 
 
 class PlayerScreen(ft.Container):
@@ -356,7 +358,7 @@ class PlayerScreen(ft.Container):
                     controls=[
                         ft.Text(tr("noLyricsAvailable")),
                         ft.Container(height=16),
-                        ft.TextButton(tr("fetchLyrics"), icon=ft.Icons.DOWNLOAD),
+                        ft.TextButton(tr("fetchLyrics"), icon=ft.Icons.DOWNLOAD, on_click=lambda e: self._show_lyrics_options(track, player)),
                     ],
                 ),
             )
@@ -381,7 +383,8 @@ class PlayerScreen(ft.Container):
         def adjust_offset(delta):
             new_offset = offset + delta
             trepo.update_lyrics_offset(track_id, new_offset)
-            player.current_track.lyrics_offset = new_offset if hasattr(player, 'current_track') else None
+            if hasattr(player, 'current_track') and player.current_track:
+                player.current_track.lyrics_offset = new_offset
             self._rebuild()
 
         offset_bar = ft.Container(
@@ -407,11 +410,147 @@ class PlayerScreen(ft.Container):
             controls=[
                 lyrics_content,
                 ft.Container(
+                    right=8, top=8,
+                    content=ft.IconButton(
+                        icon=ft.Icons.MORE_VERT,
+                        icon_size=20,
+                        on_click=lambda e: self._show_lyrics_options(track, player),
+                        tooltip=tr("lyricsOptions"),
+                    ),
+                ),
+                ft.Container(
                     left=0, right=0, bottom=0,
                     content=offset_bar,
                 ),
             ],
         )
+
+    def _show_lyrics_options(self, track, player):
+        def do_refetch(e):
+            self._page.pop_dialog()
+            self._show_fetch_lyrics(track, player)
+
+        def do_clear(e):
+            self._page.pop_dialog()
+            self._clear_lyrics(track)
+
+        def do_manual_import(e):
+            self._page.pop_dialog()
+            self._page.run_task(self._import_lyrics_file, track)
+
+        def do_adjust_offset(e):
+            self._page.pop_dialog()
+
+        items = []
+        if track.lyrics:
+            items.append(ft.ListTile(leading=ft.Icon(ft.Icons.REFRESH), title=ft.Text(tr("refetch")), on_click=do_refetch))
+            items.append(ft.ListTile(leading=ft.Icon(ft.Icons.DELETE, color=ft.Colors.RED), title=ft.Text(tr("clear"), color=ft.Colors.RED), on_click=do_clear))
+        else:
+            items.append(ft.ListTile(leading=ft.Icon(ft.Icons.SEARCH), title=ft.Text(tr("fetchLyrics")), on_click=do_refetch))
+        items.append(ft.ListTile(leading=ft.Icon(ft.Icons.FILE_UPLOAD), title=ft.Text(tr("manualImport")), on_click=do_manual_import))
+
+        bs = ft.BottomSheet(content=ft.Column(tight=True, controls=items))
+        self._page.show_dialog(bs)
+
+    def _show_fetch_lyrics(self, track, player):
+        def search_musixmatch(e):
+            self._page.pop_dialog()
+            self._search_lyrics_online(track, "musixmatch")
+
+        def search_netease(e):
+            self._page.pop_dialog()
+            self._search_lyrics_online(track, "netease")
+
+        def search_lrclib(e):
+            self._page.pop_dialog()
+            self._search_lyrics_online(track, "lrclib")
+
+        bs = ft.BottomSheet(
+            content=ft.Column(
+                tight=True,
+                controls=[
+                    ft.ListTile(leading=ft.Icon(ft.Icons.SEARCH), title=ft.Text(tr("musixmatch")), on_click=search_musixmatch),
+                    ft.ListTile(leading=ft.Icon(ft.Icons.SEARCH), title=ft.Text(tr("netease")), on_click=search_netease),
+                    ft.ListTile(leading=ft.Icon(ft.Icons.SEARCH), title=ft.Text(tr("lrclib")), on_click=search_lrclib),
+                ],
+            ),
+        )
+        self._page.show_dialog(bs)
+
+    def _search_lyrics_online(self, track, source):
+        query = f"{track.artist or ''} {track.title or ''}".strip()
+        if not query:
+            self._page.show_dialog(ft.SnackBar(ft.Text(tr("error").replace("{}", "No track info"))))
+            return
+        try:
+            import urllib.request
+            import urllib.parse
+            import json as _json
+            url = ""
+            if source == "lrclib":
+                safe = urllib.parse.quote(query)
+                url = f"https://lrclib.net/api/search?q={safe}"
+            elif source == "netease":
+                safe = urllib.parse.quote(query)
+                url = f"https://music.163.com/api/search/get?type=1&s={safe}"
+            if not url:
+                self._page.show_dialog(ft.SnackBar(ft.Text(tr("noLyricsAvailable"))))
+                return
+            req = urllib.request.Request(url, headers={"User-Agent": "GroovyBox/1.0"})
+            with urllib.request.urlopen(req, timeout=10) as resp:
+                data = _json.loads(resp.read().decode("utf-8"))
+            lyrics_text = None
+            if source == "lrclib" and isinstance(data, list) and data:
+                lyrics_text = data[0].get("syncedLyrics") or data[0].get("plainLyrics")
+            elif source == "netease":
+                songs = data.get("result", {}).get("songs", [])
+                if songs:
+                    sid = songs[0]["id"]
+                    lyric_url = f"https://music.163.com/api/song/lyric?os=pc&id={sid}&lv=-1&kv=-1&tv=-1"
+                    lreq = urllib.request.Request(lyric_url, headers={"User-Agent": "GroovyBox/1.0"})
+                    with urllib.request.urlopen(lreq, timeout=10) as lresp:
+                        ldata = _json.loads(lresp.read().decode("utf-8"))
+                    lyric_str = ldata.get("lrc", {}).get("lyric", "")
+                    if lyric_str.strip():
+                        lyrics_text = lyric_str
+            if lyrics_text:
+                from logic.lyrics_parser import parse, lyrics_to_json
+                lyr_data = parse(lyrics_text, f"{track.title}.lrc")
+                trepo.update_lyrics(track.id, lyrics_to_json(lyr_data))
+                player = self._get_player()
+                if player and hasattr(player, 'current_track') and player.current_track and player.current_track.id == track.id:
+                    player.current_track.lyrics = lyrics_to_json(lyr_data)
+                self._rebuild()
+                self._page.show_dialog(ft.SnackBar(ft.Text(tr("importedLyricsLines").replace("{}", str(len(lyr_data.lines))).replace("{}", track.title or ""))))
+            else:
+                self._page.show_dialog(ft.SnackBar(ft.Text(tr("noLyricsAvailable"))))
+        except Exception as ex:
+            logger.error(f"Lyrics search failed: {ex}")
+            self._page.show_dialog(ft.SnackBar(ft.Text(tr("error").replace("{}", str(ex)))))
+
+    def _clear_lyrics(self, track):
+        trepo.update_lyrics(track.id, None)
+        player = self._get_player()
+        if player and hasattr(player, 'current_track') and player.current_track and player.current_track.id == track.id:
+            player.current_track.lyrics = None
+        self._rebuild()
+
+    async def _import_lyrics_file(self, track):
+        from logic.file_dialog import pick_files
+        from data.track_repository import LYRICS_EXTENSIONS
+        paths = await pick_files(title=tr("manualImport"), extensions=list(LYRICS_EXTENSIONS))
+        if not paths:
+            return
+        from logic.encoding_helper import read_with_encoding
+        from logic.lyrics_parser import parse, lyrics_to_json
+        content = read_with_encoding(paths[0])
+        ldata = parse(content, os.path.basename(paths[0]))
+        trepo.update_lyrics(track.id, lyrics_to_json(ldata))
+        player = self._get_player()
+        if player and hasattr(player, 'current_track') and player.current_track and player.current_track.id == track.id:
+            player.current_track.lyrics = lyrics_to_json(ldata)
+        self._rebuild()
+        self._page.show_dialog(ft.SnackBar(ft.Text(tr("importedLyricsLines").replace("{}", str(len(ldata.lines))).replace("{}", track.title or ""))))
 
     def _build_timed_lyrics(self, data, player, offset):
         pos = player.position_ms + offset

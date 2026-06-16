@@ -193,12 +193,14 @@ class LibraryScreen(ft.Column):
         def do_batch_add_queue(e):
             self._page.pop_dialog()
             app = self._get_app()
-            if not app:
+            if not app or not app.audio_player:
                 return
             all_tracks = trepo.watch_all_tracks()
             selected = [t for t in all_tracks if t.id in self.selected_ids]
             for t in selected:
                 app.audio_player.queue.append(t)
+            if not app.audio_player.is_playing and selected:
+                app.audio_player.play_track(selected[0])
             if app.audio_player.on_queue_change:
                 app.audio_player.on_queue_change()
             self.selected_ids.clear()
