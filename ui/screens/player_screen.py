@@ -173,9 +173,9 @@ class PlayerScreen(ft.Container):
         volume = ft.Row(
             tight=True,
             controls=[
-                ft.Icon(ft.Icons.VOLUME_UP, size=14, color=ft.Colors.with_opacity(0.7, ft.Colors.ON_SURFACE)),
+                ft.Icon(ft.Icons.VOLUME_UP, size=20, color=ft.Colors.with_opacity(0.7, ft.Colors.ON_SURFACE)),
                 ft.Container(
-                    width=100,
+                    width=160,
                     content=ft.Slider(
                         value=player.volume * 100, min=0, max=100, divisions=100,
                         on_change=lambda e: player.set_volume(e.control.value / 100),
@@ -204,13 +204,13 @@ class PlayerScreen(ft.Container):
                         controls=[
                             ft.IconButton(
                                 icon=_get_view_icon(self._view_mode),
-                                icon_size=24,
+                                icon_size=32,
                                 on_click=self.cycle_view,
                                 tooltip=_get_view_tooltip(self._view_mode),
                             ),
                             ft.IconButton(
                                 icon=ft.Icons.QUEUE_MUSIC,
-                                icon_size=24,
+                                icon_size=32,
                                 on_click=self.toggle_queue,
                                 tooltip=tr("showCover") if self._view_mode == "queue" else tr("showQueue"),
                                 icon_color=ft.Colors.PRIMARY if self._view_mode == "queue" else None,
@@ -225,7 +225,7 @@ class PlayerScreen(ft.Container):
                         alignment=ft.MainAxisAlignment.CENTER,
                         controls=[volume],
                     ),
-                    visible=self._view_mode != "lyrics",
+                    visible=True,
                 ),
             ],
         )
@@ -516,10 +516,13 @@ class PlayerScreen(ft.Container):
             if lyrics_text:
                 from logic.lyrics_parser import parse, lyrics_to_json
                 lyr_data = parse(lyrics_text, f"{track.title}.lrc")
-                trepo.update_lyrics(track.id, lyrics_to_json(lyr_data))
+                json_str = lyrics_to_json(lyr_data)
+                trepo.update_lyrics(track.id, json_str)
                 player = self._get_player()
-                if player and hasattr(player, 'current_track') and player.current_track and player.current_track.id == track.id:
-                    player.current_track.lyrics = lyrics_to_json(lyr_data)
+                if player and 0 <= player.current_index < len(player.queue):
+                    queued = player.queue[player.current_index]
+                    if queued.id == track.id:
+                        queued.lyrics = json_str
                 self._rebuild()
                 self._page.show_dialog(ft.SnackBar(ft.Text(tr("importedLyricsLines").replace("{}", str(len(lyr_data.lines))).replace("{}", track.title or ""))))
             else:
@@ -545,10 +548,13 @@ class PlayerScreen(ft.Container):
         from logic.lyrics_parser import parse, lyrics_to_json
         content = read_with_encoding(paths[0])
         ldata = parse(content, os.path.basename(paths[0]))
-        trepo.update_lyrics(track.id, lyrics_to_json(ldata))
+        json_str = lyrics_to_json(ldata)
+        trepo.update_lyrics(track.id, json_str)
         player = self._get_player()
-        if player and hasattr(player, 'current_track') and player.current_track and player.current_track.id == track.id:
-            player.current_track.lyrics = lyrics_to_json(ldata)
+        if player and 0 <= player.current_index < len(player.queue):
+            queued = player.queue[player.current_index]
+            if queued.id == track.id:
+                queued.lyrics = json_str
         self._rebuild()
         self._page.show_dialog(ft.SnackBar(ft.Text(tr("importedLyricsLines").replace("{}", str(len(ldata.lines))).replace("{}", track.title or ""))))
 

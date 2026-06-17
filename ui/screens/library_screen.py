@@ -24,8 +24,11 @@ class LibraryScreen(ft.Column):
         return self._page.session.store.get("app")
 
     def _build(self):
-        is_large = self._page.width > 600
-        self.controls = [self._build_large_layout() if is_large else self._build_mobile_layout()]
+        try:
+            is_large = self._page.width > 600
+            self.controls = [self._build_large_layout() if is_large else self._build_mobile_layout()]
+        except Exception as ex:
+            logger.exception("LibraryScreen._build failed")
 
     def _build_large_layout(self):
         nav = ft.NavigationRail(
@@ -197,10 +200,13 @@ class LibraryScreen(ft.Column):
                 return
             all_tracks = trepo.watch_all_tracks()
             selected = [t for t in all_tracks if t.id in self.selected_ids]
-            for t in selected:
-                app.audio_player.queue.append(t)
-            if not app.audio_player.is_playing and selected:
-                app.audio_player.play_track(selected[0])
+            if not selected:
+                return
+            start_idx = len(app.audio_player.queue)
+            app.audio_player.queue.extend(selected)
+            if not app.audio_player.is_playing:
+                app.audio_player.current_index = start_idx
+                app.audio_player._load_current()
             if app.audio_player.on_queue_change:
                 app.audio_player.on_queue_change()
             self.selected_ids.clear()
@@ -343,13 +349,15 @@ class LibraryScreen(ft.Column):
             return
 
         def pick_pl(e, pl):
-            for tid in self.selected_ids:
-                prepo.add_to_playlist(pl.id, tid)
-            self._page.pop_dialog()
-            self.selected_ids.clear()
-            self._build()
-            self.update()
-            self._page.show_dialog(ft.SnackBar(ft.Text(tr("addedToPlaylist").replace("{}", pl.name))))
+            try:
+                for tid in self.selected_ids:
+                    prepo.add_to_playlist(pl.id, tid)
+                self.selected_ids.clear()
+                self._page.pop_dialog()
+                self._build()
+                self.update()
+            except Exception as ex:
+                logger.exception("_show_batch_add_to_playlist.pick_pl failed")
 
         dlg = ft.BottomSheet(
             content=ft.Column(
@@ -371,7 +379,6 @@ class LibraryScreen(ft.Column):
         def pick_pl(e, pl):
             prepo.add_to_playlist(pl.id, track.id)
             self._page.pop_dialog()
-            self._page.show_dialog(ft.SnackBar(ft.Text(tr("addedToPlaylist").replace("{}", pl.name))))
 
         dlg = ft.BottomSheet(
             content=ft.Column(
