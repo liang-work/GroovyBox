@@ -234,9 +234,6 @@ class AudioPlayer:
                 self.current_index = 0
             else:
                 self.current_index = len(self.queue) - 1
-                self._is_playing = False
-                if self.on_play_state_change:
-                    self._run_on_ui(self.on_play_state_change, False)
                 return
         self._load_current()
 
