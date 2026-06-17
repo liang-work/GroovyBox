@@ -7,6 +7,20 @@ from data import track_repository as trepo
 from logic.logger import logger
 
 
+def _safe_seek(e, player):
+    try:
+        player.seek(int(e.control.value))
+    except RuntimeError:
+        pass
+
+
+def _safe_volume(e, player):
+    try:
+        player.set_volume(e.control.value / 100)
+    except RuntimeError:
+        pass
+
+
 class PlayerScreen(ft.Container):
     def __init__(self, page: ft.Page):
         super().__init__(expand=True, padding=0)
@@ -170,20 +184,6 @@ class PlayerScreen(ft.Container):
         else:
             inner = self._build_split_view(track, meta, player, "queue") if is_desktop else self._build_queue_view(player)
 
-        volume = ft.Row(
-            tight=True,
-            controls=[
-                ft.Icon(ft.Icons.VOLUME_UP, size=20, color=ft.Colors.with_opacity(0.7, ft.Colors.ON_SURFACE)),
-                ft.Container(
-                    width=160,
-                    content=ft.Slider(
-                        value=player.volume * 100, min=0, max=100, divisions=100,
-                        on_change=lambda e: player.set_volume(e.control.value / 100),
-                    ),
-                ),
-            ],
-        )
-
         return ft.Stack(
             expand=True,
             controls=[
@@ -218,15 +218,6 @@ class PlayerScreen(ft.Container):
                         ],
                     ),
                 ),
-                ft.Container(
-                    left=0, right=0, bottom=8,
-                    content=ft.Row(
-                        tight=True,
-                        alignment=ft.MainAxisAlignment.CENTER,
-                        controls=[volume],
-                    ),
-                    visible=True,
-                ),
             ],
         )
 
@@ -240,6 +231,21 @@ class PlayerScreen(ft.Container):
         else:
             right = ft.Container(content=self._build_queue_view(player), expand=4)
         return ft.Row(expand=True, spacing=0, controls=[left, right])
+
+    def _build_volume_row(self, player):
+        return ft.Row(
+            tight=True,
+            controls=[
+                ft.Icon(ft.Icons.VOLUME_UP, size=20, color=ft.Colors.with_opacity(0.7, ft.Colors.ON_SURFACE)),
+                ft.Container(
+                    width=160,
+                    content=ft.Slider(
+                        value=player.volume * 100, min=0, max=100, divisions=100,
+                        on_change=lambda e: _safe_volume(e, player),
+                    ),
+                ),
+            ],
+        )
 
     def _build_cover_view(self, track, meta, player, is_desktop, compact=False):
         has_art = track and track.art_uri
@@ -308,6 +314,7 @@ class PlayerScreen(ft.Container):
                 ft.Container(height=12),
                 progress,
                 ctrl_row,
+                self._build_volume_row(player),
                 ft.Container(height=16),
             ],
         )
@@ -326,7 +333,7 @@ class PlayerScreen(ft.Container):
             min=0, max=float(max_val),
             divisions=1000,
             width=min(400, self._page.width - 80) if self._page.width else 400,
-            on_change=lambda e: player.seek(int(e.control.value)),
+            on_change=lambda e: _safe_seek(e, player),
         )
         self._pos_text = ft.Text(format_duration(pos_val), size=12)
         self._dur_text = ft.Text(format_duration(player.duration_ms), size=12)
@@ -420,7 +427,14 @@ class PlayerScreen(ft.Container):
                 ),
                 ft.Container(
                     left=0, right=0, bottom=0,
-                    content=offset_bar,
+                    content=ft.Column(
+                        tight=True,
+                        horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+                        controls=[
+                            self._build_volume_row(player),
+                            offset_bar,
+                        ],
+                    ),
                 ),
             ],
         )
@@ -569,24 +583,30 @@ class PlayerScreen(ft.Container):
         self._last_lyrics_idx = current_idx
 
         total = len(data.lines)
-        VISIBLE = 3
+        VISIBLE = 4
+        MAX_ROTATE = 0.12
         lines = []
 
         for i, line in enumerate(data.lines):
             dist = abs(i - current_idx)
+            if dist > VISIBLE:
+                continue
+
+            direction = -1 if i < current_idx else 1
+            t = dist / VISIBLE
+            rotate = direction * t * MAX_ROTATE
+            opacity = 1.0 - t * 0.65
+            height = max(26, int(48 - t * 22))
 
             if dist == 0:
-                opacity = 1.0
                 fsize = 20
                 fw = ft.FontWeight.BOLD
-                height = 48
-            elif dist <= VISIBLE:
-                opacity = 1.0 - (dist / (VISIBLE + 1)) * 0.7
+            elif dist == 1:
                 fsize = 16
                 fw = ft.FontWeight.NORMAL
-                height = 36
             else:
-                continue
+                fsize = max(12, int(16 - (dist - 1) * 2))
+                fw = ft.FontWeight.NORMAL
 
             if dist == 0:
                 start = line.time_ms or 0
@@ -599,13 +619,15 @@ class PlayerScreen(ft.Container):
                     height=height,
                     padding=ft.Padding(32, 4, 32, 4),
                     alignment=ft.Alignment(0, 0),
+                    rotate=rotate,
                     content=ft.ShaderMask(
                         shader=ft.LinearGradient(
                             begin=ft.Alignment(-1, 0), end=ft.Alignment(1, 0),
                             colors=[active_color, inactive_color],
                             stops=[progress, progress],
                         ),
-                        content=ft.Text(line.text, size=fsize, weight=fw, max_lines=2, overflow=ft.TextOverflow.ELLIPSIS, text_align=ft.TextAlign.CENTER),
+                        content=ft.Text(line.text, size=fsize, weight=fw, max_lines=2,
+                                        overflow=ft.TextOverflow.ELLIPSIS, text_align=ft.TextAlign.CENTER),
                         blend_mode=ft.BlendMode.SRC_IN,
                     ),
                     on_click=lambda e, t=line.time_ms: player.seek(t) if t else None,
@@ -615,9 +637,11 @@ class PlayerScreen(ft.Container):
                     height=height,
                     padding=ft.Padding(32, 2, 32, 2),
                     alignment=ft.Alignment(0, 0),
+                    rotate=rotate,
                     content=ft.Text(line.text, size=fsize, weight=fw,
                                     color=ft.Colors.with_opacity(opacity, ft.Colors.ON_SURFACE),
-                                    max_lines=1, overflow=ft.TextOverflow.ELLIPSIS, text_align=ft.TextAlign.CENTER),
+                                    max_lines=1, overflow=ft.TextOverflow.ELLIPSIS,
+                                    text_align=ft.TextAlign.CENTER),
                     on_click=lambda e, t=line.time_ms: player.seek(t) if t else None,
                 )
 
