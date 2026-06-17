@@ -426,18 +426,65 @@ class PlayerScreen(ft.Container):
                     ),
                 ),
                 ft.Container(
-                    left=0, right=0, bottom=0,
-                    content=ft.Column(
-                        tight=True,
-                        horizontal_alignment=ft.CrossAxisAlignment.CENTER,
-                        controls=[
-                            self._build_volume_row(player),
-                            offset_bar,
-                        ],
+                    left=8, bottom=0,
+                    content=ft.IconButton(
+                        icon=ft.Icons.LYRICS,
+                        icon_size=20,
+                        on_click=lambda e: self._show_lyrics_menu(track, player),
+                        tooltip=tr("lyricsOptions"),
                     ),
                 ),
             ],
         )
+
+    def _show_lyrics_menu(self, track, player):
+        def do_fetch(e):
+            self._page.pop_dialog()
+            self._show_fetch_lyrics(track, player)
+
+        def do_manual(e):
+            self._page.pop_dialog()
+            self._page.run_task(self._import_lyrics_file, track)
+
+        def do_clear(e):
+            self._page.pop_dialog()
+            self._clear_lyrics(track)
+
+        def do_offset(e):
+            self._page.pop_dialog()
+            self._show_offset_dialog(track)
+
+        items = [
+            ft.ListTile(leading=ft.Icon(ft.Icons.SEARCH), title=ft.Text(tr("fetchLyrics")), on_click=do_fetch),
+            ft.ListTile(leading=ft.Icon(ft.Icons.FILE_UPLOAD), title=ft.Text(tr("manualImport")), on_click=do_manual),
+        ]
+        if track.lyrics:
+            items.append(ft.ListTile(leading=ft.Icon(ft.Icons.DELETE, color=ft.Colors.RED), title=ft.Text(tr("clear"), color=ft.Colors.RED), on_click=do_clear))
+        items.append(ft.ListTile(leading=ft.Icon(ft.Icons.TUNE), title=ft.Text(tr("offsetMs")), on_click=do_offset))
+
+        bs = ft.BottomSheet(content=ft.Column(tight=True, controls=items))
+        self._page.show_dialog(bs)
+
+    def _show_offset_dialog(self, track):
+        tf = ft.TextField(label=tr("offsetMs"), value=str(track.lyrics_offset), keyboard_type=ft.KeyboardType.NUMBER, width=200)
+        def do_set(e):
+            try:
+                val = int(tf.value)
+                trepo.update_lyrics_offset(track.id, val)
+                track.lyrics_offset = val
+            except ValueError:
+                pass
+            self._page.pop_dialog()
+            self._rebuild()
+        dlg = ft.AlertDialog(
+            title=ft.Text(tr("offsetMs")),
+            content=tf,
+            actions=[
+                ft.TextButton(tr("cancel"), on_click=lambda e: self._page.pop_dialog()),
+                ft.FilledButton(tr("save"), on_click=do_set),
+            ],
+        )
+        self._page.show_dialog(dlg)
 
     def _show_lyrics_options(self, track, player):
         def do_refetch(e):
