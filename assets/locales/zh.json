@@ -164,6 +164,12 @@
   "importFolder": "导入文件夹",
   "importPlaylist": "导入播放列表",
   "importZip": "导入 ZIP 压缩包",
+  "logLevel": "日志级别",
+  "logLevelDescription": "控制写入日志的详细程度。",
+  "logLevelNormal": "正常",
+  "logLevelErrorsOnly": "仅错误",
+  "logLevelErrorsWarnings": "错误和警告",
+  "logLevelVerbose": "详细",
   "exportLogs": "导出日志",
   "logsExported": "日志已导出到 {}",
   "errorExportingLogs": "导出日志时出错：{}"

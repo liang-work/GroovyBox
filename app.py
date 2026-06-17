@@ -18,6 +18,9 @@ class GroovyBoxApp:
         self._load_locale()
         self._setup_theme()
 
+        from logic.logger import set_log_level
+        set_log_level(db.get_setting("log_level", "normal"))
+
         page.session.store.set("app", self)
 
         from logic.audio_handler import AudioPlayer

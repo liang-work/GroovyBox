@@ -163,6 +163,12 @@
   "importFolder": "Import Folder",
   "importPlaylist": "Import Playlist",
   "importZip": "Import ZIP Package",
+  "logLevel": "Log Level",
+  "logLevelDescription": "Controls how much detail is written to the log.",
+  "logLevelNormal": "Normal",
+  "logLevelErrorsOnly": "Errors Only",
+  "logLevelErrorsWarnings": "Errors and Warnings",
+  "logLevelVerbose": "Verbose",
   "exportLogs": "Export Logs",
   "logsExported": "Logs exported to {}",
   "errorExportingLogs": "Error exporting logs: {}"

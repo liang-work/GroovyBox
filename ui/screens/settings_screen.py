@@ -149,6 +149,13 @@ def SettingsScreen(page: ft.Page) -> ft.Column:
         conn.close()
         refresh()
 
+    def _set_log_level(e):
+        lvl = e.control.value
+        db.set_setting("log_level", lvl)
+        from logic.logger import set_log_level
+        set_log_level(lvl)
+        refresh()
+
     async def export_logs(e):
         from logic.file_dialog import save_file
         path = await save_file(title="Export logs", default_name="groovybox_logs.txt", extensions=["txt"])
@@ -305,6 +312,20 @@ def SettingsScreen(page: ft.Page) -> ft.Column:
                     controls=[
                         ft.Text("Logs", size=18, weight=ft.FontWeight.BOLD),
                         ft.Text("View and export application logs.", size=12, color=ft.Colors.GREY),
+                        ft.ListTile(
+                            title=ft.Text(tr("logLevel")),
+                            subtitle=ft.Text(tr("logLevelDescription"), size=11, color=ft.Colors.GREY),
+                            trailing=ft.Dropdown(
+                                value=db.get_setting("log_level", "normal"),
+                                options=[
+                                    ft.dropdown.Option("normal", tr("logLevelNormal")),
+                                    ft.dropdown.Option("errors_only", tr("logLevelErrorsOnly")),
+                                    ft.dropdown.Option("errors_warnings", tr("logLevelErrorsWarnings")),
+                                    ft.dropdown.Option("verbose", tr("logLevelVerbose")),
+                                ],
+                                on_select=lambda e: _set_log_level(e),
+                            ),
+                        ),
                         ft.ListTile(
                             title=ft.Text(tr("exportLogs")),
                             trailing=ft.ElevatedButton(
