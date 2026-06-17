@@ -89,21 +89,22 @@ def SettingsScreen(page: ft.Page) -> ft.Column:
         page.update()
 
     def reset_database(e):
-        def confirm(e):
-            if e.control.text == "Yes":
-                trepo.clear_all_tracks()
-                page.pop_dialog()
-                page.show_dialog(ft.SnackBar(ft.Text(tr("trackDatabaseReset"))))
-            else:
-                page.pop_dialog()
+        def confirm_yes(e):
+            trepo.clear_all_tracks()
+            page.pop_dialog()
+            page.show_dialog(ft.SnackBar(ft.Text(tr("trackDatabaseReset"))))
+            refresh()
+
+        def confirm_no(e):
+            page.pop_dialog()
             refresh()
 
         dlg = ft.AlertDialog(
             title=ft.Text(tr("resetTrackDatabase")),
             content=ft.Text(tr("confirmResetTrackDatabase")),
             actions=[
-                ft.TextButton("Cancel", on_click=lambda e: page.pop_dialog()),
-                ft.FilledButton("Yes", on_click=confirm, color=ft.Colors.RED),
+                ft.TextButton("Cancel", on_click=confirm_no),
+                ft.FilledButton("Yes", on_click=confirm_yes, color=ft.Colors.RED),
             ],
         )
         page.show_dialog(dlg)

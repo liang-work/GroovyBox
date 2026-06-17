@@ -110,21 +110,14 @@ class ShellView(ft.View):
         lyrics_paths = [p for p in paths if p.split(".")[-1].lower() in LYRICS_EXTENSIONS]
         logger.debug(f"_import_files: audio={len(audio_paths)} lyrics={len(lyrics_paths)}")
 
-        reload_needed = False
-
         if audio_paths:
-            trepo.import_files(audio_paths, callback=lambda: self._page.run_task(self._reload_after_import))
-            logger.info(f"Import started for {len(audio_paths)} audio files")
-            reload_needed = True
+            n = await trepo.import_files_async(audio_paths)
+            logger.info(f"Imported {n} audio files")
 
         if lyrics_paths:
             await self._import_lyrics_files(lyrics_paths)
-            reload_needed = True
 
-        if not audio_paths and reload_needed:
-            self._page.update()
-            if self.app:
-                self.app._reload_ui()
+        await self._reload_after_import()
 
     async def _import_folder(self):
         from logic.file_dialog import pick_directory
@@ -133,9 +126,9 @@ class ShellView(ft.View):
             return
         logger.info(f"_import_folder: {folder}")
         from data import track_repository as trepo
-        trepo.scan_directory(folder, callback=lambda: self._page.run_task(self._reload_after_import))
-        if self.app:
-            self.app._reload_ui()
+        n = await trepo.scan_directory_async(folder)
+        logger.info(f"Imported {n} files from folder")
+        await self._reload_after_import()
 
     async def _import_playlist_file(self):
         from logic.file_dialog import pick_files
@@ -148,10 +141,9 @@ class ShellView(ft.View):
         for pp in paths:
             all_audio.extend(parse_playlist(pp))
         if all_audio:
-            trepo.import_files(all_audio, callback=lambda: self._page.run_task(self._reload_after_import))
-            logger.info(f"Import playlist: {len(all_audio)} files found")
-        if self.app:
-            self.app._reload_ui()
+            n = await trepo.import_files_async(all_audio)
+            logger.info(f"Imported {n} files from playlist")
+            await self._reload_after_import()
 
     async def _import_zip(self):
         from logic.file_dialog import pick_files
@@ -172,11 +164,11 @@ class ShellView(ft.View):
                 from logic.playlist_parser import parse_playlist
                 all_audio.extend(parse_playlist(pp))
         if all_audio:
-            trepo.import_files(all_audio, callback=lambda: self._page.run_task(self._reload_after_import))
+            n = await trepo.import_files_async(all_audio)
+            logger.info(f"Imported {n} audio files from zip")
         if all_lyrics:
             await self._import_lyrics_files(all_lyrics)
-        if self.app:
-            self.app._reload_ui()
+        await self._reload_after_import()
 
     async def _import_lyrics_files(self, lyrics_paths):
         from logic.encoding_helper import read_with_encoding
@@ -205,6 +197,9 @@ class ShellView(ft.View):
         self._page.show_dialog(ft.SnackBar(ft.Text(msg)))
 
     async def _reload_after_import(self):
+        from data import track_repository as trepo
+        n = len(trepo.watch_all_tracks())
+        logger.info("_reload_after_import: %d tracks in DB, reloading UI", n)
         self._page.update()
         if self.app:
             self.app._reload_ui()

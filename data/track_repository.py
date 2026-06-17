@@ -1,7 +1,9 @@
+import asyncio
 import os
 from typing import List, Optional
 import threading
 from data.db import get_connection
+from logic.logger import logger
 from data.models import Track
 from logic.metadata_service import get_metadata, SUPPORTED_EXTENSIONS
 
@@ -34,53 +36,108 @@ def get_track_by_path(path: str) -> Optional[Track]:
 
 def import_files(file_paths: List[str], callback=None):
     def _import():
-        conn = get_connection()
-        existing = {
-            r["path"] for r in conn.execute(
-                "SELECT path FROM tracks WHERE path IN ({})".format(
-                    ",".join("?" * len(file_paths))
-                ), file_paths
-            ).fetchall()
-        }
-        new_paths = [p for p in file_paths if p not in existing]
-        art_dir = os.path.join(os.path.expanduser("~"), ".groovybox", "art")
-        os.makedirs(art_dir, exist_ok=True)
-        imported = 0
-        for path in new_paths:
-            if not os.path.isfile(path):
-                continue
-            try:
-                meta = get_metadata(path)
-                filename = os.path.basename(path)
-                title = meta.title or os.path.splitext(filename)[0]
+        try:
+            conn = get_connection()
+            existing = {
+                r["path"] for r in conn.execute(
+                    "SELECT path FROM tracks WHERE path IN ({})".format(
+                        ",".join("?" * len(file_paths))
+                    ), file_paths
+                ).fetchall()
+            }
+            new_paths = [p for p in file_paths if p not in existing]
+            art_dir = os.path.join(os.path.expanduser("~"), ".groovybox", "art")
+            os.makedirs(art_dir, exist_ok=True)
+            imported = 0
+            for path in new_paths:
+                if not os.path.isfile(path):
+                    continue
+                try:
+                    meta = get_metadata(path)
+                    filename = os.path.basename(path)
+                    title = meta.title or os.path.splitext(filename)[0]
 
-                art_path = None
-                if meta.art_bytes:
-                    art_name = f"{os.path.splitext(filename)[0]}_{imported}_art.jpg"
-                    art_file = os.path.join(art_dir, art_name)
-                    try:
-                        with open(art_file, "wb") as f:
-                            f.write(meta.art_bytes)
-                        art_path = art_file
-                    except Exception:
-                        pass
+                    art_path = None
+                    if meta.art_bytes:
+                        art_name = f"{os.path.splitext(filename)[0]}_{imported}_art.jpg"
+                        art_file = os.path.join(art_dir, art_name)
+                        try:
+                            with open(art_file, "wb") as f:
+                                f.write(meta.art_bytes)
+                            art_path = art_file
+                        except Exception:
+                            pass
 
-                conn.execute(
-                    """INSERT OR IGNORE INTO tracks
-                       (title, artist, album, duration, path, art_uri, lyrics_offset)
-                       VALUES (?, ?, ?, ?, ?, ?, 0)""",
-                    (title, meta.artist, meta.album,
-                     meta.duration, path, art_path),
-                )
-                conn.commit()
-                imported += 1
-            except Exception:
-                continue
-        conn.close()
-        if callback:
-            callback()
+                    conn.execute(
+                        """INSERT OR IGNORE INTO tracks
+                           (title, artist, album, duration, path, art_uri, lyrics_offset)
+                           VALUES (?, ?, ?, ?, ?, ?, 0)""",
+                        (title, meta.artist, meta.album,
+                         meta.duration, path, art_path),
+                    )
+                    conn.commit()
+                    imported += 1
+                except Exception:
+                    continue
+            conn.close()
+            logger.info("import_files: imported %d/%d files", imported, len(new_paths))
+            if callback:
+                callback()
+        except Exception as e:
+            logger.error("import_files thread failed: %s", e)
 
     threading.Thread(target=_import, daemon=True).start()
+
+
+async def import_files_async(file_paths: List[str]) -> int:
+    loop = asyncio.get_event_loop()
+    return await loop.run_in_executor(None, _import_sync, file_paths)
+
+
+def _import_sync(file_paths: List[str]) -> int:
+    conn = get_connection()
+    existing = {
+        r["path"] for r in conn.execute(
+            "SELECT path FROM tracks WHERE path IN ({})".format(
+                ",".join("?" * len(file_paths))
+            ), file_paths
+        ).fetchall()
+    }
+    new_paths = [p for p in file_paths if p not in existing]
+    art_dir = os.path.join(os.path.expanduser("~"), ".groovybox", "art")
+    os.makedirs(art_dir, exist_ok=True)
+    imported = 0
+    for path in new_paths:
+        if not os.path.isfile(path):
+            continue
+        try:
+            meta = get_metadata(path)
+            filename = os.path.basename(path)
+            title = meta.title or os.path.splitext(filename)[0]
+            art_path = None
+            if meta.art_bytes:
+                art_name = f"{os.path.splitext(filename)[0]}_{imported}_art.jpg"
+                art_file = os.path.join(art_dir, art_name)
+                try:
+                    with open(art_file, "wb") as f:
+                        f.write(meta.art_bytes)
+                    art_path = art_file
+                except Exception:
+                    pass
+            conn.execute(
+                """INSERT OR IGNORE INTO tracks
+                   (title, artist, album, duration, path, art_uri, lyrics_offset)
+                   VALUES (?, ?, ?, ?, ?, ?, 0)""",
+                (title, meta.artist, meta.album,
+                 meta.duration, path, art_path),
+            )
+            conn.commit()
+            imported += 1
+        except Exception:
+            continue
+    conn.close()
+    logger.info("import_files_async: imported %d/%d files", imported, len(new_paths))
+    return imported
 
 
 def scan_directory(directory_path: str, recursive: bool = True, callback=None):
@@ -104,6 +161,31 @@ def scan_directory(directory_path: str, recursive: bool = True, callback=None):
         elif callback:
             callback()
     threading.Thread(target=_scan, daemon=True).start()
+
+
+async def scan_directory_async(directory_path: str, recursive: bool = True) -> int:
+    loop = asyncio.get_event_loop()
+    return await loop.run_in_executor(None, _scan_sync, directory_path, recursive)
+
+
+def _scan_sync(directory_path: str, recursive: bool) -> int:
+    music_files = []
+    if recursive:
+        for root, dirs, files in os.walk(directory_path):
+            for f in files:
+                ext = os.path.splitext(f)[1].lower()
+                if ext in SUPPORTED_EXTENSIONS:
+                    music_files.append(os.path.join(root, f))
+    else:
+        for f in os.listdir(directory_path):
+            full = os.path.join(directory_path, f)
+            if os.path.isfile(full):
+                ext = os.path.splitext(f)[1].lower()
+                if ext in SUPPORTED_EXTENSIONS:
+                    music_files.append(full)
+    if music_files:
+        return _import_sync(music_files)
+    return 0
 
 
 def update_metadata(track_id: int, title: str, artist: str = None, album: str = None):
