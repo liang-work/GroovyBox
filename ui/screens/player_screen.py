@@ -3,6 +3,7 @@ import os
 from logic.localize import tr
 from logic.lyrics_parser import lyrics_from_json, lyrics_to_json
 from logic.metadata_service import format_duration
+from data import db
 from data import track_repository as trepo
 from logic.logger import logger
 
@@ -36,6 +37,8 @@ class PlayerScreen(ft.Container):
         self._play_btn = None
         self._prev_view_mode = None
         self._last_lyrics_idx = -1
+        self._lyrics_shaders = []
+        self._lyrics_marquee = None
 
         page.on_keyboard_event = self._on_keyboard
         self._initialized = False
@@ -121,10 +124,10 @@ class PlayerScreen(ft.Container):
                                     new_idx = i
                                 else:
                                     break
+                            if new_idx != self._last_lyrics_idx:
+                                self._rebuild()
                     except Exception:
                         pass
-                    if new_idx != self._last_lyrics_idx:
-                        self._rebuild()
 
     def refresh_play_state(self, is_playing: bool):
         if self._play_btn:
@@ -150,9 +153,11 @@ class PlayerScreen(ft.Container):
         track = player.get_current_track()
         meta = app.current_metadata if app else None
         is_desktop = self._page.width > 800
+        ly_mode = db.get_setting("lyrics_mode", "auto")
+        use_curved = (ly_mode == "curved") or (ly_mode == "auto" and is_desktop)
 
         bg = self._build_background(track)
-        content = self._build_main_content(track, meta, player, is_desktop)
+        content = self._build_main_content(track, meta, player, is_desktop, use_curved)
 
         self._inner.controls = [ft.Stack(expand=True, controls=[bg, content])]
         if self._initialized:
@@ -176,11 +181,11 @@ class PlayerScreen(ft.Container):
         )
         return ft.Stack(expand=True, controls=arts)
 
-    def _build_main_content(self, track, meta, player, is_desktop):
+    def _build_main_content(self, track, meta, player, is_desktop, use_curved=False):
         if self._view_mode == "cover":
             inner = self._build_cover_view(track, meta, player, is_desktop)
         elif self._view_mode == "lyrics":
-            inner = self._build_split_view(track, meta, player, "lyrics") if is_desktop else self._build_lyrics_view(track, player)
+            inner = self._build_split_view(track, meta, player, "lyrics") if is_desktop else self._build_lyrics_view(track, player, use_curved)
         else:
             inner = self._build_split_view(track, meta, player, "queue") if is_desktop else self._build_queue_view(player)
 
@@ -227,7 +232,7 @@ class PlayerScreen(ft.Container):
             expand=3,
         )
         if right_mode == "lyrics":
-            right = ft.Container(content=self._build_lyrics_view(track, player), expand=4)
+            right = ft.Container(content=self._build_lyrics_view(track, player, use_curved=True), expand=4)
         else:
             right = ft.Container(content=self._build_queue_view(player), expand=4)
         return ft.Row(expand=True, spacing=0, controls=[left, right])
@@ -314,7 +319,18 @@ class PlayerScreen(ft.Container):
                 ft.Container(height=12),
                 progress,
                 ctrl_row,
-                self._build_volume_row(player),
+                ft.Row(
+                    tight=True,
+                    controls=[
+                        ft.IconButton(
+                            icon=ft.Icons.LYRICS,
+                            icon_size=20,
+                            on_click=lambda e: self._show_lyrics_menu(track, player),
+                            tooltip=tr("lyricsOptions"),
+                        ),
+                        self._build_volume_row(player),
+                    ],
+                ),
                 ft.Container(height=16),
             ],
         )
@@ -354,7 +370,7 @@ class PlayerScreen(ft.Container):
             ],
         )
 
-    def _build_lyrics_view(self, track, player):
+    def _build_lyrics_view(self, track, player, use_curved=False):
         if track is None or not track.lyrics:
             return ft.Container(
                 expand=True,
@@ -380,62 +396,11 @@ class PlayerScreen(ft.Container):
             )
 
         if data.type == "timed":
-            lyrics_content = self._build_timed_lyrics(data, player, track.lyrics_offset)
+            lyrics_content = self._build_timed_lyrics(data, player, track.lyrics_offset, use_curved)
         else:
             lyrics_content = self._build_plain_lyrics(data)
 
-        track_id = track.id
-        offset = track.lyrics_offset
-
-        def adjust_offset(delta):
-            new_offset = offset + delta
-            trepo.update_lyrics_offset(track_id, new_offset)
-            if hasattr(player, 'current_track') and player.current_track:
-                player.current_track.lyrics_offset = new_offset
-            self._rebuild()
-
-        offset_bar = ft.Container(
-            padding=ft.Padding(16, 8, 16, 8),
-            bgcolor=ft.Colors.with_opacity(0.8, ft.Colors.SURFACE),
-            content=ft.Row(
-                tight=True,
-                alignment=ft.MainAxisAlignment.CENTER,
-                controls=[
-                    ft.Text(f"{tr('offset').format(str(offset))}", size=12, weight=ft.FontWeight.BOLD),
-                    ft.Container(width=8),
-                    ft.IconButton(ft.Icons.FAST_REWIND, icon_size=16, tooltip="-100ms", on_click=lambda e: adjust_offset(-100)),
-                    ft.IconButton(ft.Icons.KEYBOARD_ARROW_LEFT, icon_size=16, tooltip="-10ms", on_click=lambda e: adjust_offset(-10)),
-                    ft.TextButton(tr("reset"), on_click=lambda e: adjust_offset(-offset)),
-                    ft.IconButton(ft.Icons.KEYBOARD_ARROW_RIGHT, icon_size=16, tooltip="+10ms", on_click=lambda e: adjust_offset(10)),
-                    ft.IconButton(ft.Icons.FAST_FORWARD, icon_size=16, tooltip="+100ms", on_click=lambda e: adjust_offset(100)),
-                ],
-            ),
-        )
-
-        return ft.Stack(
-            expand=True,
-            controls=[
-                lyrics_content,
-                ft.Container(
-                    right=8, top=8,
-                    content=ft.IconButton(
-                        icon=ft.Icons.MORE_VERT,
-                        icon_size=20,
-                        on_click=lambda e: self._show_lyrics_options(track, player),
-                        tooltip=tr("lyricsOptions"),
-                    ),
-                ),
-                ft.Container(
-                    left=8, bottom=0,
-                    content=ft.IconButton(
-                        icon=ft.Icons.LYRICS,
-                        icon_size=20,
-                        on_click=lambda e: self._show_lyrics_menu(track, player),
-                        tooltip=tr("lyricsOptions"),
-                    ),
-                ),
-            ],
-        )
+        return lyrics_content
 
     def _show_lyrics_menu(self, track, player):
         def do_fetch(e):
@@ -452,7 +417,7 @@ class PlayerScreen(ft.Container):
 
         def do_offset(e):
             self._page.pop_dialog()
-            self._show_offset_dialog(track)
+            self._show_live_sync_page(track, player)
 
         items = [
             ft.ListTile(leading=ft.Icon(ft.Icons.SEARCH), title=ft.Text(tr("fetchLyrics")), on_click=do_fetch),
@@ -465,26 +430,180 @@ class PlayerScreen(ft.Container):
         bs = ft.BottomSheet(content=ft.Column(tight=True, controls=items))
         self._page.show_dialog(bs)
 
-    def _show_offset_dialog(self, track):
-        tf = ft.TextField(label=tr("offsetMs"), value=str(track.lyrics_offset), keyboard_type=ft.KeyboardType.NUMBER, width=200)
-        def do_set(e):
-            try:
-                val = int(tf.value)
-                trepo.update_lyrics_offset(track.id, val)
-                track.lyrics_offset = val
-            except ValueError:
-                pass
-            self._page.pop_dialog()
+    def _show_live_sync_page(self, track, player):
+        temp_offset = track.lyrics_offset
+
+        max_w = max(480, int((self._page.width or 400) * 0.4))
+
+        offset_text = ft.Text(str(temp_offset), size=32, weight=ft.FontWeight.BOLD,
+                              color=ft.Colors.PRIMARY)
+        fine_slider = ft.Slider(
+            min=-5000, max=5000, divisions=100, value=float(temp_offset),
+            on_change=None,
+        )
+        play_icon = ft.IconButton(
+            icon=ft.Icons.PAUSE_ROUNDED if player.is_playing else ft.Icons.PLAY_ARROW_ROUNDED,
+            icon_size=36,
+            on_click=lambda e: player.toggle_play_pause(),
+        )
+        pos_slider = ft.Slider(value=0, min=0, max=max(player.duration_ms, 1), on_change=lambda e: player.seek(int(e.control.value)))
+        pos_text = ft.Text(format_duration(0), size=12)
+        dur_text = ft.Text(format_duration(player.duration_ms), size=12)
+
+        def update_offset(v):
+            nonlocal temp_offset
+            temp_offset = v
+            offset_text.value = str(temp_offset)
+            offset_text.update()
+            fine_slider.value = float(temp_offset)
+            fine_slider.update()
+
+        def on_slider(e):
+            update_offset(int(e.control.value))
+
+        def adjust(delta):
+            update_offset(temp_offset + delta)
+
+        fine_slider.on_change = on_slider
+
+        def do_save():
+            adj = temp_offset - track.lyrics_offset
+            if adj != 0:
+                trepo.update_lyrics_offset(track.id, temp_offset)
+                track.lyrics_offset = temp_offset
+                try:
+                    player.current_track.lyrics_offset = temp_offset
+                except AttributeError:
+                    pass
             self._rebuild()
-        dlg = ft.AlertDialog(
-            title=ft.Text(tr("offsetMs")),
-            content=tf,
-            actions=[
-                ft.TextButton(tr("cancel"), on_click=lambda e: self._page.pop_dialog()),
-                ft.FilledButton(tr("save"), on_click=do_set),
+            self._page.views.pop()
+            self._page.update()
+
+        # Build lyrics preview
+        preview = self._build_sync_lyrics_preview(track, player, temp_offset)
+
+        controls = [
+            ft.Container(
+                width=max_w,
+                content=ft.Column(
+                    tight=True,
+                    horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+                    spacing=12,
+                    controls=[
+                        ft.Text(tr("offsetMs"), size=14, color=ft.Colors.with_opacity(0.7, ft.Colors.ON_SURFACE)),
+                        offset_text,
+                        ft.Row(
+                            tight=True, alignment=ft.MainAxisAlignment.CENTER,
+                            controls=[
+                                ft.IconButton(ft.Icons.FAST_REWIND, icon_size=20, tooltip="-100ms", on_click=lambda e: adjust(-100)),
+                                ft.IconButton(ft.Icons.KEYBOARD_ARROW_LEFT, icon_size=20, tooltip="-10ms", on_click=lambda e: adjust(-10)),
+                                ft.TextButton(tr("reset"), on_click=lambda e: adjust(-temp_offset)),
+                                ft.IconButton(ft.Icons.KEYBOARD_ARROW_RIGHT, icon_size=20, tooltip="+10ms", on_click=lambda e: adjust(10)),
+                                ft.IconButton(ft.Icons.FAST_FORWARD, icon_size=20, tooltip="+100ms", on_click=lambda e: adjust(100)),
+                            ],
+                        ),
+                        ft.Text(tr("fineAdjustment"), size=12, color=ft.Colors.with_opacity(0.6, ft.Colors.ON_SURFACE)),
+                        fine_slider,
+                        ft.Divider(height=1),
+                        ft.Row(
+                            tight=True, alignment=ft.MainAxisAlignment.CENTER,
+                            controls=[
+                                ft.IconButton(ft.Icons.SKIP_PREVIOUS, icon_size=28, on_click=lambda e: player.previous()),
+                                play_icon,
+                                ft.IconButton(ft.Icons.SKIP_NEXT, icon_size=28, on_click=lambda e: player.next()),
+                            ],
+                        ),
+                        pos_slider,
+                        ft.Row(
+                            tight=True,
+                            controls=[pos_text, ft.Container(expand=True), dur_text],
+                        ),
+                        ft.Divider(height=1),
+                        ft.Text(tr("liveLyricsSync"), size=12, color=ft.Colors.with_opacity(0.6, ft.Colors.ON_SURFACE)),
+                        preview if preview else ft.Text(tr("noLyricsAvailable")),
+                    ],
+                ),
+            ),
+        ]
+
+        view = ft.View(
+            route="/live-sync",
+            controls=[
+                ft.Column(
+                    expand=True,
+                    horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+                    controls=[
+                        ft.Row(
+                            tight=True,
+                            controls=[
+                                ft.IconButton(ft.Icons.ARROW_BACK, icon_size=24, on_click=lambda e: self._go_back()),
+                                ft.Container(expand=True),
+                                ft.Text(tr("liveLyricsSync"), size=16, weight=ft.FontWeight.BOLD),
+                                ft.Container(expand=True),
+                                ft.IconButton(ft.Icons.CHECK, icon_size=24, on_click=lambda e: do_save()),
+                            ],
+                        ),
+                        ft.Divider(height=1),
+                        ft.Container(expand=True, content=ft.Column(expand=True, horizontal_alignment=ft.CrossAxisAlignment.CENTER, scroll=ft.ScrollMode.AUTO, controls=controls)),
+                    ],
+                ),
             ],
         )
-        self._page.show_dialog(dlg)
+        self._page.views.append(view)
+        self._page.update()
+
+    def _go_back(self):
+        if len(self._page.views) > 1:
+            self._page.views.pop()
+            self._page.update()
+
+    def _build_sync_lyrics_preview(self, track, player, temp_offset):
+        if not track or not track.lyrics:
+            return None
+        try:
+            data = lyrics_from_json(track.lyrics)
+        except Exception:
+            return None
+        if data.type != "timed":
+            return None
+        pos = player.position_ms + temp_offset
+        current_idx = 0
+        for i, ln in enumerate(data.lines):
+            if (ln.time_ms or 0) <= pos:
+                current_idx = i
+            else:
+                break
+        items = []
+        start = max(0, current_idx - 3)
+        end = min(len(data.lines), current_idx + 4)
+        for i in range(start, end):
+            ln = data.lines[i]
+            is_active = i == current_idx
+            progress = 0.0
+            if is_active:
+                s = ln.time_ms or 0
+                e = (data.lines[i + 1].time_ms or s) if i < len(data.lines) - 1 else player.duration_ms
+                if e > s:
+                    progress = max(0.0, min(1.0, (pos - s) / (e - s)))
+            if is_active and progress > 0 and progress < 1:
+                txt = ft.ShaderMask(
+                    shader=ft.LinearGradient(
+                        begin=ft.Alignment(-1, 0), end=ft.Alignment(1, 0),
+                        colors=[ft.Colors.PRIMARY, ft.Colors.with_opacity(0.5, ft.Colors.ON_SURFACE)],
+                        stops=[progress, progress],
+                    ),
+                    content=ft.Text(ln.text, size=18, weight=ft.FontWeight.BOLD, text_align=ft.TextAlign.CENTER),
+                    blend_mode=ft.BlendMode.SRC_IN,
+                )
+            else:
+                txt = ft.Text(
+                    ln.text, size=16 if is_active else 14,
+                    weight=ft.FontWeight.BOLD if is_active else ft.FontWeight.NORMAL,
+                    color=ft.Colors.PRIMARY if is_active else ft.Colors.with_opacity(0.6, ft.Colors.ON_SURFACE),
+                    text_align=ft.TextAlign.CENTER,
+                )
+            items.append(ft.Container(padding=ft.Padding(16, 4, 16, 4), content=txt))
+        return ft.Column(tight=True, horizontal_alignment=ft.CrossAxisAlignment.CENTER, controls=items)
 
     def _show_lyrics_options(self, track, player):
         def do_refetch(e):
@@ -619,7 +738,7 @@ class PlayerScreen(ft.Container):
         self._rebuild()
         self._page.show_dialog(ft.SnackBar(ft.Text(tr("importedLyricsLines").replace("{}", str(len(ldata.lines))).replace("{}", track.title or ""))))
 
-    def _build_timed_lyrics(self, data, player, offset):
+    def _build_timed_lyrics(self, data, player, offset, use_curved=False):
         pos = player.position_ms + offset
         current_idx = 0
         for i, line in enumerate(data.lines):
@@ -630,69 +749,96 @@ class PlayerScreen(ft.Container):
         self._last_lyrics_idx = current_idx
 
         total = len(data.lines)
-        VISIBLE = 4
-        MAX_ROTATE = 0.12
+        pw = self._page.width or 400
+        is_desktop = pw > 800
+        self._lyrics_shaders = []
+        self._lyrics_marquee = None
         lines = []
+
+        if use_curved:
+            VISIBLE = 5
+            MAX_ROTATE = 0.12
+            MAX_LEAN = 25
+        max_w = int(pw * (0.4 if is_desktop else 0.8))
+        align_x = 1 if (is_desktop and use_curved) else 0
+        text_align = ft.TextAlign.LEFT
 
         for i, line in enumerate(data.lines):
             dist = abs(i - current_idx)
-            if dist > VISIBLE:
+            if use_curved and dist > VISIBLE:
                 continue
 
-            direction = -1 if i < current_idx else 1
-            t = dist / VISIBLE
-            rotate = direction * t * MAX_ROTATE
-            opacity = 1.0 - t * 0.65
-            height = max(26, int(48 - t * 22))
+            is_active = i == current_idx
 
-            if dist == 0:
-                fsize = 20
-                fw = ft.FontWeight.BOLD
-            elif dist == 1:
-                fsize = 16
-                fw = ft.FontWeight.NORMAL
+            if use_curved:
+                direction = -1 if i < current_idx else 1
+                t = dist / VISIBLE
+                rotate = direction * t * MAX_ROTATE
+                left_pad = int(32 + t * MAX_LEAN)
+                opacity = max(0.4, 1.0 - t * 0.6)
+                if dist == 0:
+                    fsize = 18
+                    fw = ft.FontWeight.BOLD
+                    color = ft.Colors.PRIMARY
+                elif dist == 1:
+                    fsize = 16
+                    fw = ft.FontWeight.NORMAL
+                    color = ft.Colors.with_opacity(0.7, ft.Colors.ON_SURFACE)
+                else:
+                    fsize = max(12, 16 - (dist - 1) * 2)
+                    fw = ft.FontWeight.NORMAL
+                    color = ft.Colors.with_opacity(opacity, ft.Colors.ON_SURFACE)
             else:
-                fsize = max(12, int(16 - (dist - 1) * 2))
-                fw = ft.FontWeight.NORMAL
+                rotate = 0.0
+                left_pad = 32
+                opacity = 1.0
+                if is_active:
+                    fsize = 18
+                    fw = ft.FontWeight.BOLD
+                    color = ft.Colors.PRIMARY
+                else:
+                    fsize = 16
+                    fw = ft.FontWeight.NORMAL
+                    color = ft.Colors.with_opacity(0.7, ft.Colors.ON_SURFACE)
 
-            if dist == 0:
+            txt_container = ft.Container(
+                height=50,
+                padding=ft.Padding(left_pad, 0, 32, 0),
+                alignment=ft.Alignment(align_x, 0),
+                rotate=rotate if use_curved else None,
+                on_click=lambda e, t=line.time_ms: player.seek(t) if t else None,
+            )
+
+            if is_active:
                 start = line.time_ms or 0
                 end = (data.lines[i + 1].time_ms or start) if i < total - 1 else player.duration_ms
                 progress = max(0.0, min(1.0, (pos - start) / (end - start))) if end > start else 0.0
-                active_color = ft.Colors.PRIMARY
                 inactive_color = ft.Colors.with_opacity(0.5, ft.Colors.ON_SURFACE)
 
-                txt = ft.Container(
-                    height=height,
-                    padding=ft.Padding(32, 4, 32, 4),
-                    alignment=ft.Alignment(0, 0),
-                    rotate=rotate,
-                    content=ft.ShaderMask(
-                        shader=ft.LinearGradient(
-                            begin=ft.Alignment(-1, 0), end=ft.Alignment(1, 0),
-                            colors=[active_color, inactive_color],
-                            stops=[progress, progress],
-                        ),
-                        content=ft.Text(line.text, size=fsize, weight=fw, max_lines=2,
-                                        overflow=ft.TextOverflow.ELLIPSIS, text_align=ft.TextAlign.CENTER),
-                        blend_mode=ft.BlendMode.SRC_IN,
+                shader = ft.ShaderMask(
+                    shader=ft.LinearGradient(
+                        begin=ft.Alignment(-1, 0), end=ft.Alignment(1, 0),
+                        colors=[ft.Colors.PRIMARY, inactive_color],
+                        stops=[progress, progress],
                     ),
-                    on_click=lambda e, t=line.time_ms: player.seek(t) if t else None,
+                    content=ft.Text(line.text, size=fsize, weight=fw, max_lines=1,
+                                    overflow=ft.TextOverflow.ELLIPSIS, text_align=text_align),
+                    blend_mode=ft.BlendMode.SRC_IN,
                 )
-            else:
-                txt = ft.Container(
-                    height=height,
-                    padding=ft.Padding(32, 2, 32, 2),
-                    alignment=ft.Alignment(0, 0),
-                    rotate=rotate,
-                    content=ft.Text(line.text, size=fsize, weight=fw,
-                                    color=ft.Colors.with_opacity(opacity, ft.Colors.ON_SURFACE),
-                                    max_lines=1, overflow=ft.TextOverflow.ELLIPSIS,
-                                    text_align=ft.TextAlign.CENTER),
-                    on_click=lambda e, t=line.time_ms: player.seek(t) if t else None,
-                )
+                self._lyrics_shaders.append(shader)
+                txt_container.content = shader
 
-            lines.append(txt)
+                nchars = len(line.text)
+                if nchars > 30:
+                    self._lyrics_marquee = (txt_container, left_pad)
+            else:
+                txt_container.content = ft.Text(line.text, size=fsize, weight=fw,
+                                                color=color, max_lines=1,
+                                                overflow=ft.TextOverflow.ELLIPSIS,
+                                                text_align=text_align)
+
+            txt_container.width = max_w
+            lines.append(txt_container)
 
         return ft.Container(
             expand=True,
