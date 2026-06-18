@@ -31,7 +31,7 @@ jobs:
           key: flutter-${{ env.FLET_VERSION }}
       - name: Build
         timeout-minutes: 60
-        run: flet build windows
+        run: flet build windows --yes --no-rich-output
       - uses: actions/upload-artifact@v4
         with:
           name: GroovyBox-Windows
@@ -60,7 +60,7 @@ jobs:
           key: flutter-${{ env.FLET_VERSION }}
       - name: Build
         timeout-minutes: 60
-        run: flet build linux
+        run: flet build linux --yes --no-rich-output
       - uses: actions/upload-artifact@v4
         with:
           name: GroovyBox-Linux
@@ -85,7 +85,7 @@ jobs:
           key: flutter-${{ env.FLET_VERSION }}
       - name: Build
         timeout-minutes: 60
-        run: flet build macos
+        run: flet build macos --yes --no-rich-output
       - uses: actions/upload-artifact@v4
         with:
           name: GroovyBox-macOS
@@ -115,7 +115,7 @@ jobs:
           key: flutter-${{ env.FLET_VERSION }}
       - name: Build
         timeout-minutes: 60
-        run: flet build apk
+        run: flet build apk --yes --no-rich-output
       - uses: actions/upload-artifact@v4
         with:
           name: GroovyBox-Android
