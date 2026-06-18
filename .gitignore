@@ -35,3 +35,5 @@ venv/
 *test*.*
 # Flet build
 .flet/
+# Build config docs (local reference only)
+build-config-reference.md
