@@ -4,86 +4,123 @@ on:
   workflow_dispatch:
     inputs:
       platforms:
-        description: 'Platforms to build (JSON array)'
+        description: 'Platforms (comma-separated): windows, linux, macos, android'
         required: true
-        default: '["windows","linux","macos","android"]'
+        default: 'windows,linux,macos,android'
 
 env:
   FLET_VERSION: '0.85.3'
 
 jobs:
-  build:
-    name: ${{ matrix.target }}
-    runs-on: ${{ matrix.runner }}
-    if: contains(fromJSON(inputs.platforms), matrix.target)
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - target: windows
-            runner: windows-latest
-            flet_target: windows
-          - target: linux
-            runner: ubuntu-latest
-            flet_target: linux
-          - target: macos
-            runner: macos-latest
-            flet_target: macos
-          - target: android
-            runner: ubuntu-latest
-            flet_target: apk
-
+  windows:
+    if: contains(inputs.platforms, 'windows')
+    runs-on: windows-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Python 3.12
-        uses: actions/setup-python@v5
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-
-      - name: Setup Java 17 (Android only)
-        if: matrix.target == 'android'
-        uses: actions/setup-java@v4
-        with:
-          distribution: 'temurin'
-          java-version: '17'
-
-      - name: Setup Android SDK (Android only)
-        if: matrix.target == 'android'
-        uses: android-actions/setup-android@v3
-
-      - name: Install Linux system dependencies
-        if: matrix.target == 'linux'
+      - name: Install dependencies
         run: |
-          sudo apt-get update
-          sudo apt-get install -y \
-            libmpv-dev \
-            libxcb-shape0-dev \
-            libxcb-xfixes0-dev \
-            libxcb1-dev \
-            libxkbcommon-dev \
-            libgtk-3-dev \
-            liblzma-dev
-
+          cd GroovyBox_flet
+          pip install flet==${{ env.FLET_VERSION }} flet-audio==${{ env.FLET_VERSION }}
+          pip install pygame mutagen Pillow colorthief httpx
       - name: Cache Flutter SDK
         uses: actions/cache@v4
         with:
           path: ~/.flet/flutter
           key: flutter-${{ env.FLET_VERSION }}
+      - name: Build
+        timeout-minutes: 60
+        run: cd GroovyBox_flet && flet build windows
+      - uses: actions/upload-artifact@v4
+        with:
+          name: GroovyBox-Windows
+          path: GroovyBox_flet/dist/*
 
-      - name: Install Python dependencies
+  linux:
+    if: contains(inputs.platforms, 'linux')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install system deps
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libmpv-dev libgtk-3-dev libxcb-shape0-dev libxcb-xfixes0-dev libxkbcommon-dev liblzma-dev
+      - name: Install dependencies
         run: |
           cd GroovyBox_flet
           pip install flet==${{ env.FLET_VERSION }} flet-audio==${{ env.FLET_VERSION }}
           pip install pygame mutagen Pillow colorthief httpx
-
-      - name: Build
-        run: cd GroovyBox_flet && flet build ${{ matrix.flet_target }}
-
-      - name: Upload artifact
-        uses: actions/upload-artifact@v4
+      - name: Cache Flutter SDK
+        uses: actions/cache@v4
         with:
-          name: GroovyBox-${{ matrix.target }}
-          path: |
-            GroovyBox_flet/dist/*
+          path: ~/.flet/flutter
+          key: flutter-${{ env.FLET_VERSION }}
+      - name: Build
+        timeout-minutes: 60
+        run: cd GroovyBox_flet && flet build linux
+      - uses: actions/upload-artifact@v4
+        with:
+          name: GroovyBox-Linux
+          path: GroovyBox_flet/dist/*
+
+  macos:
+    if: contains(inputs.platforms, 'macos')
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install dependencies
+        run: |
+          cd GroovyBox_flet
+          pip install flet==${{ env.FLET_VERSION }} flet-audio==${{ env.FLET_VERSION }}
+          pip install pygame mutagen Pillow colorthief httpx
+      - name: Cache Flutter SDK
+        uses: actions/cache@v4
+        with:
+          path: ~/.flet/flutter
+          key: flutter-${{ env.FLET_VERSION }}
+      - name: Build
+        timeout-minutes: 60
+        run: cd GroovyBox_flet && flet build macos
+      - uses: actions/upload-artifact@v4
+        with:
+          name: GroovyBox-macOS
+          path: GroovyBox_flet/dist/*
+
+  android:
+    if: contains(inputs.platforms, 'android')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+      - uses: android-actions/setup-android@v3
+      - name: Install dependencies
+        run: |
+          cd GroovyBox_flet
+          pip install flet==${{ env.FLET_VERSION }} flet-audio==${{ env.FLET_VERSION }}
+          pip install pygame mutagen Pillow colorthief httpx
+      - name: Cache Flutter SDK
+        uses: actions/cache@v4
+        with:
+          path: ~/.flet/flutter
+          key: flutter-${{ env.FLET_VERSION }}
+      - name: Build
+        timeout-minutes: 60
+        run: cd GroovyBox_flet && flet build apk
+      - uses: actions/upload-artifact@v4
+        with:
+          name: GroovyBox-Android
+          path: GroovyBox_flet/dist/*
