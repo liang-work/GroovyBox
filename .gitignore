@@ -33,3 +33,5 @@ dist/
 venv/
 .venv/
 *test*.*
+# Flet build
+.flet/
