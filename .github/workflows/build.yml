@@ -36,12 +36,10 @@ jobs:
         env:
           PYTHONIOENCODING: utf-8
         run: flet build windows --yes --no-rich-output --skip-flutter-doctor
-      - name: List dist
-        run: Get-ChildItem dist -ErrorAction SilentlyContinue | Select-Object Name
       - uses: actions/upload-artifact@v4
         with:
           name: GroovyBox-Windows
-          path: dist/*
+          path: build\windows\**
           if-no-files-found: error
 
   linux:
@@ -70,12 +68,10 @@ jobs:
       - name: Build
         timeout-minutes: 60
         run: flet build linux --yes --no-rich-output --skip-flutter-doctor
-      - name: List dist
-        run: ls -la dist/
       - uses: actions/upload-artifact@v4
         with:
           name: GroovyBox-Linux
-          path: dist/*
+          path: build/linux/**
           if-no-files-found: error
 
   macos:
@@ -100,12 +96,10 @@ jobs:
       - name: Build
         timeout-minutes: 60
         run: flet build macos --yes --no-rich-output --skip-flutter-doctor
-      - name: List dist
-        run: ls -la dist/
       - uses: actions/upload-artifact@v4
         with:
           name: GroovyBox-macOS
-          path: dist/*
+          path: build/macos/**
           if-no-files-found: error
 
   android:
@@ -133,10 +127,8 @@ jobs:
       - name: Build
         timeout-minutes: 60
         run: flet build apk --yes --no-rich-output --skip-flutter-doctor
-      - name: List dist
-        run: ls -la dist/
       - uses: actions/upload-artifact@v4
         with:
           name: GroovyBox-Android
-          path: dist/*
+          path: build/apk/*.apk
           if-no-files-found: error
