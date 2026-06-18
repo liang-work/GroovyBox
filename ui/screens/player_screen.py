@@ -37,11 +37,10 @@ class PlayerScreen(ft.Container):
         self._play_btn = None
         self._prev_view_mode = None
         self._last_lyrics_idx = -1
+        self._cached_dur = 0
         self._sync_active = False
         self._sync_track = None
         self._sync_temp_offset = 0
-        self._lyrics_shaders = []
-        self._lyrics_marquee = None
 
         page.on_keyboard_event = self._on_keyboard
         self._initialized = False
@@ -99,8 +98,10 @@ class PlayerScreen(ft.Container):
     def refresh_position(self, pos_ms: int, dur_ms: int):
         if self._pos_slider:
             max_val = max(dur_ms, 1)
-            self._pos_slider.min = 0
-            self._pos_slider.max = float(max_val)
+            if max_val != getattr(self, '_cached_dur', 0):
+                self._pos_slider.min = 0
+                self._pos_slider.max = float(max_val)
+                self._cached_dur = max_val
             self._pos_slider.value = float(max(0, min(pos_ms, max_val)))
             self._pos_slider.update()
         if self._pos_text:
@@ -119,8 +120,7 @@ class PlayerScreen(ft.Container):
                     adj_pos = pos_ms + offset
                     new_idx = 0
                     try:
-                        from logic.lyrics_parser import lyrics_from_json
-                        data = lyrics_from_json(track.lyrics)
+                        data = getattr(self, '_lyrics_data', None)
                         if data and data.type == "timed":
                             for i, ln in enumerate(data.lines):
                                 if (ln.time_ms or 0) <= adj_pos:
@@ -128,9 +128,11 @@ class PlayerScreen(ft.Container):
                                 else:
                                     break
                             if new_idx != self._last_lyrics_idx:
-                                self._rebuild()
+                                self._update_lyrics_styles(new_idx)
                     except Exception:
                         pass
+
+        self._page.update()
 
     def refresh_play_state(self, is_playing: bool):
         if self._play_btn:
@@ -248,12 +250,14 @@ class PlayerScreen(ft.Container):
         return ft.Row(expand=True, spacing=0, controls=[left, right])
 
     def _build_volume_row(self, player):
+        pw = self._page.width or 400
+        vol_w = max(80, int((min(400, pw - 80)) * 0.85))
         return ft.Row(
             tight=True,
             controls=[
                 ft.Icon(ft.Icons.VOLUME_UP, size=20, color=ft.Colors.with_opacity(0.7, ft.Colors.ON_SURFACE)),
                 ft.Container(
-                    width=160,
+                    width=vol_w,
                     content=ft.Slider(
                         value=player.volume * 100, min=0, max=100, divisions=100,
                         on_change=lambda e: _safe_volume(e, player),
@@ -737,13 +741,14 @@ class PlayerScreen(ft.Container):
             else:
                 break
         self._last_lyrics_idx = current_idx
+        self._lyrics_data = data
+        self._lyrics_use_curved = use_curved
+        self._lyrics_offset = offset
+        self._lyrics_widgets = []
 
         total = len(data.lines)
         pw = self._page.width or 400
         is_desktop = pw > 800
-        self._lyrics_shaders = []
-        self._lyrics_marquee = None
-        lines = []
 
         if use_curved:
             VISIBLE = 5
@@ -753,6 +758,7 @@ class PlayerScreen(ft.Container):
         align_x = 1 if (is_desktop and use_curved) else 0
         text_align = ft.TextAlign.LEFT
 
+        lines = []
         for i, line in enumerate(data.lines):
             dist = abs(i - current_idx)
             if use_curved and dist > VISIBLE:
@@ -767,67 +773,33 @@ class PlayerScreen(ft.Container):
                 left_pad = int(32 + t * MAX_LEAN)
                 opacity = max(0.4, 1.0 - t * 0.6)
                 if dist == 0:
-                    fsize = 18
-                    fw = ft.FontWeight.BOLD
-                    color = ft.Colors.PRIMARY
+                    fsize, fw, color = 18, ft.FontWeight.BOLD, ft.Colors.PRIMARY
                 elif dist == 1:
-                    fsize = 16
-                    fw = ft.FontWeight.NORMAL
-                    color = ft.Colors.with_opacity(0.7, ft.Colors.ON_SURFACE)
+                    fsize, fw, color = 16, ft.FontWeight.NORMAL, ft.Colors.with_opacity(0.7, ft.Colors.ON_SURFACE)
                 else:
-                    fsize = max(12, 16 - (dist - 1) * 2)
-                    fw = ft.FontWeight.NORMAL
-                    color = ft.Colors.with_opacity(opacity, ft.Colors.ON_SURFACE)
+                    fsize, fw, color = max(12, 16 - (dist - 1) * 2), ft.FontWeight.NORMAL, ft.Colors.with_opacity(opacity, ft.Colors.ON_SURFACE)
             else:
                 rotate = 0.0
                 left_pad = 32
-                opacity = 1.0
                 if is_active:
-                    fsize = 18
-                    fw = ft.FontWeight.BOLD
-                    color = ft.Colors.PRIMARY
+                    fsize, fw, color = 18, ft.FontWeight.BOLD, ft.Colors.PRIMARY
                 else:
-                    fsize = 16
-                    fw = ft.FontWeight.NORMAL
-                    color = ft.Colors.with_opacity(0.7, ft.Colors.ON_SURFACE)
+                    fsize, fw, color = 16, ft.FontWeight.NORMAL, ft.Colors.with_opacity(0.7, ft.Colors.ON_SURFACE)
 
             txt_container = ft.Container(
                 height=50,
                 padding=ft.Padding(left_pad, 0, 32, 0),
                 alignment=ft.Alignment(align_x, 0),
                 rotate=rotate if use_curved else None,
+                width=max_w,
                 on_click=lambda e, t=line.time_ms: player.seek(t) if t else None,
             )
 
-            if is_active:
-                start = line.time_ms or 0
-                end = (data.lines[i + 1].time_ms or start) if i < total - 1 else player.duration_ms
-                progress = max(0.0, min(1.0, (pos - start) / (end - start))) if end > start else 0.0
-                inactive_color = ft.Colors.with_opacity(0.5, ft.Colors.ON_SURFACE)
-
-                shader = ft.ShaderMask(
-                    shader=ft.LinearGradient(
-                        begin=ft.Alignment(-1, 0), end=ft.Alignment(1, 0),
-                        colors=[ft.Colors.PRIMARY, inactive_color],
-                        stops=[progress, progress],
-                    ),
-                    content=ft.Text(line.text, size=fsize, weight=fw, max_lines=1,
-                                    overflow=ft.TextOverflow.ELLIPSIS, text_align=text_align),
-                    blend_mode=ft.BlendMode.SRC_IN,
-                )
-                self._lyrics_shaders.append(shader)
-                txt_container.content = shader
-
-                nchars = len(line.text)
-                if nchars > 30:
-                    self._lyrics_marquee = (txt_container, left_pad)
-            else:
-                txt_container.content = ft.Text(line.text, size=fsize, weight=fw,
-                                                color=color, max_lines=1,
-                                                overflow=ft.TextOverflow.ELLIPSIS,
-                                                text_align=text_align)
-
-            txt_container.width = max_w
+            txt_container.content = ft.Text(line.text, size=fsize, weight=fw,
+                                            color=color, max_lines=1,
+                                            overflow=ft.TextOverflow.ELLIPSIS,
+                                            text_align=text_align)
+            self._lyrics_widgets.append(txt_container)
             lines.append(txt_container)
 
         return ft.Container(
@@ -840,6 +812,57 @@ class PlayerScreen(ft.Container):
                 controls=lines,
             ),
         )
+
+    def _update_lyrics_styles(self, new_idx):
+        data = self._lyrics_data
+        use_curved = getattr(self, '_lyrics_use_curved', False)
+        total = len(data.lines)
+        pw = self._page.width or 400
+        is_desktop = pw > 800
+        align_x = 1 if (is_desktop and use_curved) else 0
+
+        VISIBLE = 5
+        MAX_ROTATE = 0.12
+        MAX_LEAN = 25
+
+        for i, container in enumerate(self._lyrics_widgets):
+            dist = abs(i - new_idx)
+
+            if use_curved and dist > VISIBLE:
+                container.visible = False
+            else:
+                container.visible = True
+
+            if use_curved:
+                direction = -1 if i < new_idx else 1
+                t = dist / VISIBLE
+                container.rotate = direction * t * MAX_ROTATE if dist <= VISIBLE else 0.0
+                left_pad = int(32 + min(t, 1.0) * MAX_LEAN)
+                container.padding = ft.Padding(left_pad, 0, 32, 0)
+                container.alignment = ft.Alignment(align_x, 0)
+
+                if dist == 0:
+                    fsize, fw, color = 18, ft.FontWeight.BOLD, ft.Colors.PRIMARY
+                elif dist == 1:
+                    fsize, fw, color = 16, ft.FontWeight.NORMAL, ft.Colors.with_opacity(0.7, ft.Colors.ON_SURFACE)
+                else:
+                    fsize, fw, color = max(12, 16 - (dist - 1) * 2), ft.FontWeight.NORMAL, ft.Colors.with_opacity(max(0.4, 1.0 - t * 0.6), ft.Colors.ON_SURFACE)
+            else:
+                container.rotate = None
+                container.padding = ft.Padding(32, 0, 32, 0)
+                container.alignment = ft.Alignment(0, 0)
+                if i == new_idx:
+                    fsize, fw, color = 18, ft.FontWeight.BOLD, ft.Colors.PRIMARY
+                else:
+                    fsize, fw, color = 16, ft.FontWeight.NORMAL, ft.Colors.with_opacity(0.7, ft.Colors.ON_SURFACE)
+
+            txt = container.content
+            txt.size = fsize
+            txt.weight = fw
+            txt.color = color
+            container.update()
+
+        self._last_lyrics_idx = new_idx
 
     def _build_plain_lyrics(self, data):
         return ft.Column(

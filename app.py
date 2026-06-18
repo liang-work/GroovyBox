@@ -82,7 +82,6 @@ class GroovyBoxApp:
             if self.shell:
                 self.shell.mini_player.refresh_position(pos_ms, dur_ms)
             self._call_player_method("refresh_position", pos_ms, dur_ms)
-            self.page.update()
         except Exception as ex:
             logger.warning(f"_on_position_change skipped: {ex}")
 

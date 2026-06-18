@@ -171,6 +171,7 @@ class MiniPlayerWidget(ft.Container):
         self._is_loading = player.loading
         self._position_ms = player.position_ms
         self._duration_ms = player.duration_ms
+        self._cached_dur = 0
         self._volume = player.volume
         self.repeat_mode = player.repeat_mode
         self.shuffle = player.shuffle
@@ -197,8 +198,10 @@ class MiniPlayerWidget(ft.Container):
         self._duration_ms = dur_ms
         if self._pos_slider:
             max_val = max(dur_ms, 1)
-            self._pos_slider.min = 0
-            self._pos_slider.max = float(max_val)
+            if max_val != getattr(self, '_cached_dur', 0):
+                self._pos_slider.min = 0
+                self._pos_slider.max = float(max_val)
+                self._cached_dur = max_val
             self._pos_slider.value = float(max(0, min(pos_ms, max_val)))
             self._pos_slider.update()
 

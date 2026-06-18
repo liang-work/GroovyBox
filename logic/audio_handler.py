@@ -100,10 +100,18 @@ class AudioPlayer:
                 return
             asyncio.run(fn(*args))
         else:
+            loop = None
             try:
-                fn(*args)
-            except Exception as ex:
-                logger.error(f"_run_on_ui error: {ex}")
+                loop = asyncio.get_running_loop()
+            except RuntimeError:
+                pass
+            if loop and loop.is_running():
+                loop.call_soon_threadsafe(fn, *args)
+            else:
+                try:
+                    fn(*args)
+                except Exception as ex:
+                    logger.error(f"_run_on_ui error: {ex}")
 
     def _poll_loop(self):
         while self._timer_active:
