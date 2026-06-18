@@ -37,6 +37,9 @@ class PlayerScreen(ft.Container):
         self._play_btn = None
         self._prev_view_mode = None
         self._last_lyrics_idx = -1
+        self._sync_active = False
+        self._sync_track = None
+        self._sync_temp_offset = 0
         self._lyrics_shaders = []
         self._lyrics_marquee = None
 
@@ -135,6 +138,13 @@ class PlayerScreen(ft.Container):
             self._play_btn.update()
 
     def _rebuild(self):
+        if self._sync_active:
+            content = self._build_sync_content()
+            self._inner.controls = [content]
+            if self._initialized:
+                self.update()
+            return
+
         app = self._get_app()
         player = self._get_player()
 
@@ -417,7 +427,10 @@ class PlayerScreen(ft.Container):
 
         def do_offset(e):
             self._page.pop_dialog()
-            self._show_live_sync_page(track, player)
+            self._sync_active = True
+            self._sync_track = track
+            self._sync_temp_offset = track.lyrics_offset
+            self._rebuild()
 
         items = [
             ft.ListTile(leading=ft.Icon(ft.Icons.SEARCH), title=ft.Text(tr("fetchLyrics")), on_click=do_fetch),
@@ -430,132 +443,109 @@ class PlayerScreen(ft.Container):
         bs = ft.BottomSheet(content=ft.Column(tight=True, controls=items))
         self._page.show_dialog(bs)
 
-    def _show_live_sync_page(self, track, player):
-        temp_offset = track.lyrics_offset
-
+    def _build_sync_content(self):
+        player = self._get_player()
+        if not player:
+            return ft.Container(expand=True, content=ft.Text(tr("noMediaSelected")))
+        track = player.get_current_track()
         max_w = max(480, int((self._page.width or 400) * 0.4))
-
-        offset_text = ft.Text(str(temp_offset), size=32, weight=ft.FontWeight.BOLD,
-                              color=ft.Colors.PRIMARY)
-        fine_slider = ft.Slider(
-            min=-5000, max=5000, divisions=100, value=float(temp_offset),
-            on_change=None,
-        )
-        play_icon = ft.IconButton(
+        offset_text = ft.Text(str(self._sync_temp_offset), size=32,
+                              weight=ft.FontWeight.BOLD, color=ft.Colors.PRIMARY)
+        fine_slider = ft.Slider(min=-5000, max=5000, divisions=100,
+                                value=float(self._sync_temp_offset), on_change=None)
+        play_btn = ft.IconButton(
             icon=ft.Icons.PAUSE_ROUNDED if player.is_playing else ft.Icons.PLAY_ARROW_ROUNDED,
-            icon_size=36,
-            on_click=lambda e: player.toggle_play_pause(),
-        )
-        pos_slider = ft.Slider(value=0, min=0, max=max(player.duration_ms, 1), on_change=lambda e: player.seek(int(e.control.value)))
-        pos_text = ft.Text(format_duration(0), size=12)
-        dur_text = ft.Text(format_duration(player.duration_ms), size=12)
+            icon_size=36, on_click=lambda e: player.toggle_play_pause())
+        self._pos_slider = ft.Slider(
+            value=float(player.position_ms), min=0,
+            max=max(float(player.duration_ms), 1),
+            on_change=lambda e: player.seek(int(e.control.value)))
+        self._pos_text = ft.Text(format_duration(player.position_ms), size=12)
+        self._dur_text = ft.Text(format_duration(player.duration_ms), size=12)
+        self._play_btn = play_btn
 
         def update_offset(v):
-            nonlocal temp_offset
-            temp_offset = v
-            offset_text.value = str(temp_offset)
+            self._sync_temp_offset = v
+            offset_text.value = str(v)
             offset_text.update()
-            fine_slider.value = float(temp_offset)
+            fine_slider.value = float(v)
             fine_slider.update()
 
         def on_slider(e):
             update_offset(int(e.control.value))
-
-        def adjust(delta):
-            update_offset(temp_offset + delta)
-
         fine_slider.on_change = on_slider
 
-        def do_save():
-            adj = temp_offset - track.lyrics_offset
-            if adj != 0:
-                trepo.update_lyrics_offset(track.id, temp_offset)
-                track.lyrics_offset = temp_offset
-                try:
-                    player.current_track.lyrics_offset = temp_offset
-                except AttributeError:
-                    pass
-            self._rebuild()
-            self._page.views.pop()
-            self._page.update()
+        def adjust(delta):
+            update_offset(self._sync_temp_offset + delta)
 
-        # Build lyrics preview
-        preview = self._build_sync_lyrics_preview(track, player, temp_offset)
+        try:
+            preview = self._build_sync_lyrics_preview(track, player, self._sync_temp_offset)
+        except Exception:
+            preview = None
 
-        controls = [
-            ft.Container(
-                width=max_w,
-                content=ft.Column(
-                    tight=True,
-                    horizontal_alignment=ft.CrossAxisAlignment.CENTER,
-                    spacing=12,
-                    controls=[
-                        ft.Text(tr("offsetMs"), size=14, color=ft.Colors.with_opacity(0.7, ft.Colors.ON_SURFACE)),
-                        offset_text,
-                        ft.Row(
-                            tight=True, alignment=ft.MainAxisAlignment.CENTER,
-                            controls=[
-                                ft.IconButton(ft.Icons.FAST_REWIND, icon_size=20, tooltip="-100ms", on_click=lambda e: adjust(-100)),
-                                ft.IconButton(ft.Icons.KEYBOARD_ARROW_LEFT, icon_size=20, tooltip="-10ms", on_click=lambda e: adjust(-10)),
-                                ft.TextButton(tr("reset"), on_click=lambda e: adjust(-temp_offset)),
-                                ft.IconButton(ft.Icons.KEYBOARD_ARROW_RIGHT, icon_size=20, tooltip="+10ms", on_click=lambda e: adjust(10)),
-                                ft.IconButton(ft.Icons.FAST_FORWARD, icon_size=20, tooltip="+100ms", on_click=lambda e: adjust(100)),
-                            ],
-                        ),
-                        ft.Text(tr("fineAdjustment"), size=12, color=ft.Colors.with_opacity(0.6, ft.Colors.ON_SURFACE)),
-                        fine_slider,
-                        ft.Divider(height=1),
-                        ft.Row(
-                            tight=True, alignment=ft.MainAxisAlignment.CENTER,
-                            controls=[
-                                ft.IconButton(ft.Icons.SKIP_PREVIOUS, icon_size=28, on_click=lambda e: player.previous()),
-                                play_icon,
-                                ft.IconButton(ft.Icons.SKIP_NEXT, icon_size=28, on_click=lambda e: player.next()),
-                            ],
-                        ),
-                        pos_slider,
-                        ft.Row(
-                            tight=True,
-                            controls=[pos_text, ft.Container(expand=True), dur_text],
-                        ),
-                        ft.Divider(height=1),
-                        ft.Text(tr("liveLyricsSync"), size=12, color=ft.Colors.with_opacity(0.6, ft.Colors.ON_SURFACE)),
-                        preview if preview else ft.Text(tr("noLyricsAvailable")),
-                    ],
-                ),
-            ),
+        inner = [
+            ft.Text(tr("offsetMs"), size=14, color=ft.Colors.with_opacity(0.7, ft.Colors.ON_SURFACE)),
+            offset_text,
+            ft.Row(tight=True, alignment=ft.MainAxisAlignment.CENTER, controls=[
+                ft.IconButton(ft.Icons.FAST_REWIND, icon_size=20, tooltip="-100ms", on_click=lambda e: adjust(-100)),
+                ft.IconButton(ft.Icons.KEYBOARD_ARROW_LEFT, icon_size=20, tooltip="-10ms", on_click=lambda e: adjust(-10)),
+                ft.TextButton(tr("reset"), on_click=lambda e: adjust(-self._sync_temp_offset)),
+                ft.IconButton(ft.Icons.KEYBOARD_ARROW_RIGHT, icon_size=20, tooltip="+10ms", on_click=lambda e: adjust(10)),
+                ft.IconButton(ft.Icons.FAST_FORWARD, icon_size=20, tooltip="+100ms", on_click=lambda e: adjust(100)),
+            ]),
+            ft.Text(tr("fineAdjustment"), size=12, color=ft.Colors.with_opacity(0.6, ft.Colors.ON_SURFACE)),
+            fine_slider,
+            ft.Divider(height=1),
+            ft.Row(tight=True, alignment=ft.MainAxisAlignment.CENTER, controls=[
+                ft.IconButton(ft.Icons.SKIP_PREVIOUS, icon_size=28, on_click=lambda e: player.previous()),
+                play_btn,
+                ft.IconButton(ft.Icons.SKIP_NEXT, icon_size=28, on_click=lambda e: player.next()),
+            ]),
+            self._pos_slider,
+            ft.Row(tight=True, controls=[self._pos_text, ft.Container(expand=True), self._dur_text]),
+            ft.Divider(height=1),
+            ft.Text(tr("liveLyricsSync"), size=12, color=ft.Colors.with_opacity(0.6, ft.Colors.ON_SURFACE)),
+            preview if preview else ft.Text(tr("noLyricsAvailable")),
         ]
 
-        view = ft.View(
-            route="/live-sync",
-            controls=[
-                ft.Column(
-                    expand=True,
-                    horizontal_alignment=ft.CrossAxisAlignment.CENTER,
-                    controls=[
-                        ft.Row(
-                            tight=True,
-                            controls=[
-                                ft.IconButton(ft.Icons.ARROW_BACK, icon_size=24, on_click=lambda e: self._go_back()),
-                                ft.Container(expand=True),
-                                ft.Text(tr("liveLyricsSync"), size=16, weight=ft.FontWeight.BOLD),
-                                ft.Container(expand=True),
-                                ft.IconButton(ft.Icons.CHECK, icon_size=24, on_click=lambda e: do_save()),
-                            ],
-                        ),
-                        ft.Divider(height=1),
-                        ft.Container(expand=True, content=ft.Column(expand=True, horizontal_alignment=ft.CrossAxisAlignment.CENTER, scroll=ft.ScrollMode.AUTO, controls=controls)),
-                    ],
-                ),
-            ],
+        return ft.Container(
+            expand=True, bgcolor=ft.Colors.SURFACE,
+            content=ft.Column(expand=True, horizontal_alignment=ft.CrossAxisAlignment.CENTER, controls=[
+                ft.Row(tight=True, controls=[
+                    ft.IconButton(ft.Icons.ARROW_BACK, icon_size=24, on_click=lambda e: self._on_sync_back()),
+                    ft.Container(expand=True),
+                    ft.Text(tr("liveLyricsSync"), size=16, weight=ft.FontWeight.BOLD),
+                    ft.Container(expand=True),
+                    ft.IconButton(ft.Icons.CHECK, icon_size=24, on_click=lambda e: self._on_sync_save()),
+                ]),
+                ft.Divider(height=1),
+                ft.Container(expand=True, content=ft.Column(expand=True, scroll=ft.ScrollMode.AUTO, controls=[
+                    ft.Container(width=max_w, content=ft.Column(tight=True,
+                        horizontal_alignment=ft.CrossAxisAlignment.CENTER, spacing=12, controls=inner)),
+                ])),
+            ]),
         )
-        self._page.views.append(view)
-        self._page.update()
 
-    def _go_back(self):
-        if len(self._page.views) > 1:
-            self._page.views.pop()
-            self._page.update()
+    def _on_sync_back(self):
+        self._sync_active = False
+        self._rebuild()
+
+    def _on_sync_save(self):
+        track = self._sync_track
+        if track:
+            adj = self._sync_temp_offset - track.lyrics_offset
+            if adj != 0:
+                from data import track_repository as trepo
+                trepo.update_lyrics_offset(track.id, self._sync_temp_offset)
+                track.lyrics_offset = self._sync_temp_offset
+                try:
+                    player = self._get_player()
+                    if player and hasattr(player, 'current_track') and player.current_track:
+                        player.current_track.lyrics_offset = self._sync_temp_offset
+                except AttributeError:
+                    pass
+        self._sync_active = False
+        self._rebuild()
 
     def _build_sync_lyrics_preview(self, track, player, temp_offset):
         if not track or not track.lyrics:

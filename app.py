@@ -148,6 +148,9 @@ class GroovyBoxApp:
             self.page.update()
             return
 
+        if route == "/live-sync":
+            return
+
         self.page.views.clear()
         from ui.shell import ShellView
         self.shell = ShellView(self.page)
