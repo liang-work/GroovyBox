@@ -22,7 +22,6 @@ jobs:
           python-version: '3.12'
       - name: Install dependencies
         run: |
-          cd GroovyBox_flet
           pip install flet==${{ env.FLET_VERSION }} flet-audio==${{ env.FLET_VERSION }}
           pip install pygame mutagen Pillow colorthief httpx
       - name: Cache Flutter SDK
@@ -32,11 +31,11 @@ jobs:
           key: flutter-${{ env.FLET_VERSION }}
       - name: Build
         timeout-minutes: 60
-        run: cd GroovyBox_flet && flet build windows
+        run: flet build windows
       - uses: actions/upload-artifact@v4
         with:
           name: GroovyBox-Windows
-          path: GroovyBox_flet/dist/*
+          path: dist/*
 
   linux:
     if: contains(inputs.platforms, 'linux')
@@ -52,7 +51,6 @@ jobs:
           sudo apt-get install -y libmpv-dev libgtk-3-dev libxcb-shape0-dev libxcb-xfixes0-dev libxkbcommon-dev liblzma-dev
       - name: Install dependencies
         run: |
-          cd GroovyBox_flet
           pip install flet==${{ env.FLET_VERSION }} flet-audio==${{ env.FLET_VERSION }}
           pip install pygame mutagen Pillow colorthief httpx
       - name: Cache Flutter SDK
@@ -62,11 +60,11 @@ jobs:
           key: flutter-${{ env.FLET_VERSION }}
       - name: Build
         timeout-minutes: 60
-        run: cd GroovyBox_flet && flet build linux
+        run: flet build linux
       - uses: actions/upload-artifact@v4
         with:
           name: GroovyBox-Linux
-          path: GroovyBox_flet/dist/*
+          path: dist/*
 
   macos:
     if: contains(inputs.platforms, 'macos')
@@ -78,7 +76,6 @@ jobs:
           python-version: '3.12'
       - name: Install dependencies
         run: |
-          cd GroovyBox_flet
           pip install flet==${{ env.FLET_VERSION }} flet-audio==${{ env.FLET_VERSION }}
           pip install pygame mutagen Pillow colorthief httpx
       - name: Cache Flutter SDK
@@ -88,11 +85,11 @@ jobs:
           key: flutter-${{ env.FLET_VERSION }}
       - name: Build
         timeout-minutes: 60
-        run: cd GroovyBox_flet && flet build macos
+        run: flet build macos
       - uses: actions/upload-artifact@v4
         with:
           name: GroovyBox-macOS
-          path: GroovyBox_flet/dist/*
+          path: dist/*
 
   android:
     if: contains(inputs.platforms, 'android')
@@ -109,7 +106,6 @@ jobs:
       - uses: android-actions/setup-android@v3
       - name: Install dependencies
         run: |
-          cd GroovyBox_flet
           pip install flet==${{ env.FLET_VERSION }} flet-audio==${{ env.FLET_VERSION }}
           pip install pygame mutagen Pillow colorthief httpx
       - name: Cache Flutter SDK
@@ -119,8 +115,8 @@ jobs:
           key: flutter-${{ env.FLET_VERSION }}
       - name: Build
         timeout-minutes: 60
-        run: cd GroovyBox_flet && flet build apk
+        run: flet build apk
       - uses: actions/upload-artifact@v4
         with:
           name: GroovyBox-Android
-          path: GroovyBox_flet/dist/*
+          path: dist/*
