@@ -10,7 +10,11 @@ DB_PATH = None
 def get_db_path():
     global DB_PATH
     if DB_PATH is None:
-        app_dir = os.path.join(os.path.expanduser("~"), ".groovybox")
+        if "ANDROID_ROOT" in os.environ:
+            base = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        else:
+            base = os.path.expanduser("~")
+        app_dir = os.path.join(base, ".groovybox")
         os.makedirs(app_dir, exist_ok=True)
         DB_PATH = os.path.join(app_dir, "groovybox.db")
     return DB_PATH
