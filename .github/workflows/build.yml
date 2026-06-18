@@ -35,7 +35,7 @@ jobs:
         timeout-minutes: 60
         env:
           PYTHONIOENCODING: utf-8
-        run: flet build windows --yes --no-rich-output --skip-flutter-doctor
+        run: python scripts/do_build.py windows
       - uses: actions/upload-artifact@v4
         with:
           name: GroovyBox-Windows
@@ -67,7 +67,7 @@ jobs:
         run: echo "pygame>=2.5.0" >> requirements.txt
       - name: Build
         timeout-minutes: 60
-        run: flet build linux --yes --no-rich-output --skip-flutter-doctor
+        run: python scripts/do_build.py linux
       - uses: actions/upload-artifact@v4
         with:
           name: GroovyBox-Linux
@@ -95,7 +95,7 @@ jobs:
         run: echo "pygame>=2.5.0" >> requirements.txt
       - name: Build
         timeout-minutes: 60
-        run: flet build macos --yes --no-rich-output --skip-flutter-doctor
+        run: python scripts/do_build.py macos
       - uses: actions/upload-artifact@v4
         with:
           name: GroovyBox-macOS
@@ -126,7 +126,7 @@ jobs:
           key: flutter-${{ env.FLET_VERSION }}
       - name: Build
         timeout-minutes: 60
-        run: flet build apk --yes --no-rich-output --skip-flutter-doctor
+        run: python scripts/do_build.py apk
       - uses: actions/upload-artifact@v4
         with:
           name: GroovyBox-Android

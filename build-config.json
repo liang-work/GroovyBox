@@ -1,0 +1,24 @@
+{
+  "app": {
+    "project": "groovybox",
+    "product": "GroovyBox",
+    "description": "A modern music player built with Flet",
+    "org": "com.flet",
+    "bundle_id": "com.flet.groovybox",
+    "company": "",
+    "copyright": "",
+    "build_version": "1.0.0",
+    "build_number": 1,
+    "module_name": "main"
+  },
+  "android": {
+    "permissions": ["READ_MEDIA_AUDIO"],
+    "adaptive_icon_background": "#1e1e2e"
+  },
+  "build": {
+    "flet_version": "0.85.3",
+    "python_version": "3.12",
+    "timeout_minutes": 60,
+    "default_platforms": ["windows", "linux", "macos", "android"]
+  }
+}
