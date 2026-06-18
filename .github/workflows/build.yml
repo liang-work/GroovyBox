@@ -31,11 +31,9 @@ jobs:
           key: flutter-${{ env.FLET_VERSION }}
       - name: Build
         timeout-minutes: 60
-        run: flet build windows --yes --no-rich-output
-      - uses: actions/upload-artifact@v4
-        with:
-          name: GroovyBox-Windows
-          path: dist/*
+        env:
+          PYTHONIOENCODING: utf-8
+        run: flet build windows --yes --no-rich-output --skip-flutter-doctor
 
   linux:
     if: contains(inputs.platforms, 'linux')
@@ -60,11 +58,7 @@ jobs:
           key: flutter-${{ env.FLET_VERSION }}
       - name: Build
         timeout-minutes: 60
-        run: flet build linux --yes --no-rich-output
-      - uses: actions/upload-artifact@v4
-        with:
-          name: GroovyBox-Linux
-          path: dist/*
+        run: flet build linux --yes --no-rich-output --skip-flutter-doctor
 
   macos:
     if: contains(inputs.platforms, 'macos')
@@ -85,11 +79,7 @@ jobs:
           key: flutter-${{ env.FLET_VERSION }}
       - name: Build
         timeout-minutes: 60
-        run: flet build macos --yes --no-rich-output
-      - uses: actions/upload-artifact@v4
-        with:
-          name: GroovyBox-macOS
-          path: dist/*
+        run: flet build macos --yes --no-rich-output --skip-flutter-doctor
 
   android:
     if: contains(inputs.platforms, 'android')
@@ -104,6 +94,10 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
       - uses: android-actions/setup-android@v3
+      - name: Install system deps
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libmpv-dev libgtk-3-dev libxcb-shape0-dev libxcb-xfixes0-dev libxkbcommon-dev liblzma-dev
       - name: Install dependencies
         run: |
           pip install flet==${{ env.FLET_VERSION }} flet-audio==${{ env.FLET_VERSION }}
@@ -115,8 +109,4 @@ jobs:
           key: flutter-${{ env.FLET_VERSION }}
       - name: Build
         timeout-minutes: 60
-        run: flet build apk --yes --no-rich-output
-      - uses: actions/upload-artifact@v4
-        with:
-          name: GroovyBox-Android
-          path: dist/*
+        run: flet build apk --yes --no-rich-output --skip-flutter-doctor
