@@ -98,7 +98,7 @@ class ShellView(ft.View):
         from logic.file_dialog import pick_files
         all_ext = list(AUDIO_EXTENSIONS | LYRICS_EXTENSIONS)
         if paths is None:
-            paths = await pick_files(title="Select files to import", extensions=all_ext)
+            paths = await pick_files(self._page, title="Select files to import", extensions=all_ext)
         if not paths:
             logger.debug("_import_files: no files selected")
             return
@@ -121,7 +121,7 @@ class ShellView(ft.View):
 
     async def _import_folder(self):
         from logic.file_dialog import pick_directory
-        folder = await pick_directory(title=tr("importFolder"))
+        folder = await pick_directory(self._page, title=tr("importFolder"))
         if not folder:
             return
         logger.info(f"_import_folder: {folder}")
@@ -132,7 +132,7 @@ class ShellView(ft.View):
 
     async def _import_playlist_file(self):
         from logic.file_dialog import pick_files
-        paths = await pick_files(title=tr("importPlaylist"), extensions=["m3u", "m3u8", "pls"])
+        paths = await pick_files(self._page, title=tr("importPlaylist"), extensions=["m3u", "m3u8", "pls"])
         if not paths:
             return
         from logic.playlist_parser import parse_playlist
@@ -147,7 +147,7 @@ class ShellView(ft.View):
 
     async def _import_zip(self):
         from logic.file_dialog import pick_files
-        paths = await pick_files(title=tr("importZip"), extensions=["zip"])
+        paths = await pick_files(self._page, title=tr("importZip"), extensions=["zip"])
         if not paths:
             return
         from logic.zip_importer import extract_zip

@@ -715,7 +715,7 @@ class PlayerScreen(ft.Container):
     async def _import_lyrics_file(self, track):
         from logic.file_dialog import pick_files
         from data.track_repository import LYRICS_EXTENSIONS
-        paths = await pick_files(title=tr("manualImport"), extensions=list(LYRICS_EXTENSIONS))
+        paths = await pick_files(self._page, title=tr("manualImport"), extensions=list(LYRICS_EXTENSIONS))
         if not paths:
             return
         from logic.encoding_helper import read_with_encoding

@@ -69,7 +69,7 @@ class PlaylistDetailView(ft.Container):
         async def pick_path(e):
             from logic.file_dialog import save_file
             ext = ".zip" if as_zip_cb.value else ".m3u"
-            p = await save_file(
+            p = await save_file(self._page,
                 title=tr("export"),
                 default_name=f"{self.playlist.name or 'playlist'}{ext}",
                 extensions=["zip" if as_zip_cb.value else "m3u"],

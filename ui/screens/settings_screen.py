@@ -53,7 +53,7 @@ def SettingsScreen(page: ft.Page) -> ft.Column:
 
     async def add_library(e):
         from logic.file_dialog import pick_directory
-        path = await pick_directory(title="Select music library folder")
+        path = await pick_directory(page, title="Select music library folder")
         if path:
             import os
             name = os.path.basename(path)
@@ -159,7 +159,7 @@ def SettingsScreen(page: ft.Page) -> ft.Column:
 
     async def export_logs(e):
         from logic.file_dialog import save_file
-        path = await save_file(title="Export logs", default_name="groovybox_logs.txt", extensions=["txt"])
+        path = await save_file(page, title="Export logs", default_name="groovybox_logs.txt", extensions=["txt"])
         if path:
             from logic.logger import export_logs as do_export
             try:

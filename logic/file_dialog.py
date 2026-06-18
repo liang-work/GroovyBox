@@ -6,44 +6,80 @@ import flet as ft
 logger = logging.getLogger("flet")
 
 
+def _is_mobile(page: ft.Page) -> bool:
+    try:
+        return page.platform in (ft.PagePlatform.ANDROID, ft.PagePlatform.IOS)
+    except Exception:
+        return False
+
+
 async def pick_files(
+    page: ft.Page,
     title: str = "Select files",
     extensions: Optional[List[str]] = None,
     allow_multiple: bool = True,
 ) -> Optional[List[str]]:
+    picker = ft.FilePicker()
+    if _is_mobile(page):
+        page.overlay.append(picker)
+        page.update()
     try:
         file_type = ft.FilePickerFileType.CUSTOM if extensions else ft.FilePickerFileType.ANY
-        result = await ft.FilePicker().pick_files(
+        result = await picker.pick_files(
             dialog_title=title,
             allowed_extensions=extensions,
             allow_multiple=allow_multiple,
             file_type=file_type,
         )
-        if result is None:
-            return None
-        return [f.path for f in result if f.path]
+        return [f.path for f in result if f.path] if result else None
     except Exception as e:
         logger.error("FilePicker.pick_files failed: %s", e)
         return None
+    finally:
+        if _is_mobile(page):
+            try:
+                page.overlay.remove(picker)
+                page.update()
+            except Exception:
+                pass
 
 
-async def pick_directory(title: str = "Select folder") -> Optional[str]:
+async def pick_directory(
+    page: ft.Page,
+    title: str = "Select folder",
+) -> Optional[str]:
+    picker = ft.FilePicker()
+    if _is_mobile(page):
+        page.overlay.append(picker)
+        page.update()
     try:
-        path = await ft.FilePicker().get_directory_path(dialog_title=title)
+        path = await picker.get_directory_path(dialog_title=title)
         return path
     except Exception as e:
         logger.warning("FilePicker.get_directory_path failed: %s", e)
         return None
+    finally:
+        if _is_mobile(page):
+            try:
+                page.overlay.remove(picker)
+                page.update()
+            except Exception:
+                pass
 
 
 async def save_file(
+    page: ft.Page,
     title: str = "Save file",
     default_name: str = "file",
     extensions: Optional[List[str]] = None,
 ) -> Optional[str]:
+    picker = ft.FilePicker()
+    if _is_mobile(page):
+        page.overlay.append(picker)
+        page.update()
     try:
         file_type = ft.FilePickerFileType.CUSTOM if extensions else ft.FilePickerFileType.ANY
-        path = await ft.FilePicker().save_file(
+        path = await picker.save_file(
             dialog_title=title,
             file_name=default_name,
             allowed_extensions=extensions,
@@ -53,3 +89,10 @@ async def save_file(
     except Exception as e:
         logger.error("FilePicker.save_file failed: %s", e)
         return None
+    finally:
+        if _is_mobile(page):
+            try:
+                page.overlay.remove(picker)
+                page.update()
+            except Exception:
+                pass
