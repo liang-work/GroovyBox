@@ -29,11 +29,20 @@ jobs:
         with:
           path: ~/.flet/flutter
           key: flutter-${{ env.FLET_VERSION }}
+      - name: Add desktop deps
+        run: Add-Content -Path requirements.txt -Value "pygame>=2.5.0"
       - name: Build
         timeout-minutes: 60
         env:
           PYTHONIOENCODING: utf-8
         run: flet build windows --yes --no-rich-output --skip-flutter-doctor
+      - name: List dist
+        run: Get-ChildItem dist -ErrorAction SilentlyContinue | Select-Object Name
+      - uses: actions/upload-artifact@v4
+        with:
+          name: GroovyBox-Windows
+          path: dist/*
+          if-no-files-found: error
 
   linux:
     if: contains(inputs.platforms, 'linux')
@@ -46,7 +55,7 @@ jobs:
       - name: Install system deps
         run: |
           sudo apt-get update
-          sudo apt-get install -y libmpv-dev libgtk-3-dev libxcb-shape0-dev libxcb-xfixes0-dev libxkbcommon-dev liblzma-dev
+          sudo apt-get install -y libmpv-dev libgtk-3-dev libxcb-shape0-dev libxcb-xfixes0-dev libxkbcommon-dev liblzma-dev libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev
       - name: Install dependencies
         run: |
           pip install flet==${{ env.FLET_VERSION }} flet-audio==${{ env.FLET_VERSION }}
@@ -56,9 +65,18 @@ jobs:
         with:
           path: ~/.flet/flutter
           key: flutter-${{ env.FLET_VERSION }}
+      - name: Add desktop deps
+        run: echo "pygame>=2.5.0" >> requirements.txt
       - name: Build
         timeout-minutes: 60
         run: flet build linux --yes --no-rich-output --skip-flutter-doctor
+      - name: List dist
+        run: ls -la dist/
+      - uses: actions/upload-artifact@v4
+        with:
+          name: GroovyBox-Linux
+          path: dist/*
+          if-no-files-found: error
 
   macos:
     if: contains(inputs.platforms, 'macos')
@@ -77,9 +95,18 @@ jobs:
         with:
           path: ~/.flet/flutter
           key: flutter-${{ env.FLET_VERSION }}
+      - name: Add desktop deps
+        run: echo "pygame>=2.5.0" >> requirements.txt
       - name: Build
         timeout-minutes: 60
         run: flet build macos --yes --no-rich-output --skip-flutter-doctor
+      - name: List dist
+        run: ls -la dist/
+      - uses: actions/upload-artifact@v4
+        with:
+          name: GroovyBox-macOS
+          path: dist/*
+          if-no-files-found: error
 
   android:
     if: contains(inputs.platforms, 'android')
@@ -94,14 +121,10 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
       - uses: android-actions/setup-android@v3
-      - name: Install system deps
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y libmpv-dev libgtk-3-dev libxcb-shape0-dev libxcb-xfixes0-dev libxkbcommon-dev liblzma-dev
       - name: Install dependencies
         run: |
           pip install flet==${{ env.FLET_VERSION }} flet-audio==${{ env.FLET_VERSION }}
-          pip install pygame mutagen Pillow colorthief httpx
+          pip install mutagen Pillow colorthief httpx
       - name: Cache Flutter SDK
         uses: actions/cache@v4
         with:
@@ -110,3 +133,10 @@ jobs:
       - name: Build
         timeout-minutes: 60
         run: flet build apk --yes --no-rich-output --skip-flutter-doctor
+      - name: List dist
+        run: ls -la dist/
+      - uses: actions/upload-artifact@v4
+        with:
+          name: GroovyBox-Android
+          path: dist/*
+          if-no-files-found: error
