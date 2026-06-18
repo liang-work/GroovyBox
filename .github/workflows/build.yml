@@ -1,0 +1,89 @@
+name: Build GroovyBox
+
+on:
+  workflow_dispatch:
+    inputs:
+      platforms:
+        description: 'Platforms to build (JSON array)'
+        required: true
+        default: '["windows","linux","macos","android"]'
+
+env:
+  FLET_VERSION: '0.85.3'
+
+jobs:
+  build:
+    name: ${{ matrix.target }}
+    runs-on: ${{ matrix.runner }}
+    if: contains(fromJSON(inputs.platforms), matrix.target)
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: windows
+            runner: windows-latest
+            flet_target: windows
+          - target: linux
+            runner: ubuntu-latest
+            flet_target: linux
+          - target: macos
+            runner: macos-latest
+            flet_target: macos
+          - target: android
+            runner: ubuntu-latest
+            flet_target: apk
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Setup Java 17 (Android only)
+        if: matrix.target == 'android'
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Setup Android SDK (Android only)
+        if: matrix.target == 'android'
+        uses: android-actions/setup-android@v3
+
+      - name: Install Linux system dependencies
+        if: matrix.target == 'linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libmpv-dev \
+            libxcb-shape0-dev \
+            libxcb-xfixes0-dev \
+            libxcb1-dev \
+            libxkbcommon-dev \
+            libgtk-3-dev \
+            liblzma-dev
+
+      - name: Cache Flutter SDK
+        uses: actions/cache@v4
+        with:
+          path: ~/.flet/flutter
+          key: flutter-${{ env.FLET_VERSION }}
+
+      - name: Install Python dependencies
+        run: |
+          cd GroovyBox_flet
+          pip install flet==${{ env.FLET_VERSION }} flet-audio==${{ env.FLET_VERSION }}
+          pip install pygame mutagen Pillow colorthief httpx
+
+      - name: Build
+        run: cd GroovyBox_flet && flet build ${{ matrix.flet_target }}
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: GroovyBox-${{ matrix.target }}
+          path: |
+            GroovyBox_flet/dist/*
