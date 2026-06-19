@@ -175,5 +175,8 @@
   "themeMode": "Theme",
   "themeSystem": "System",
   "themeLight": "Light",
-  "themeDark": "Dark"
+  "themeDark": "Dark",
+  "selectAll": "Select All",
+  "deselectAll": "Deselect All",
+  "invertSelection": "Invert Selection"
 }

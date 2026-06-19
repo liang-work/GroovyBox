@@ -176,5 +176,8 @@
   "themeMode": "主题",
   "themeSystem": "跟随系统",
   "themeLight": "浅色",
-  "themeDark": "深色"
+  "themeDark": "深色",
+  "selectAll": "全选",
+  "deselectAll": "取消全选",
+  "invertSelection": "反选"
 }
