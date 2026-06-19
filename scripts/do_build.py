@@ -40,7 +40,7 @@ def build_cmd(platform: str):
         key_alias = os.environ.get("ANDROID_KEY_ALIAS", "")
         if os.path.exists(ks) and os.path.getsize(ks) > 100 and ks_pass and key_alias:
             cmd += [
-                "--android-signing-key-store", ks,
+                "--android-signing-key-store", os.path.abspath(ks),
                 "--android-signing-key-store-password", ks_pass,
                 "--android-signing-key-password", key_pass or ks_pass,
                 "--android-signing-key-alias", key_alias,

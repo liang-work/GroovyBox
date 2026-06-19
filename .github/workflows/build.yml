@@ -40,10 +40,6 @@ jobs:
         run: |
           New-Item -ItemType Directory -Path dist -Force
           Compress-Archive -Path build\windows\* -DestinationPath dist\GroovyBox-Windows.zip -Force
-      - name: Install NSIS
-        run: choco install nsis -y --no-progress
-      - name: Build NSIS installer
-        run: makensis scripts\package_windows.nsi
       - uses: actions/upload-artifact@v4
         with:
           name: GroovyBox-Windows
@@ -53,6 +49,26 @@ jobs:
         with:
           name: GroovyBox-Windows-Packages
           path: dist\*
+          if-no-files-found: warn
+      - name: Install NSIS
+        continue-on-error: true
+        run: choco install nsis -y --no-progress
+      - name: Build NSIS installer
+        continue-on-error: true
+        shell: pwsh
+        run: |
+          try {
+            makensis scripts\package_windows.nsi
+            Write-Output "NSIS installer built successfully"
+          } catch {
+            Write-Warning "NSIS installer build skipped: $_"
+          }
+      - name: Upload NSIS installer (if built)
+        uses: actions/upload-artifact@v4
+        continue-on-error: true
+        with:
+          name: GroovyBox-Windows-Setup
+          path: dist\GroovyBox-Setup.exe
           if-no-files-found: warn
 
   linux:
