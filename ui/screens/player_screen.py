@@ -981,7 +981,7 @@ class PlayerScreen(ft.Container):
             else:
                 player.current_index = -1
                 player._is_playing = False
-            self._page.run_task(self._page.push_route, "/library")
+                self._page.run_task(self._page.push_route, "/library")
                 return
         self._rebuild()
 
