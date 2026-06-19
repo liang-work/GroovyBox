@@ -980,6 +980,8 @@ class PlayerScreen(ft.Container):
             else:
                 player.current_index = -1
                 player._is_playing = False
+                self._page.go("/library")
+                return
         self._rebuild()
 
 
