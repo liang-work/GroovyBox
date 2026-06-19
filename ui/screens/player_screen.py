@@ -951,6 +951,7 @@ class PlayerScreen(ft.Container):
                 on_tap=lambda e, idx=i: _jump_to(self._page, idx),
                 padding=4,
                 show_trailing=True,
+                trailing_icon=ft.Icons.DELETE,
                 on_trailing_pressed=lambda e, idx=i: self._remove_from_queue(idx),
             )
             tracks.append(tile)

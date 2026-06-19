@@ -178,5 +178,7 @@
   "themeDark": "Dark",
   "selectAll": "Select All",
   "deselectAll": "Deselect All",
-  "invertSelection": "Invert Selection"
+  "invertSelection": "Invert Selection",
+  "confirmBatchDelete": "Delete {} selected tracks? This will remove them from your device.",
+  "confirmDeletePlaylist": "Delete playlist \"{}\" ?"
 }

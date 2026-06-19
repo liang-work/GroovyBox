@@ -15,6 +15,7 @@ def TrackTile(
     on_trailing_pressed: Optional[Callable] = None,
     leading: Optional[ft.Control] = None,
     padding: float = 8,
+    trailing_icon: str = ft.Icons.MORE_VERT,
 ) -> ft.Container:
 
     bg = ft.Colors.with_opacity(0.15, ft.Colors.PRIMARY) if is_playing else ft.Colors.TRANSPARENT
@@ -54,7 +55,7 @@ def TrackTile(
         ),
         trailing=(
             ft.IconButton(
-                icon=ft.Icons.MORE_VERT,
+                icon=trailing_icon,
                 icon_size=20,
                 on_click=on_trailing_pressed,
             )

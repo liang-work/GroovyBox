@@ -76,17 +76,30 @@ def PlaylistsScreen(page: ft.Page) -> ft.Control:
                     leading=ft.Icon(ft.Icons.QUEUE_MUSIC),
                     title=ft.Text(pl.name),
                     subtitle=ft.Text(f"{tr('createdAt')} {pl.created_at[:10]}" if pl.created_at else ""),
-                    trailing=ft.IconButton(ft.Icons.DELETE, on_click=lambda e, pid=pl.id: _delete_pl(pid)),
+                    trailing=ft.IconButton(ft.Icons.DELETE, on_click=lambda e, pid=pl.id, pname=pl.name: _delete_pl(pid, pname)),
                     on_click=lambda e, p=pl: open_playlist(p),
                 )
             )
 
-    def _delete_pl(pid):
-        prepo.delete_playlist(pid)
-        app = page.session.store.get("app")
-        if app:
-            app._reload_ui()
-        else:
-            page.update()
+    def _delete_pl(pid, pname=""):
+        def confirm_yes(e):
+            page.pop_dialog()
+            prepo.delete_playlist(pid)
+            app = page.session.store.get("app")
+            if app:
+                app._reload_ui()
+            else:
+                page.update()
+        def confirm_no(e):
+            page.pop_dialog()
+        dlg = ft.AlertDialog(
+            title=ft.Text(tr("delete")),
+            content=ft.Text(tr("confirmDeletePlaylist").replace("{}", pname)),
+            actions=[
+                ft.TextButton(tr("cancel"), on_click=confirm_no),
+                ft.FilledButton(tr("delete"), color=ft.Colors.RED, on_click=confirm_yes),
+            ],
+        )
+        page.show_dialog(dlg)
 
     return ft.Column(controls=tiles, scroll=ft.ScrollMode.AUTO)

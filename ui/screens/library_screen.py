@@ -183,11 +183,24 @@ class LibraryScreen(ft.Column):
 
         def do_batch_delete(e):
             self._page.pop_dialog()
-            for tid in list(self.selected_ids):
-                trepo.delete_track(tid)
-            self.selected_ids.clear()
-            self._build()
-            self.update()
+            def confirm_yes(e):
+                self._page.pop_dialog()
+                for tid in list(self.selected_ids):
+                    trepo.delete_track(tid)
+                self.selected_ids.clear()
+                self._build()
+                self.update()
+            def confirm_no(e):
+                self._page.pop_dialog()
+            dlg = ft.AlertDialog(
+                title=ft.Text(tr("deleteTracks")),
+                content=ft.Text(tr("confirmBatchDelete").replace("{}", str(len(self.selected_ids)))),
+                actions=[
+                    ft.TextButton(tr("cancel"), on_click=confirm_no),
+                    ft.FilledButton(tr("delete"), color=ft.Colors.RED, on_click=confirm_yes),
+                ],
+            )
+            self._page.show_dialog(dlg)
 
         def do_batch_add_playlist(e):
             self._page.pop_dialog()
@@ -325,9 +338,22 @@ class LibraryScreen(ft.Column):
             self._show_edit_dialog(track)
         def do_delete(e):
             self._page.pop_dialog()
-            trepo.delete_track(track.id)
-            self._build()
-            self.update()
+            def confirm_yes(e):
+                self._page.pop_dialog()
+                trepo.delete_track(track.id)
+                self._build()
+                self.update()
+            def confirm_no(e):
+                self._page.pop_dialog()
+            dlg = ft.AlertDialog(
+                title=ft.Text(tr("deleteTrack")),
+                content=ft.Text(tr("confirmDeleteTrack").replace("{}", track.title or "")),
+                actions=[
+                    ft.TextButton(tr("cancel"), on_click=confirm_no),
+                    ft.FilledButton(tr("delete"), color=ft.Colors.RED, on_click=confirm_yes),
+                ],
+            )
+            self._page.show_dialog(dlg)
 
         bs = ft.BottomSheet(
             content=ft.Column(

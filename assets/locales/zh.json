@@ -179,5 +179,7 @@
   "themeDark": "深色",
   "selectAll": "全选",
   "deselectAll": "取消全选",
-  "invertSelection": "反选"
+  "invertSelection": "反选",
+  "confirmBatchDelete": "删除选中的 {} 首曲目？这将从设备中移除它们。",
+  "confirmDeletePlaylist": "删除播放列表\"{}\"？"
 }
