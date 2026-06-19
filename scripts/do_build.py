@@ -10,7 +10,7 @@ def build_cmd(platform: str):
     android = cfg.get("android", {})
 
     cmd = [
-        sys.executable or "python", "-m", "flet", "build", platform,
+        "flet", "build", platform,
         "--yes", "--no-rich-output", "--skip-flutter-doctor",
         "--project", app["project"],
         "--product", app["product"],
