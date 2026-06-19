@@ -171,5 +171,9 @@
   "logLevelVerbose": "Verbose",
   "exportLogs": "Export Logs",
   "logsExported": "Logs exported to {}",
-  "errorExportingLogs": "Error exporting logs: {}"
+  "errorExportingLogs": "Error exporting logs: {}",
+  "themeMode": "Theme",
+  "themeSystem": "System",
+  "themeLight": "Light",
+  "themeDark": "Dark"
 }

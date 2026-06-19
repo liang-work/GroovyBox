@@ -172,5 +172,9 @@
   "logLevelVerbose": "详细",
   "exportLogs": "导出日志",
   "logsExported": "日志已导出到 {}",
-  "errorExportingLogs": "导出日志时出错：{}"
+  "errorExportingLogs": "导出日志时出错：{}",
+  "themeMode": "主题",
+  "themeSystem": "跟随系统",
+  "themeLight": "浅色",
+  "themeDark": "深色"
 }

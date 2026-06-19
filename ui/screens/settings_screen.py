@@ -15,6 +15,7 @@ def SettingsScreen(page: ft.Page) -> ft.Column:
             "default_player_screen": db.get_setting("default_player_screen", "cover"),
             "lyrics_mode": db.get_setting("lyrics_mode", "auto"),
             "continue_plays": db.get_setting("continue_plays", "false") == "true",
+            "theme_mode": db.get_setting("theme_mode", "system"),
         }
 
     settings = load_settings()
@@ -50,6 +51,15 @@ def SettingsScreen(page: ft.Page) -> ft.Column:
     def on_lyrics_mode_change(e):
         save_setting("lyrics_mode", e.control.value)
         refresh()
+
+    def on_theme_mode_change(e):
+        val = e.control.value
+        save_setting("theme_mode", val)
+        mode_map = {"system": ft.ThemeMode.SYSTEM, "light": ft.ThemeMode.LIGHT, "dark": ft.ThemeMode.DARK}
+        if app:
+            app.theme_mode = mode_map.get(val, ft.ThemeMode.SYSTEM)
+            app.page.theme_mode = app.theme_mode
+            app.page.update()
 
     async def add_library(e):
         from logic.file_dialog import pick_directory
@@ -280,6 +290,18 @@ def SettingsScreen(page: ft.Page) -> ft.Column:
                                 on_select=on_language_change,
                             ),
                         ),
+                        ft.ListTile(
+                            title=ft.Text(tr("themeMode")),
+                            trailing=ft.Dropdown(
+                                value=settings["theme_mode"],
+                                options=[
+                                    ft.dropdown.Option("system", tr("themeSystem")),
+                                    ft.dropdown.Option("light", tr("themeLight")),
+                                    ft.dropdown.Option("dark", tr("themeDark")),
+                                ],
+                                on_select=on_theme_mode_change,
+                            ),
+                        ),
                     ],
                 ),
             ),
@@ -333,6 +355,31 @@ def SettingsScreen(page: ft.Page) -> ft.Column:
                                 tr("exportLogs"),
                                 on_click=export_logs,
                             ),
+                        ),
+                    ],
+                ),
+            ),
+            # About Section
+            ft.Container(
+                bgcolor=ft.Colors.SURFACE_CONTAINER,
+                border_radius=12,
+                padding=16,
+                content=ft.Column(
+                    horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+                    controls=[
+                        ft.Text("GroovyBox", size=20, weight=ft.FontWeight.BOLD),
+                        ft.Text("v1.0.0", size=14, color=ft.Colors.with_opacity(0.7, ft.Colors.ON_SURFACE)),
+                        ft.Container(height=8),
+                        ft.Text("GNU General Public License v3.0", size=12, color=ft.Colors.with_opacity(0.6, ft.Colors.ON_SURFACE)),
+                        ft.Text("Copyright \u00A9 2026 luolingy(liang-work)", size=12, color=ft.Colors.with_opacity(0.6, ft.Colors.ON_SURFACE)),
+                        ft.Container(height=8),
+                        ft.Row(
+                            tight=True,
+                            alignment=ft.MainAxisAlignment.CENTER,
+                            controls=[
+                                ft.Text("Contributors: ", size=12, color=ft.Colors.with_opacity(0.6, ft.Colors.ON_SURFACE)),
+                                ft.TextButton("liang-work", url="https://github.com/liang-work"),
+                            ],
                         ),
                     ],
                 ),

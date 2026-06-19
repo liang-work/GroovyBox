@@ -16,6 +16,7 @@ class GroovyBoxApp:
 
         db.init_database()
         self._load_locale()
+        self._load_theme_mode()
         self._setup_theme()
 
         from logic.logger import set_log_level
@@ -46,6 +47,11 @@ class GroovyBoxApp:
     def _load_locale(self):
         lang = db.get_setting("language", "en")
         load_locale(lang)
+
+    def _load_theme_mode(self):
+        mode = db.get_setting("theme_mode", "system")
+        mode_map = {"system": ft.ThemeMode.SYSTEM, "light": ft.ThemeMode.LIGHT, "dark": ft.ThemeMode.DARK}
+        self.theme_mode = mode_map.get(mode, ft.ThemeMode.SYSTEM)
 
     def _setup_theme(self):
         self.page.theme = ft.Theme(
