@@ -84,6 +84,7 @@ def PlaylistsScreen(page: ft.Page) -> ft.Control:
     def _delete_pl(pid, pname=""):
         def confirm_yes(e):
             page.pop_dialog()
+            page.update()
             prepo.delete_playlist(pid)
             app = page.session.store.get("app")
             if app:
