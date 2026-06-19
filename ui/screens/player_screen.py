@@ -751,107 +751,144 @@ class PlayerScreen(ft.Container):
         is_desktop = pw > 800
 
         if use_curved:
-            VISIBLE = 5
-            MAX_ROTATE = 0.12
-            MAX_LEAN = 25
+            HALF_VISIBLE = 5
+            ARC_ANGLE = 0.55
         max_w = int(pw * (0.4 if is_desktop else 0.8))
-        align_x = 1 if (is_desktop and use_curved) else 0
+        align_x = -1
         text_align = ft.TextAlign.LEFT
 
-        lines = []
-        for i, line in enumerate(data.lines):
-            dist = abs(i - current_idx)
-            if use_curved and dist > VISIBLE:
-                continue
+        self._lyrics_widgets = []
+        total = len(data.lines)
+        if use_curved:
+            half = HALF_VISIBLE
+            start = max(0, current_idx - half)
+            end = min(total, current_idx + half + 1)
+            self._lyrics_start = start
+            above_spacers = half - (current_idx - start)
+            below_spacers = half - (end - 1 - current_idx)
+            controls = []
 
-            is_active = i == current_idx
+            for _ in range(above_spacers):
+                controls.append(ft.Container(height=40))
 
-            if use_curved:
+            for i in range(start, end):
+                dist = abs(i - current_idx)
                 direction = -1 if i < current_idx else 1
-                t = dist / VISIBLE
-                rotate = direction * t * MAX_ROTATE
-                left_pad = int(32 + t * MAX_LEAN)
-                opacity = max(0.4, 1.0 - t * 0.6)
-                if dist == 0:
-                    fsize, fw, color = 18, ft.FontWeight.BOLD, ft.Colors.PRIMARY
-                elif dist == 1:
-                    fsize, fw, color = 16, ft.FontWeight.NORMAL, ft.Colors.with_opacity(0.7, ft.Colors.ON_SURFACE)
-                else:
-                    fsize, fw, color = max(12, 16 - (dist - 1) * 2), ft.FontWeight.NORMAL, ft.Colors.with_opacity(opacity, ft.Colors.ON_SURFACE)
-            else:
-                rotate = 0.0
-                left_pad = 32
+                t = dist / half
+                rotate_val = direction * t * ARC_ANGLE
+                is_active = i == current_idx
+                h_off = int(60 * t * t)
+                v_pivot = direction * t * 2 if not is_active else 0
+                pivot = ft.Alignment(-1.2, v_pivot)
+
                 if is_active:
                     fsize, fw, color = 18, ft.FontWeight.BOLD, ft.Colors.PRIMARY
                 else:
                     fsize, fw, color = 16, ft.FontWeight.NORMAL, ft.Colors.with_opacity(0.7, ft.Colors.ON_SURFACE)
 
-            txt_container = ft.Container(
-                height=50,
-                padding=ft.Padding(left_pad, 0, 32, 0),
-                alignment=ft.Alignment(align_x, 0),
-                rotate=rotate if use_curved else None,
-                width=max_w,
-                on_click=lambda e, t=line.time_ms: player.seek(t) if t else None,
-            )
+                txt_container = ft.Container(
+                    height=40,
+                    padding=ft.Padding(32 - h_off, 0, 24, 0),
+                    alignment=ft.Alignment(-1, 0),
+                    rotate=ft.Rotate(rotate_val, pivot) if use_curved else None,
+                    width=max_w,
+                    on_click=lambda e, t=data.lines[i].time_ms: player.seek(t) if t else None,
+                )
+                txt_container.content = ft.Text(data.lines[i].text, size=fsize, weight=fw,
+                                                color=color, max_lines=1,
+                                                overflow=ft.TextOverflow.ELLIPSIS,
+                                                text_align=text_align)
+                self._lyrics_widgets.append(txt_container)
+                controls.append(txt_container)
 
-            txt_container.content = ft.Text(line.text, size=fsize, weight=fw,
-                                            color=color, max_lines=1,
-                                            overflow=ft.TextOverflow.ELLIPSIS,
-                                            text_align=text_align)
-            self._lyrics_widgets.append(txt_container)
-            lines.append(txt_container)
+            for _ in range(below_spacers):
+                controls.append(ft.Container(height=40))
 
-        return ft.Container(
-            expand=True,
-            padding=ft.Padding(0, 40, 0, 40),
-            content=ft.Column(
+            return ft.Container(
                 expand=True,
-                alignment=ft.MainAxisAlignment.CENTER,
-                horizontal_alignment=ft.CrossAxisAlignment.CENTER,
-                controls=lines,
-            ),
-        )
+                padding=ft.Padding(48, 10, 16, 10),
+                content=ft.Column(
+                    expand=True,
+                    alignment=ft.MainAxisAlignment.CENTER,
+                    horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+                    spacing=4,
+                    controls=controls,
+                ),
+            )
+        else:
+            self._lyrics_start = 0
+            lines = []
+            for i, line in enumerate(data.lines):
+                is_active = i == current_idx
+                if is_active:
+                    fsize, fw, color = 18, ft.FontWeight.BOLD, ft.Colors.PRIMARY
+                else:
+                    fsize, fw, color = 16, ft.FontWeight.NORMAL, ft.Colors.with_opacity(0.7, ft.Colors.ON_SURFACE)
+
+                txt_container = ft.Container(
+                    height=36,
+                    padding=ft.Padding(32, 0, 24, 0),
+                    alignment=ft.Alignment(-1, 0),
+                    width=max_w,
+                    on_click=lambda e, t=line.time_ms: player.seek(t) if t else None,
+                )
+                txt_container.content = ft.Text(line.text, size=fsize, weight=fw,
+                                                color=color, max_lines=1,
+                                                overflow=ft.TextOverflow.ELLIPSIS,
+                                                text_align=text_align)
+                self._lyrics_widgets.append(txt_container)
+                lines.append(txt_container)
+
+            return ft.Container(
+                expand=True,
+                padding=ft.Padding(0, 20, 0, 20),
+                content=ft.Column(
+                    expand=True,
+                    alignment=ft.MainAxisAlignment.CENTER,
+                    horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+                    controls=lines,
+                ),
+            )
 
     def _update_lyrics_styles(self, new_idx):
         data = self._lyrics_data
         use_curved = getattr(self, '_lyrics_use_curved', False)
         total = len(data.lines)
-        pw = self._page.width or 400
-        is_desktop = pw > 800
-        align_x = 1 if (is_desktop and use_curved) else 0
 
-        VISIBLE = 5
-        MAX_ROTATE = 0.12
-        MAX_LEAN = 25
+        HALF_VISIBLE = 5
+        ARC_ANGLE = 0.55
+        half = HALF_VISIBLE
+        start = getattr(self, '_lyrics_start', 0)
+
+        if use_curved:
+            self._rebuild()
+            return
 
         for i, container in enumerate(self._lyrics_widgets):
-            dist = abs(i - new_idx)
-
-            if use_curved and dist > VISIBLE:
-                container.visible = False
-            else:
-                container.visible = True
+            line_idx = start + i
+            dist = abs(line_idx - new_idx)
 
             if use_curved:
-                direction = -1 if i < new_idx else 1
-                t = dist / VISIBLE
-                container.rotate = direction * t * MAX_ROTATE if dist <= VISIBLE else 0.0
-                left_pad = int(32 + min(t, 1.0) * MAX_LEAN)
-                container.padding = ft.Padding(left_pad, 0, 32, 0)
-                container.alignment = ft.Alignment(align_x, 0)
+                in_range = dist <= half
+                container.opacity = 1.0 if in_range else 0.0
+                direction = -1 if line_idx < new_idx else 1
+                t = min(dist / half, 1.0) if dist > 0 else 0
+                v_pivot = direction * t * 2 if line_idx != new_idx else 0
+                pivot = ft.Alignment(-1.2, v_pivot)
+                container.rotate = ft.Rotate(direction * t * ARC_ANGLE, pivot) if in_range else ft.Rotate(0, ft.Alignment(-1.2, 0))
+                h_off = int(60 * t * t) if dist > 0 else 0
+                container.padding = ft.Padding(32 - h_off, 0, 24, 0)
+                container.alignment = ft.Alignment(-1, 0)
 
-                if dist == 0:
+                if line_idx == new_idx:
                     fsize, fw, color = 18, ft.FontWeight.BOLD, ft.Colors.PRIMARY
-                elif dist == 1:
-                    fsize, fw, color = 16, ft.FontWeight.NORMAL, ft.Colors.with_opacity(0.7, ft.Colors.ON_SURFACE)
                 else:
-                    fsize, fw, color = max(12, 16 - (dist - 1) * 2), ft.FontWeight.NORMAL, ft.Colors.with_opacity(max(0.4, 1.0 - t * 0.6), ft.Colors.ON_SURFACE)
+                    fsize, fw, color = 16, ft.FontWeight.NORMAL, ft.Colors.with_opacity(0.7, ft.Colors.ON_SURFACE)
             else:
                 container.rotate = None
                 container.padding = ft.Padding(32, 0, 32, 0)
                 container.alignment = ft.Alignment(0, 0)
-                if i == new_idx:
+                if line_idx == new_idx:
                     fsize, fw, color = 18, ft.FontWeight.BOLD, ft.Colors.PRIMARY
                 else:
                     fsize, fw, color = 16, ft.FontWeight.NORMAL, ft.Colors.with_opacity(0.7, ft.Colors.ON_SURFACE)

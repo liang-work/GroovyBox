@@ -17,8 +17,9 @@ def _ensure_picker(page: ft.Page) -> ft.FilePicker:
     global _picker
     if _picker is None:
         _picker = ft.FilePicker()
-        page.overlay.append(_picker)
-        page.update()
+        if _is_mobile(page):
+            page.overlay.append(_picker)
+            page.update()
     return _picker
 
 async def pick_files(
