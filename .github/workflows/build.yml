@@ -38,16 +38,20 @@ jobs:
         run: python scripts/do_build.py windows
       - name: Install NSIS
         continue-on-error: true
-        run: choco install nsis -y --no-progress
+        shell: pwsh
+        run: |
+          choco install nsis -y --no-progress
+          Add-Content -Path $env:GITHUB_PATH -Value "C:\Program Files (x86)\NSIS"
       - name: Build NSIS installer
         continue-on-error: true
         shell: pwsh
         run: |
-          try {
-            makensis scripts\package_windows.nsi
+          $nsis = "C:\Program Files (x86)\NSIS\makensis.exe"
+          if (Test-Path $nsis) {
+            & $nsis scripts\package_windows.nsi
             Write-Output "NSIS installer built successfully"
-          } catch {
-            Write-Warning "NSIS installer build skipped: $_"
+          } else {
+            Write-Warning "NSIS not found at $nsis"
           }
       - name: Package portable zip
         run: |
