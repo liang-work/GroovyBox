@@ -42,7 +42,7 @@ class GroovyBoxApp:
         except Exception:
             pass
 
-        page.go("/library")
+        page.run_task(page.push_route, "/library")
 
     def _load_locale(self):
         lang = db.get_setting("language", "en")

@@ -105,7 +105,7 @@ class PlaylistDetailView(ft.Container):
                     ft.Row(
                         tight=True,
                         controls=[
-                            ft.ElevatedButton(tr("choosePath"), icon=ft.Icons.FOLDER_OPEN, on_click=pick_path),
+                            ft.FilledButton(tr("choosePath"), icon=ft.Icons.FOLDER_OPEN, on_click=pick_path),
                             ft.Container(expand=True),
                             path_text,
                         ],

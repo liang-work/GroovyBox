@@ -317,7 +317,7 @@ def SettingsScreen(page: ft.Page) -> ft.Column:
                         ft.Text(tr("databaseManagementDescription"), size=12, color=ft.Colors.GREY),
                         ft.ListTile(
                             title=ft.Text(tr("resetTrackDatabase")),
-                            trailing=ft.ElevatedButton(
+                            trailing=ft.FilledButton(
                                 tr("reset"),
                                 color=ft.Colors.RED,
                                 on_click=reset_database,
@@ -351,7 +351,7 @@ def SettingsScreen(page: ft.Page) -> ft.Column:
                         ),
                         ft.ListTile(
                             title=ft.Text(tr("exportLogs")),
-                            trailing=ft.ElevatedButton(
+                            trailing=ft.FilledButton(
                                 tr("exportLogs"),
                                 on_click=export_logs,
                             ),

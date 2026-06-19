@@ -74,7 +74,7 @@ class PlayerScreen(ft.Container):
             player.set_volume(max(0.0, player.volume - 0.05))
             self._page.update()
         elif e.key == "Escape":
-            self._page.go("/library")
+                self._page.run_task(self._page.push_route, "/library")
 
     def cycle_view(self, e=None):
         modes = ["cover", "lyrics"]
@@ -210,7 +210,7 @@ class PlayerScreen(ft.Container):
                     content=ft.IconButton(
                         icon=ft.Icons.ARROW_BACK,
                         icon_size=24,
-                        on_click=lambda _: self._page.go("/library"),
+                        on_click=lambda _: self._page.run_task(self._page.push_route, "/library"),
                         tooltip=tr("back"),
                     ),
                 ),
@@ -981,7 +981,7 @@ class PlayerScreen(ft.Container):
             else:
                 player.current_index = -1
                 player._is_playing = False
-                self._page.go("/library")
+            self._page.run_task(self._page.push_route, "/library")
                 return
         self._rebuild()
 
