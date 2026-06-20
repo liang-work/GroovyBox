@@ -180,5 +180,11 @@
   "deselectAll": "Deselect All",
   "invertSelection": "Invert Selection",
   "confirmBatchDelete": "Delete {} selected tracks? This will remove them from your device.",
-  "confirmDeletePlaylist": "Delete playlist \"{}\" ?"
+  "confirmDeletePlaylist": "Delete playlist \"{}\" ?",
+  "permissionRequired": "Permission Required",
+  "permissionMessage": "GroovyBox needs media storage permission to access your music files. Please grant the permission to continue.",
+  "grantPermission": "Grant Permission",
+  "openSettings": "Open Settings",
+  "permissionDenied": "Permission Denied",
+  "permissionDeniedMessage": "Media storage permission was denied. Please grant the permission in app settings to use GroovyBox."
 }

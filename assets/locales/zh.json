@@ -181,5 +181,11 @@
   "deselectAll": "取消全选",
   "invertSelection": "反选",
   "confirmBatchDelete": "删除选中的 {} 首曲目？这将从设备中移除它们。",
-  "confirmDeletePlaylist": "删除播放列表\"{}\"？"
+  "confirmDeletePlaylist": "删除播放列表\"{}\"？",
+  "permissionRequired": "需要权限",
+  "permissionMessage": "GroovyBox 需要媒体存储权限才能访问您的音乐文件。请授予权限以继续使用。",
+  "grantPermission": "授予权限",
+  "openSettings": "打开设置",
+  "permissionDenied": "权限被拒绝",
+  "permissionDeniedMessage": "媒体存储权限被拒绝。请在应用设置中授予权限以使用 GroovyBox。"
 }

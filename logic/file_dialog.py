@@ -7,13 +7,13 @@ logger = logging.getLogger("flet")
 
 _picker: Optional[ft.FilePicker] = None
 
+
 def _ensure_picker(page: ft.Page) -> ft.FilePicker:
     global _picker
     if _picker is None:
         _picker = ft.FilePicker()
-        if page.platform in (ft.PagePlatform.ANDROID, ft.PagePlatform.IOS):
-            page.overlay.append(_picker)
     return _picker
+
 
 async def pick_files(
     page: ft.Page,
@@ -35,6 +35,7 @@ async def pick_files(
         logger.error("FilePicker.pick_files failed: %s", e)
         return None
 
+
 async def pick_directory(
     page: ft.Page,
     title: str = "Select folder",
@@ -46,6 +47,7 @@ async def pick_directory(
     except Exception as e:
         logger.warning("FilePicker.get_directory_path failed: %s", e)
         return None
+
 
 async def save_file(
     page: ft.Page,

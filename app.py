@@ -13,6 +13,7 @@ class GroovyBoxApp:
         self.theme_seed_color = "#2EB0C6"
         self.theme_mode = ft.ThemeMode.SYSTEM
         self.shell = None
+        self._ph = None
 
         db.init_database()
         self._load_locale()
@@ -50,17 +51,76 @@ class GroovyBoxApp:
             try:
                 import flet_permission_handler as fph
                 self._ph = fph.PermissionHandler()
-                self.page.run_task(self._do_request_perms)
+                self.page.run_task(self._check_and_request_perms)
             except ImportError:
-                pass
+                logger.warning("flet_permission_handler not installed, skipping permissions")
+            except Exception as ex:
+                logger.warning(f"PermissionHandler init skipped: {ex}")
 
-    async def _do_request_perms(self):
+    async def _check_and_request_perms(self):
+        if not self._ph:
+            return
         try:
             import flet_permission_handler as fph
-            await self._ph.request(fph.Permission.READ_EXTERNAL_STORAGE)
-            await self._ph.request(fph.Permission.WRITE_EXTERNAL_STORAGE)
-        except Exception:
-            pass
+
+            storage_status = await self._ph.get_status(fph.Permission.STORAGE)
+            logger.info(f"Storage permission status: {storage_status}")
+
+            if storage_status == fph.PermissionStatus.GRANTED:
+                logger.info("Storage permission already granted")
+                return
+
+            self._show_permission_dialog(fph)
+        except Exception as ex:
+            logger.warning(f"Permission check skipped: {ex}")
+
+    def _show_permission_dialog(self, fph):
+        async def on_grant(e):
+            self.page.pop_dialog()
+            try:
+                status = await self._ph.request(fph.Permission.STORAGE)
+                logger.info(f"Storage permission after request: {status}")
+                if status != fph.PermissionStatus.GRANTED:
+                    self._show_permission_denied_dialog(fph)
+            except Exception as ex:
+                logger.warning(f"Permission request failed: {ex}")
+                self._show_permission_denied_dialog(fph)
+
+        def on_cancel(e):
+            self.page.pop_dialog()
+
+        dlg = ft.AlertDialog(
+            title=ft.Text(tr("permissionRequired")),
+            content=ft.Text(tr("permissionMessage")),
+            actions=[
+                ft.TextButton(tr("cancel"), on_click=on_cancel),
+                ft.FilledButton(tr("grantPermission"), on_click=on_grant),
+            ],
+            actions_alignment=ft.MainAxisAlignment.END,
+        )
+        self.page.show_dialog(dlg)
+
+    def _show_permission_denied_dialog(self, fph):
+        async def on_settings(e):
+            self.page.pop_dialog()
+            try:
+                await self._ph.open_app_settings()
+            except Exception as ex:
+                logger.warning(f"Failed to open app settings: {ex}")
+
+        def on_cancel(e):
+            self.page.pop_dialog()
+
+        dlg = ft.AlertDialog(
+            title=ft.Text(tr("permissionDenied")),
+            content=ft.Text(tr("permissionDeniedMessage")),
+            actions=[
+                ft.TextButton(tr("cancel"), on_click=on_cancel),
+                ft.FilledButton(tr("openSettings"), on_click=on_settings),
+            ],
+            actions_alignment=ft.MainAxisAlignment.END,
+        )
+        self.page.show_dialog(dlg)
 
     def _load_locale(self):
         lang = db.get_setting("language", "en")

@@ -61,19 +61,32 @@ class LibraryScreen(ft.Column):
 
     def _build_mobile_layout(self):
         tabs = ft.Tabs(
+            length=3,
             selected_index=self.selected_tab,
             on_change=self._on_tab_change,
-            tabs=[
-                ft.Tab(text=tr("tracks"), icon=ft.Icons.AUDIOTRACK),
-                ft.Tab(text=tr("albums"), icon=ft.Icons.ALBUM),
-                ft.Tab(text=tr("playlists"), icon=ft.Icons.QUEUE_MUSIC),
-            ],
+            expand=True,
+            content=ft.Column(
+                expand=True,
+                spacing=0,
+                controls=[
+                    ft.TabBar(
+                        tabs=[
+                            ft.Tab(label=tr("tracks"), icon=ft.Icons.AUDIOTRACK),
+                            ft.Tab(label=tr("albums"), icon=ft.Icons.ALBUM),
+                            ft.Tab(label=tr("playlists"), icon=ft.Icons.QUEUE_MUSIC),
+                        ]
+                    ),
+                    ft.TabBarView(
+                        expand=True,
+                        controls=[self._build_tab_content()],
+                    ),
+                ],
+            ),
         )
-        content = self._build_tab_content()
         return ft.Column(
             expand=True,
             spacing=0,
-            controls=[tabs, ft.Container(expand=True, content=content)],
+            controls=[tabs],
         )
 
     def _on_nav_change(self, e):
