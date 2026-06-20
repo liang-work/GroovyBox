@@ -7,19 +7,10 @@ logger = logging.getLogger("flet")
 
 _picker: Optional[ft.FilePicker] = None
 
-def _is_mobile(page: ft.Page) -> bool:
-    try:
-        return page.platform in (ft.PagePlatform.ANDROID, ft.PagePlatform.IOS)
-    except Exception:
-        return False
-
 def _ensure_picker(page: ft.Page) -> ft.FilePicker:
     global _picker
     if _picker is None:
         _picker = ft.FilePicker()
-        if _is_mobile(page):
-            page.overlay.append(_picker)
-            page.update()
     return _picker
 
 async def pick_files(
