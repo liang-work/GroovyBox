@@ -30,9 +30,6 @@ def build_cmd(platform: str):
     if platform in ("apk", "aab"):
         for perm in android.get("permissions", []):
             cmd += ["--android-permissions", perm]
-        tsv = android.get("target_sdk_version")
-        if tsv:
-            cmd += ["--android-target-sdk-version", str(tsv)]
         bg = android.get("adaptive_icon_background")
         if bg:
             cmd += ["--android-adaptive-icon-background", bg]
