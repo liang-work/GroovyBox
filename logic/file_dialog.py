@@ -11,6 +11,8 @@ def _ensure_picker(page: ft.Page) -> ft.FilePicker:
     global _picker
     if _picker is None:
         _picker = ft.FilePicker()
+        if page.platform in (ft.PagePlatform.ANDROID, ft.PagePlatform.IOS):
+            page.overlay.append(_picker)
     return _picker
 
 async def pick_files(

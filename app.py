@@ -48,20 +48,17 @@ class GroovyBoxApp:
     def _request_permissions(self):
         if self.page.platform == ft.PagePlatform.ANDROID:
             try:
-                from flet_permission_handler import PermissionHandler, Permission
-                self._ph = PermissionHandler()
-                self.page.overlay.append(self._ph)
+                import flet_permission_handler as fph
+                self._ph = fph.PermissionHandler()
                 self.page.run_task(self._do_request_perms)
             except ImportError:
                 pass
 
     async def _do_request_perms(self):
         try:
-            from flet_permission_handler import Permission
-            await self._ph.request_permissions([
-                Permission.READ_EXTERNAL_STORAGE,
-                Permission.WRITE_EXTERNAL_STORAGE,
-            ])
+            import flet_permission_handler as fph
+            await self._ph.request(fph.Permission.READ_EXTERNAL_STORAGE)
+            await self._ph.request(fph.Permission.WRITE_EXTERNAL_STORAGE)
         except Exception:
             pass
 
