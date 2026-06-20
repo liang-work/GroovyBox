@@ -169,8 +169,12 @@ GroovyBox/
  
 注意：目前版本在移动端无法使用，因为媒体播放库存在缺陷。
 
+## 📖 项目历史
+
+  在 2025 年 8 月 11 日，NightSystem 在 sn(一个社区)发帖求助，希望有人能帮助 TA 完成初版 GroovyBox(即Swift版) 并上架。后面，LittleSheep2Code表示愿意看看，此后，该应用成功在 TestFlight 可用，但没过多久，就因为开发者繁忙而废弃。到 25 年底，LittleSheep2Code 重新制作了 Flutter 版的 GroovyBox，但是没过多久，就再次停更。在几个月后，就有了这个项目。
+  
 ---
 
 <p align="center">
-  Made with ❤️ and Python
+  Made liang-work with ❤️ and Python
 </p>
