@@ -12,7 +12,7 @@
     "module_name": "main"
   },
   "android": {
-    "permissions": ["READ_MEDIA_AUDIO"],
+    "permissions": ["READ_MEDIA_AUDIO", "READ_EXTERNAL_STORAGE", "WRITE_EXTERNAL_STORAGE"],
     "adaptive_icon_background": "#1e1e2e"
   },
   "build": {
