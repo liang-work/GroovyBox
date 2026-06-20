@@ -13,9 +13,9 @@
   },
   "android": {
     "permissions": [
-      "android.permission.READ_MEDIA_AUDIO",
-      "android.permission.READ_EXTERNAL_STORAGE",
-      "android.permission.WRITE_EXTERNAL_STORAGE"
+      "READ_MEDIA_AUDIO",
+      "READ_EXTERNAL_STORAGE",
+      "WRITE_EXTERNAL_STORAGE"
     ],
     "target_sdk_version": 30,
     "adaptive_icon_background": "#1e1e2e"

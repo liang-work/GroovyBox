@@ -29,7 +29,7 @@ def build_cmd(platform: str):
     # Platform-specific
     if platform in ("apk", "aab"):
         for perm in android.get("permissions", []):
-            cmd += ["--android-permissions", perm]
+            cmd += ["--android-permissions", f"{perm}=true"]
         bg = android.get("adaptive_icon_background")
         if bg:
             cmd += ["--android-adaptive-icon-background", bg]
