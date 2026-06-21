@@ -20,10 +20,16 @@
     "target_sdk_version": 30,
     "adaptive_icon_background": "#1e1e2e"
   },
+  "ios": {
+    "info_plist": {
+      "NSAppleMusicUsageDescription": "GroovyBox needs access to your music library to play songs.",
+      "UIBackgroundModes": ["audio"]
+    }
+  },
   "build": {
     "flet_version": "0.85.3",
     "python_version": "3.12",
     "timeout_minutes": 60,
-    "default_platforms": ["windows", "linux", "macos", "android"]
+    "default_platforms": ["windows", "linux", "macos", "android", "ios"]
   }
 }

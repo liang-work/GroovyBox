@@ -4,9 +4,9 @@ on:
   workflow_dispatch:
     inputs:
       platforms:
-        description: 'Platforms (comma-separated): windows, linux, macos, android'
+        description: 'Platforms (comma-separated): windows, linux, macos, android, ios'
         required: true
-        default: 'windows,linux,macos,android'
+        default: 'windows,linux,macos,android,ios'
 
 env:
   FLET_VERSION: '0.85.3'
@@ -167,3 +167,68 @@ jobs:
           name: GroovyBox-Android
           path: build/apk/*.apk
           if-no-files-found: error
+
+  ios:
+    if: contains(inputs.platforms, 'ios')
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install dependencies
+        run: |
+          pip install flet==${{ env.FLET_VERSION }} flet-audio==${{ env.FLET_VERSION }}
+          pip install mutagen Pillow colorthief httpx
+      - name: Cache Flutter SDK
+        uses: actions/cache@v4
+        with:
+          path: ~/.flet/flutter
+          key: flutter-${{ env.FLET_VERSION }}
+      - name: Decode certificate
+        env:
+          IOS_CERTIFICATE_P12: ${{ secrets.IOS_CERTIFICATE_P12 }}
+          IOS_CERTIFICATE_PASSWORD: ${{ secrets.IOS_CERTIFICATE_PASSWORD }}
+        if: env.IOS_CERTIFICATE_P12 != ''
+        run: |
+          echo "$IOS_CERTIFICATE_P12" | base64 -d > certificate.p12
+          KEYCHAIN_PATH=$RUNNER_TEMP/app-signing.keychain-db
+          KEYCHAIN_PASSWORD=$(openssl rand -hex 16)
+          security create-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
+          security set-keychain-settings -lut 21600 $KEYCHAIN_PATH
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
+          security import certificate.p12 -P "$IOS_CERTIFICATE_PASSWORD" -A \
+            -t cert -f pkcs12 -k $KEYCHAIN_PATH
+          security set-key-partition-list -S apple-tool:,apple: \
+            -k "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
+          security list-keychain -d user -s $KEYCHAIN_PATH
+          echo "KEYCHAIN_PATH=$KEYCHAIN_PATH" >> $GITHUB_ENV
+          echo "KEYCHAIN_PASSWORD=$KEYCHAIN_PASSWORD" >> $GITHUB_ENV
+      - name: Decode provisioning profile
+        env:
+          IOS_PROVISIONING_PROFILE: ${{ secrets.IOS_PROVISIONING_PROFILE }}
+        if: env.IOS_PROVISIONING_PROFILE != ''
+        run: |
+          mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
+          echo "$IOS_PROVISIONING_PROFILE" | base64 -d > profile.mobileprovision
+          UUID=$(security cms -D -i profile.mobileprovision | \
+            xmllint --xpath "string(//key[.='UUID']/following-sibling::string[1])" -)
+          cp profile.mobileprovision \
+            ~/Library/MobileDevice/Provisioning\ Profiles/${UUID}.mobileprovision
+          echo "IOS_PROVISIONING_PROFILE_NAME=$UUID" >> $GITHUB_ENV
+      - name: Build
+        timeout-minutes: 60
+        env:
+          IOS_TEAM_ID: ${{ secrets.IOS_TEAM_ID }}
+          IOS_SIGNING_CERTIFICATE: "Apple Distribution"
+        run: python scripts/do_build.py ipa
+      - uses: actions/upload-artifact@v4
+        with:
+          name: GroovyBox-iOS
+          path: build/ios/**/*.ipa
+          if-no-files-found: warn
+      - uses: actions/upload-artifact@v4
+        with:
+          name: GroovyBox-iOS-Archive
+          path: build/ios/**/*.xcarchive
+          if-no-files-found: warn

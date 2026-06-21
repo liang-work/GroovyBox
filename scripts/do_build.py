@@ -57,6 +57,26 @@ def build_cmd(platform: str):
                 "--android-signing-key-password", key_pass or ks_pass,
                 "--android-signing-key-alias", key_alias,
             ]
+
+    if platform == "ipa":
+        ios_cfg = cfg.get("ios", {})
+        for key, val in ios_cfg.get("info_plist", {}).items():
+            if isinstance(val, list):
+                cmd += ["--info-plist", f"{key}={json.dumps(val)}"]
+            elif isinstance(val, bool):
+                cmd += ["--info-plist", f"{key}={'true' if val else 'false'}"]
+            else:
+                cmd += ["--info-plist", f"{key}={val}"]
+        team_id = os.environ.get("IOS_TEAM_ID", "")
+        cert = os.environ.get("IOS_SIGNING_CERTIFICATE", "")
+        profile = os.environ.get("IOS_PROVISIONING_PROFILE_NAME", "")
+        if team_id:
+            cmd += ["--ios-team-id", team_id]
+        if cert:
+            cmd += ["--ios-signing-certificate", cert]
+        if profile:
+            cmd += ["--ios-provisioning-profile", profile]
+
     return cmd
 
 if __name__ == "__main__":
