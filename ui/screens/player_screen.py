@@ -41,6 +41,7 @@ class PlayerScreen(ft.Container):
         self._sync_active = False
         self._sync_track = None
         self._sync_temp_offset = 0
+        self._seeking = False
 
         page.on_keyboard_event = self._on_keyboard
         self._initialized = False
@@ -95,10 +96,15 @@ class PlayerScreen(ft.Container):
     def refresh(self):
         self._rebuild()
 
+    def _progress_ratio(self, pos_ms: int, dur_ms: int) -> float:
+        max_val = max(dur_ms, 1)
+        pos = max(0, min(pos_ms, max_val))
+        return float(pos) / float(max_val)
+
     def refresh_position(self, pos_ms: int, dur_ms: int):
-        if self._pos_slider:
-            max_val = max(dur_ms, 1)
-            if max_val != getattr(self, '_cached_dur', 0):
+        max_val = max(dur_ms, 1)
+        if self._pos_slider and not self._seeking:
+            if max_val != getattr(self, "_cached_dur", 0):
                 self._pos_slider.min = 0
                 self._pos_slider.max = float(max_val)
                 self._cached_dur = max_val
@@ -356,14 +362,26 @@ class PlayerScreen(ft.Container):
         )
 
     def _build_progress_slider(self, player):
+        bar_width = min(400, self._page.width - 80) if self._page.width else 400
         max_val = max(player.duration_ms, 1)
         pos_val = max(0, min(player.position_ms, max_val))
+        self._cached_dur = max_val
+        def _on_seek_change(e: ft.ControlEvent) -> None:
+            self._seeking = True
+            _safe_seek(e, player)
+            self._seeking = False
         self._pos_slider = ft.Slider(
             value=float(pos_val),
-            min=0, max=float(max_val),
+            min=0,
+            max=float(max_val),
             divisions=1000,
-            width=min(400, self._page.width - 80) if self._page.width else 400,
-            on_change=lambda e: _safe_seek(e, player),
+            width=bar_width,
+            height=24,
+            active_color=ft.Colors.PRIMARY,
+            inactive_color=ft.Colors.with_opacity(0.15, ft.Colors.PRIMARY),
+            thumb_color=ft.Colors.WHITE,
+            overlay_color=ft.Colors.with_opacity(0.12, ft.Colors.WHITE),
+            on_change=_on_seek_change,
         )
         self._pos_text = ft.Text(format_duration(pos_val), size=12)
         self._dur_text = ft.Text(format_duration(player.duration_ms), size=12)
@@ -373,7 +391,7 @@ class PlayerScreen(ft.Container):
             controls=[
                 self._pos_slider,
                 ft.Row(
-                    width=min(400, self._page.width - 80) if self._page.width else 400,
+                    width=bar_width,
                     tight=True,
                     controls=[
                         self._pos_text,
@@ -460,10 +478,19 @@ class PlayerScreen(ft.Container):
         play_btn = ft.IconButton(
             icon=ft.Icons.PAUSE_ROUNDED if player.is_playing else ft.Icons.PLAY_ARROW_ROUNDED,
             icon_size=36, on_click=lambda e: player.toggle_play_pause())
+        max_val = max(float(player.duration_ms), 1)
         self._pos_slider = ft.Slider(
-            value=float(player.position_ms), min=0,
-            max=max(float(player.duration_ms), 1),
-            on_change=lambda e: player.seek(int(e.control.value)))
+            value=float(player.position_ms),
+            min=0,
+            max=max_val,
+            width=max_w,
+            height=24,
+            active_color=ft.Colors.PRIMARY,
+            inactive_color=ft.Colors.with_opacity(0.15, ft.Colors.PRIMARY),
+            thumb_color=ft.Colors.WHITE,
+            overlay_color=ft.Colors.with_opacity(0.12, ft.Colors.WHITE),
+            on_change=lambda e: player.seek(int(e.control.value)),
+        )
         self._pos_text = ft.Text(format_duration(player.position_ms), size=12)
         self._dur_text = ft.Text(format_duration(player.duration_ms), size=12)
         self._play_btn = play_btn

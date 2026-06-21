@@ -32,6 +32,7 @@ class MiniPlayerWidget(ft.Container):
 
         self._pos_slider = None
         self._play_btn = None
+        self._seeking = False
 
     @property
     def page(self):
@@ -185,6 +186,7 @@ class MiniPlayerWidget(ft.Container):
 
         self._pos_slider = None
         self._play_btn = None
+        self._seeking = False
 
         if is_desktop:
             self.inner.controls = [self._build_desktop()]
@@ -193,17 +195,23 @@ class MiniPlayerWidget(ft.Container):
 
         self.update()
 
+    def _progress_ratio(self) -> float:
+        max_val = max(self._duration_ms, 1)
+        pos = max(0, min(self._position_ms, max_val))
+        return float(pos) / float(max_val)
+
     def refresh_position(self, pos_ms: int, dur_ms: int):
         self._position_ms = pos_ms
         self._duration_ms = dur_ms
-        if self._pos_slider:
-            max_val = max(dur_ms, 1)
-            if max_val != getattr(self, '_cached_dur', 0):
-                self._pos_slider.min = 0
-                self._pos_slider.max = float(max_val)
-                self._cached_dur = max_val
-            self._pos_slider.value = float(max(0, min(pos_ms, max_val)))
-            self._pos_slider.update()
+        if not self._pos_slider or self._seeking:
+            return
+        max_val = max(dur_ms, 1)
+        if max_val != getattr(self, "_cached_dur", 0):
+            self._pos_slider.min = 0
+            self._pos_slider.max = float(max_val)
+            self._cached_dur = max_val
+        self._pos_slider.value = float(max(0, min(pos_ms, max_val)))
+        self._pos_slider.update()
 
     def refresh_play_state(self, is_playing: bool):
         self._is_playing = is_playing
@@ -211,31 +219,39 @@ class MiniPlayerWidget(ft.Container):
             self._play_btn.icon = ft.Icons.PAUSE_ROUNDED if is_playing else ft.Icons.PLAY_ARROW_ROUNDED
             self._play_btn.update()
 
-    def _build_slider(self) -> ft.Slider:
-        max_val = max(self._duration_ms, 1)
-        pos = max(0, min(self._position_ms, max_val))
-        self._pos_slider = ft.Slider(
-            value=float(pos),
-            min=0, max=float(max_val),
-            divisions=1000,
-            height=4,
-            thumb_color=ft.Colors.TRANSPARENT,
-            active_color=ft.Colors.PRIMARY,
-            inactive_color=ft.Colors.with_opacity(0.15, ft.Colors.ON_SURFACE),
-            on_change=lambda e: self._on_seek(int(e.control.value)) if self._on_seek else None,
-        )
-        return self._pos_slider
+    def _on_slider_change(self, e: ft.ControlEvent) -> None:
+        seek_ms = int(e.control.value)
+        self._seeking = True
+        if self._on_seek:
+            self._on_seek(seek_ms)
+        self._seeking = False
 
     def _build_progress(self) -> ft.Control:
         if self._is_loading:
+            self._pos_slider = None
             return ft.Container(
                 height=4,
                 content=ft.ProgressBar(
                     color=ft.Colors.PRIMARY,
-                    bgcolor=ft.Colors.with_opacity(0.1, ft.Colors.ON_SURFACE),
+                    bgcolor=ft.Colors.with_opacity(0.12, ft.Colors.PRIMARY),
                 ),
             )
-        return self._build_slider()
+        max_val = max(self._duration_ms, 1)
+        pos = max(0, min(self._position_ms, max_val))
+        self._cached_dur = max_val
+        self._pos_slider = ft.Slider(
+            value=float(pos),
+            min=0,
+            max=float(max_val),
+            divisions=1000,
+            height=20,
+            active_color=ft.Colors.PRIMARY,
+            inactive_color=ft.Colors.with_opacity(0.15, ft.Colors.PRIMARY),
+            thumb_color=ft.Colors.WHITE,
+            overlay_color=ft.Colors.with_opacity(0.12, ft.Colors.WHITE),
+            on_change=self._on_slider_change,
+        )
+        return self._pos_slider
 
     def _build_play_button(self, icon_size: int = 28) -> ft.IconButton:
         self._play_btn = ft.IconButton(
@@ -250,7 +266,6 @@ class MiniPlayerWidget(ft.Container):
         return ft.Container(
             height=self.height,
             padding=ft.Padding(0, 0, 0, self._page.padding.bottom if self._page.padding else 0),
-            on_click=lambda _: self._on_open_player() if self._on_open_player else None,
             bgcolor=ft.Colors.SURFACE_CONTAINER_HIGHEST,
             border=ft.Border(top=ft.BorderSide(color=ft.Colors.OUTLINE_VARIANT, width=1)),
             content=ft.Column(
@@ -259,6 +274,7 @@ class MiniPlayerWidget(ft.Container):
                     self._build_progress(),
                     ft.Container(
                         expand=True,
+                        on_click=lambda _: self._on_open_player() if self._on_open_player else None,
                         content=ft.Row(
                             tight=True,
                             controls=[
@@ -301,7 +317,6 @@ class MiniPlayerWidget(ft.Container):
         return ft.Container(
             height=self.height,
             padding=ft.Padding(0, 0, 0, self._page.padding.bottom if self._page.padding else 0),
-            on_click=lambda _: self._on_open_player() if self._on_open_player else None,
             bgcolor=ft.Colors.SURFACE_CONTAINER_HIGHEST,
             border=ft.Border(top=ft.BorderSide(color=ft.Colors.OUTLINE_VARIANT, width=1)),
             content=ft.Column(
@@ -310,6 +325,7 @@ class MiniPlayerWidget(ft.Container):
                     self._build_progress(),
                     ft.Container(
                         expand=True,
+                        on_click=lambda _: self._on_open_player() if self._on_open_player else None,
                         content=ft.Row(
                             tight=True,
                             controls=[

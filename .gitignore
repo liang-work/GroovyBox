@@ -37,3 +37,6 @@ venv/
 .flet/
 # Build config docs (local reference only)
 build-config-reference.md
+
+# Cursor
+.cursor/
