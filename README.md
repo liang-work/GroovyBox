@@ -2,6 +2,8 @@
 
 > A modern, cross-platform music player built with [Flet](https://flet.dev/) and Python.
 
+> 🇬🇧 [English Version](README_EN.md)
+
 GroovyBox 是一个用 Python 和 Flet 打造的现代音乐播放器，支持 Windows、macOS、Linux 和 Android 平台。它拥有精美的 Material 3 界面、智能元数据解析、播放列表管理和多语言支持等特性。
 
 <p align="center">
