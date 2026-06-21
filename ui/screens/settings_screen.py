@@ -379,6 +379,7 @@ def SettingsScreen(page: ft.Page) -> ft.Column:
                             controls=[
                                 ft.Text("Contributors: ", size=12, color=ft.Colors.with_opacity(0.6, ft.Colors.ON_SURFACE)),
                                 ft.TextButton("liang-work", url="https://github.com/liang-work"),
+								ft.TextButton("ZhiH", url="https://github.com/ZhiH2333"),
                             ],
                         ),
                     ],
