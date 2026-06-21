@@ -23,6 +23,8 @@ class AudioPlayer:
         self._duration_ms = 0
         self._loading = False
 
+        self._ui_loop: Optional[asyncio.AbstractEventLoop] = None
+
         self.on_track_change: Optional[Callable] = None
         self.on_position_change: Optional[Callable] = None
         self.on_play_state_change: Optional[Callable] = None
@@ -64,6 +66,7 @@ class AudioPlayer:
         self._seek_base_ms = 0
         self._was_busy = False
         self._timer_active = True
+        self._pending_cmd = False
         self._poll_thread = threading.Thread(target=self._pygame_poll, daemon=True)
         self._poll_thread.start()
 
@@ -107,6 +110,9 @@ class AudioPlayer:
                     pygame.mixer.music.set_volume(args[0])
             except Exception as ex:
                 logger.error(f"Audio worker error: {ex}")
+            finally:
+                if cmd in ("load_play", "seek"):
+                    self._pending_cmd = False
             self._cmd_queue.task_done()
 
     def _pygame_send(self, cmd, *args):
@@ -119,7 +125,8 @@ class AudioPlayer:
                 busy = pygame.mixer.music.get_busy()
                 pos = pygame.mixer.music.get_pos()
                 if busy and pos >= 0:
-                    self._position_ms = self._seek_base_ms + pos
+                    if not self._pending_cmd:
+                        self._position_ms = self._seek_base_ms + pos
                     if self.on_position_change:
                         self._call_on_ui(self.on_position_change, self._position_ms)
                 if self._was_busy and not busy and self._is_playing:
@@ -204,6 +211,9 @@ class AudioPlayer:
 
     # ======================== Cross-backend helpers ========================
 
+    async def capture_ui_loop(self):
+        self._ui_loop = asyncio.get_running_loop()
+
     def _call_on_ui(self, fn, *args):
         try:
             loop = asyncio.get_running_loop()
@@ -212,6 +222,9 @@ class AudioPlayer:
                 return
         except RuntimeError:
             pass
+        if self._ui_loop is not None:
+            self._ui_loop.call_soon_threadsafe(fn, *args)
+            return
         try:
             fn(*args)
         except Exception as ex:
@@ -273,8 +286,9 @@ class AudioPlayer:
             self._duration_ms = self._pygame_get_duration(path)
             logger.debug(f"Duration: {self._duration_ms}ms")
             self._seek_base_ms = 0
-            self._pygame_send("load_play", path)
             self._position_ms = 0
+            self._pending_cmd = True
+            self._pygame_send("load_play", path)
         else:
             self._position_ms = 0
             self._duration_ms = 0
@@ -353,10 +367,14 @@ class AudioPlayer:
     def seek(self, position_ms: int):
         if self._use_pygame:
             self._seek_base_ms = position_ms
+            self._position_ms = position_ms
+            self._pending_cmd = True
             self._pygame_send("seek", position_ms)
+            if self.on_position_change:
+                self._call_on_ui(self.on_position_change, position_ms)
         else:
             asyncio.create_task(self._audio.seek(position_ms))
-        self._position_ms = position_ms
+            self._position_ms = position_ms
 
     def set_volume(self, volume: float):
         self._volume = max(0.0, min(1.0, volume))

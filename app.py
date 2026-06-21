@@ -33,6 +33,8 @@ class GroovyBoxApp:
         self.audio_player.on_play_state_change = self._on_play_state_change
         self.audio_player.on_position_change = self._on_position_change
 
+        page.run_task(self.audio_player.capture_ui_loop)
+
         page.on_route_change = self._on_route_change
         page.on_view_pop = self._on_view_pop
 
