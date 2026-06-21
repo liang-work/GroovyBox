@@ -47,6 +47,17 @@ class GroovyBoxApp:
 
         page.run_task(page.push_route, "/library")
         self._request_permissions()
+        self._set_window_icon()
+
+    def _set_window_icon(self):
+        try:
+            import os
+            icon_path = os.path.join(os.path.dirname(__file__), "assets", "images", "icon.ico")
+            if os.path.exists(icon_path):
+                self.page.window.icon = icon_path
+                self.page.update()
+        except Exception:
+            pass
 
     def _request_permissions(self):
         if self.page.platform == ft.PagePlatform.ANDROID:
