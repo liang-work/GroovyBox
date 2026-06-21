@@ -1,5 +1,6 @@
 import flet as ft
 import os
+import threading
 from logic.localize import tr
 from logic.lyrics_parser import lyrics_from_json, lyrics_to_json
 from logic.metadata_service import format_duration
@@ -42,11 +43,11 @@ class PlayerScreen(ft.Container):
         self._sync_track = None
         self._sync_temp_offset = 0
         self._seeking = False
-        self._lyrics_list_view = None
+        self._lyrics_column = None
         self._lyrics_need_initial_scroll = False
-        self._lyrics_stride = self._LY_ITEM_H
-        self._lyrics_center_pad = 120
-        self._lyrics_scroll_seq = 0
+        self._lyrics_user_scrolling = False
+        self._lyrics_snap_timer = None
+        self._lyrics_current_idx = 0
 
         page.on_keyboard_event = self._on_keyboard
         self._initialized = False
@@ -141,16 +142,7 @@ class PlayerScreen(ft.Container):
                             if getattr(self, '_lyrics_need_initial_scroll', False):
                                 self._lyrics_need_initial_scroll = False
                                 self._last_lyrics_idx = new_idx
-                                lv = getattr(self, '_lyrics_list_view', None)
-                                if lv is not None:
-                                    half = self._LY_HALF
-                                    lo = max(0, new_idx - half - 1)
-                                    hi = min(len(data.lines), new_idx + half + 2)
-                                    for i in range(lo, hi):
-                                        c = self._lyrics_widgets[i]
-                                        self._style_lyric_line(c, i, new_idx)
-                                    self._lyrics_scroll_seq += 1
-                                    self._page.run_task(self._animate_lyrics_scroll, new_idx, 0, self._lyrics_scroll_seq)
+                                self._lyrics_current_idx = new_idx
                             elif new_idx != self._last_lyrics_idx:
                                 self._update_lyrics_styles(new_idx)
                     except Exception:
@@ -780,8 +772,8 @@ class PlayerScreen(ft.Container):
     _LY_HALF = 5
     _LY_ARC = 0.45
     _LY_ITEM_H = 44
-    _LY_ANIM_MS = 550
-    _LY_ANIM_CURVE = ft.AnimationCurve.EASE_OUT_QUART
+    _LY_ANIM_MS = 400
+    _LY_ANIM_CURVE = ft.AnimationCurve.EASE_OUT_CUBIC
 
     def _style_lyric_line(self, container, i, current_idx):
         """根据与当前行的距离设置某一歌词行的弧度/透明度/字体（供构建与更新复用）"""
@@ -814,23 +806,28 @@ class PlayerScreen(ft.Container):
             txt.weight = ft.FontWeight.NORMAL
             txt.color = ft.Colors.with_opacity(alpha, ft.Colors.ON_SURFACE)
 
-    def _build_curved_listview(self, data, current_idx, player, max_w, text_align):
-        """构建包含全部歌词行的 ListView，借助 scroll_to 实现 Apple Music 风格非线性滚动"""
-        # 横屏歌词面板占满整页高度，故视口高度 ≈ page.height
-        # 顶部留白 = 视口一半 - 行高一半，使 scroll offset = idx*行高 时该行精确居中
-        page_h = self._page.height or 600
-        center_pad = max(120, int(page_h / 2) - self._LY_ITEM_H // 2)
-        self._lyrics_center_pad = center_pad
-        self._lyrics_stride = self._LY_ITEM_H
+    def _build_visible_lines(self, data, current_idx, player, max_w, text_align):
+        """构建居中的可见歌词行（current_idx ± _LY_HALF），返回 controls 列表"""
+        half = self._LY_HALF
+        total = len(data.lines)
         self._lyrics_widgets = []
-        controls = [ft.Container(height=center_pad)]
-        for i, line in enumerate(data.lines):
+        above_count = min(half, current_idx)
+        below_count = min(half, total - 1 - current_idx)
+        start_idx = current_idx - above_count
+        end_idx = current_idx + below_count + 1
+
+        controls = []
+        controls.append(ft.Container(height=self._LY_ITEM_H * (half - above_count + 1)))
+
+        for i in range(start_idx, end_idx):
+            line = data.lines[i]
             container = ft.Container(
                 height=self._LY_ITEM_H,
                 width=max_w,
                 alignment=ft.Alignment(-1, 0),
                 animate_rotation=ft.Animation(self._LY_ANIM_MS, self._LY_ANIM_CURVE),
                 animate_opacity=ft.Animation(self._LY_ANIM_MS, self._LY_ANIM_CURVE),
+                animate_margin=ft.Animation(self._LY_ANIM_MS, self._LY_ANIM_CURVE),
                 on_click=lambda e, ts=line.time_ms: player.seek(ts) if ts else None,
                 content=ft.Text(
                     line.text,
@@ -842,34 +839,100 @@ class PlayerScreen(ft.Container):
             self._style_lyric_line(container, i, current_idx)
             self._lyrics_widgets.append(container)
             controls.append(container)
-        controls.append(ft.Container(height=center_pad))
-        lv = ft.ListView(
-            expand=True,
+
+        controls.append(ft.Container(height=self._LY_ITEM_H * (half - below_count + 1)))
+        return controls
+
+    def _build_curved_listview(self, data, current_idx, player, max_w, text_align):
+        """构建固定容器 + GestureDetector，歌词内容翻转而非容器滚动"""
+        self._lyrics_data_lines = data.lines
+        self._lyrics_current_idx = current_idx
+        self._lyrics_max_w = max_w
+        self._lyrics_text_align = text_align
+        self._lyrics_player = player
+        self._lyrics_drag_accum = 0.0
+
+        controls = self._build_visible_lines(data, current_idx, player, max_w, text_align)
+
+        column = ft.Column(
             spacing=0,
+            alignment=ft.MainAxisAlignment.CENTER,
+            horizontal_alignment=ft.CrossAxisAlignment.CENTER,
             controls=controls,
-            padding=ft.Padding(48, 0, 16, 0),
         )
-        self._lyrics_list_view = lv
-        self._lyrics_need_initial_scroll = True
-        return lv
+        self._lyrics_column = column
 
-    async def _animate_lyrics_scroll(self, idx: int, duration: int, seq: int) -> None:
-        """异步平滑滚动到第 idx 行使其居中（非线性 EASE_OUT_QUART）。
-
-        seq 用于合并快速连续的滚动请求：仅执行最新一次，避免拖动进度条时
-        多个长动画叠加导致歌词破碎。
-        """
-        if seq != self._lyrics_scroll_seq:
-            return
-        lv = getattr(self, '_lyrics_list_view', None)
-        if lv is None:
-            return
-        stride = getattr(self, '_lyrics_stride', self._LY_ITEM_H)
-        await lv.scroll_to(
-            offset=idx * stride,
-            duration=duration,
-            curve=ft.AnimationCurve.EASE_OUT_QUART,
+        gesture = ft.GestureDetector(
+            expand=True,
+            mouse_cursor=ft.MouseCursor.BASIC,
+            content=ft.Container(
+                expand=True,
+                padding=ft.Padding(48, 0, 16, 0),
+                content=column,
+            ),
+            on_scroll=self._on_lyrics_wheel,
+            on_vertical_drag_update=self._on_lyrics_drag_update,
+            on_vertical_drag_end=self._on_lyrics_drag_end,
         )
+        return gesture
+
+    def _on_lyrics_wheel(self, e: ft.ScrollEvent):
+        """桌面滚轮事件：向上/向下步进歌词"""
+        delta_y = e.scroll_delta.y
+        if delta_y > 10:
+            self._step_lyrics(1)
+        elif delta_y < -10:
+            self._step_lyrics(-1)
+
+    def _on_lyrics_drag_update(self, e):
+        """移动端拖动事件：累积拖动距离，跨过一行高度时步进"""
+        self._lyrics_drag_accum += e.delta_y
+        stride = self._LY_ITEM_H
+        while self._lyrics_drag_accum >= stride:
+            self._step_lyrics(1)
+            self._lyrics_drag_accum -= stride
+        while self._lyrics_drag_accum <= -stride:
+            self._step_lyrics(-1)
+            self._lyrics_drag_accum += stride
+
+    def _on_lyrics_drag_end(self, e):
+        """移动端拖动结束：重置累积并触发吸附"""
+        self._lyrics_drag_accum = 0.0
+        self._schedule_snap()
+
+    def _step_lyrics(self, direction):
+        """步进到上/下一行，重建可见行"""
+        lines = getattr(self, '_lyrics_data_lines', None)
+        if lines is None:
+            return
+        total = len(lines)
+        new_idx = max(0, min(self._lyrics_current_idx + direction, total - 1))
+        if new_idx == self._lyrics_current_idx:
+            return
+        self._lyrics_current_idx = new_idx
+        self._last_lyrics_idx = new_idx
+        controls = self._build_visible_lines(
+            self._lyrics_data_obj, new_idx, self._lyrics_player,
+            self._lyrics_max_w, self._lyrics_text_align,
+        )
+        self._lyrics_column.controls = controls
+        try:
+            self._lyrics_column.update()
+        except RuntimeError:
+            pass
+        self._schedule_snap()
+
+    def _schedule_snap(self):
+        """重置吸附防抖定时器"""
+        if self._lyrics_snap_timer:
+            self._lyrics_snap_timer.cancel()
+        self._lyrics_snap_timer = threading.Timer(0.5, self._snap_to_nearest_line)
+        self._lyrics_snap_timer.daemon = True
+        self._lyrics_snap_timer.start()
+
+    def _snap_to_nearest_line(self):
+        """吸附完成：清除用户滚动标志"""
+        self._lyrics_user_scrolling = False
 
     def _build_timed_lyrics(self, data, player, offset, use_curved=False):
         pos = player.position_ms + offset
@@ -895,14 +958,14 @@ class PlayerScreen(ft.Container):
         self._lyrics_widgets = []
         total = len(data.lines)
         if use_curved:
-            lv = self._build_curved_listview(data, current_idx, player, max_w, text_align)
+            self._lyrics_data_obj = data
+            gesture = self._build_curved_listview(data, current_idx, player, max_w, text_align)
             return ft.Container(
                 expand=True,
                 padding=0,
-                content=lv,
+                content=gesture,
             )
         else:
-            self._lyrics_list_view = None
             self._lyrics_need_initial_scroll = False
             self._lyrics_start = 0
             lines = []
@@ -943,33 +1006,25 @@ class PlayerScreen(ft.Container):
         use_curved = getattr(self, '_lyrics_use_curved', False)
         total = len(data.lines)
 
-        HALF_VISIBLE = 5
-        ARC_ANGLE = 0.55
-        start = getattr(self, '_lyrics_start', 0)
-
         if use_curved:
-            lv = getattr(self, '_lyrics_list_view', None)
-            if lv is None:
-                self._rebuild()
-                self._last_lyrics_idx = new_idx
+            if self._lyrics_user_scrolling:
                 return
-            old_idx = self._last_lyrics_idx
-            half = self._LY_HALF
-            lo = max(0, min(old_idx, new_idx) - half - 1)
-            hi = min(total, max(old_idx, new_idx) + half + 2)
-            for i in range(lo, hi):
-                container = self._lyrics_widgets[i]
-                self._style_lyric_line(container, i, new_idx)
-                container.update()
+            if new_idx == self._last_lyrics_idx:
+                return
+            self._lyrics_current_idx = new_idx
             self._last_lyrics_idx = new_idx
-            # 大跨度跳转（拖动进度条/seek）直接瞬间定位，避免长动画叠加破碎；
-            # 相邻推进才用非线性滚动动画
-            is_jump = abs(new_idx - old_idx) > 2
-            duration = 0 if is_jump else self._LY_ANIM_MS
-            self._lyrics_scroll_seq += 1
-            self._page.run_task(self._animate_lyrics_scroll, new_idx, duration, self._lyrics_scroll_seq)
+            controls = self._build_visible_lines(
+                self._lyrics_data_obj, new_idx, self._lyrics_player,
+                self._lyrics_max_w, self._lyrics_text_align,
+            )
+            self._lyrics_column.controls = controls
+            try:
+                self._lyrics_column.update()
+            except RuntimeError:
+                pass
             return
 
+        start = getattr(self, '_lyrics_start', 0)
         for i, container in enumerate(self._lyrics_widgets):
             line_idx = start + i
             container.rotate = None
