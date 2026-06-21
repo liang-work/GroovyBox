@@ -222,8 +222,24 @@ jobs:
           IOS_TEAM_ID: ${{ secrets.IOS_TEAM_ID }}
           IOS_SIGNING_CERTIFICATE: "Apple Distribution"
         run: python scripts/do_build.py ipa
+      - name: Set signing flag
+        env:
+          IOS_TEAM_ID: ${{ secrets.IOS_TEAM_ID }}
+        run: |
+          if [ -n "$IOS_TEAM_ID" ]; then
+            echo "HAS_SIGNING=1" >> $GITHUB_ENV
+          else
+            echo "HAS_SIGNING=0" >> $GITHUB_ENV
+          fi
       - uses: actions/upload-artifact@v4
+        if: env.HAS_SIGNING == '1'
         with:
           name: GroovyBox-iOS
           path: build/ipa/*.ipa
+          if-no-files-found: warn
+      - uses: actions/upload-artifact@v4
+        if: env.HAS_SIGNING == '0'
+        with:
+          name: GroovyBox-iOS
+          path: build/ipa/**/*.xcarchive/Products/Applications/*.app
           if-no-files-found: warn
