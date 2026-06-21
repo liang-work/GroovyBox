@@ -42,6 +42,11 @@ class PlayerScreen(ft.Container):
         self._sync_track = None
         self._sync_temp_offset = 0
         self._seeking = False
+        self._lyrics_list_view = None
+        self._lyrics_need_initial_scroll = False
+        self._lyrics_stride = self._LY_ITEM_H
+        self._lyrics_center_pad = 120
+        self._lyrics_scroll_seq = 0
 
         page.on_keyboard_event = self._on_keyboard
         self._initialized = False
@@ -133,7 +138,20 @@ class PlayerScreen(ft.Container):
                                     new_idx = i
                                 else:
                                     break
-                            if new_idx != self._last_lyrics_idx:
+                            if getattr(self, '_lyrics_need_initial_scroll', False):
+                                self._lyrics_need_initial_scroll = False
+                                self._last_lyrics_idx = new_idx
+                                lv = getattr(self, '_lyrics_list_view', None)
+                                if lv is not None:
+                                    half = self._LY_HALF
+                                    lo = max(0, new_idx - half - 1)
+                                    hi = min(len(data.lines), new_idx + half + 2)
+                                    for i in range(lo, hi):
+                                        c = self._lyrics_widgets[i]
+                                        self._style_lyric_line(c, i, new_idx)
+                                    self._lyrics_scroll_seq += 1
+                                    self._page.run_task(self._animate_lyrics_scroll, new_idx, 0, self._lyrics_scroll_seq)
+                            elif new_idx != self._last_lyrics_idx:
                                 self._update_lyrics_styles(new_idx)
                     except Exception:
                         pass
@@ -759,6 +777,100 @@ class PlayerScreen(ft.Container):
         self._rebuild()
         self._page.show_dialog(ft.SnackBar(ft.Text(tr("importedLyricsLines").replace("{}", str(len(ldata.lines))).replace("{}", track.title or ""))))
 
+    _LY_HALF = 5
+    _LY_ARC = 0.45
+    _LY_ITEM_H = 44
+    _LY_ANIM_MS = 550
+    _LY_ANIM_CURVE = ft.AnimationCurve.EASE_OUT_QUART
+
+    def _style_lyric_line(self, container, i, current_idx):
+        """根据与当前行的距离设置某一歌词行的弧度/透明度/字体（供构建与更新复用）"""
+        half = self._LY_HALF
+        arc = self._LY_ARC
+        dist = abs(i - current_idx)
+        is_active = i == current_idx
+        in_window = dist <= half
+        direction = -1 if i < current_idx else 1
+        t = min(dist / half, 1.0) if half > 0 else 0
+        if in_window:
+            rotate_val = direction * t * arc
+            v_pivot = direction * t * 2 if not is_active else 0
+            container.rotate = ft.Rotate(rotate_val, ft.Alignment(-1.2, v_pivot))
+            h_off = int(50 * t * t)
+            container.padding = ft.Padding(32 - h_off, 0, 24, 0)
+            container.opacity = 1.0 if is_active else max(0.25, 1.0 - t * 0.6)
+        else:
+            container.rotate = ft.Rotate(0, ft.Alignment(-1.2, 0))
+            container.padding = ft.Padding(32, 0, 24, 0)
+            container.opacity = 0.0
+        txt = container.content
+        if is_active:
+            txt.size = 19
+            txt.weight = ft.FontWeight.BOLD
+            txt.color = ft.Colors.PRIMARY
+        else:
+            alpha = max(0.4, 0.85 - t * 0.45)
+            txt.size = 16
+            txt.weight = ft.FontWeight.NORMAL
+            txt.color = ft.Colors.with_opacity(alpha, ft.Colors.ON_SURFACE)
+
+    def _build_curved_listview(self, data, current_idx, player, max_w, text_align):
+        """构建包含全部歌词行的 ListView，借助 scroll_to 实现 Apple Music 风格非线性滚动"""
+        # 横屏歌词面板占满整页高度，故视口高度 ≈ page.height
+        # 顶部留白 = 视口一半 - 行高一半，使 scroll offset = idx*行高 时该行精确居中
+        page_h = self._page.height or 600
+        center_pad = max(120, int(page_h / 2) - self._LY_ITEM_H // 2)
+        self._lyrics_center_pad = center_pad
+        self._lyrics_stride = self._LY_ITEM_H
+        self._lyrics_widgets = []
+        controls = [ft.Container(height=center_pad)]
+        for i, line in enumerate(data.lines):
+            container = ft.Container(
+                height=self._LY_ITEM_H,
+                width=max_w,
+                alignment=ft.Alignment(-1, 0),
+                animate_rotation=ft.Animation(self._LY_ANIM_MS, self._LY_ANIM_CURVE),
+                animate_opacity=ft.Animation(self._LY_ANIM_MS, self._LY_ANIM_CURVE),
+                on_click=lambda e, ts=line.time_ms: player.seek(ts) if ts else None,
+                content=ft.Text(
+                    line.text,
+                    max_lines=1,
+                    overflow=ft.TextOverflow.ELLIPSIS,
+                    text_align=text_align,
+                ),
+            )
+            self._style_lyric_line(container, i, current_idx)
+            self._lyrics_widgets.append(container)
+            controls.append(container)
+        controls.append(ft.Container(height=center_pad))
+        lv = ft.ListView(
+            expand=True,
+            spacing=0,
+            controls=controls,
+            padding=ft.Padding(48, 0, 16, 0),
+        )
+        self._lyrics_list_view = lv
+        self._lyrics_need_initial_scroll = True
+        return lv
+
+    async def _animate_lyrics_scroll(self, idx: int, duration: int, seq: int) -> None:
+        """异步平滑滚动到第 idx 行使其居中（非线性 EASE_OUT_QUART）。
+
+        seq 用于合并快速连续的滚动请求：仅执行最新一次，避免拖动进度条时
+        多个长动画叠加导致歌词破碎。
+        """
+        if seq != self._lyrics_scroll_seq:
+            return
+        lv = getattr(self, '_lyrics_list_view', None)
+        if lv is None:
+            return
+        stride = getattr(self, '_lyrics_stride', self._LY_ITEM_H)
+        await lv.scroll_to(
+            offset=idx * stride,
+            duration=duration,
+            curve=ft.AnimationCurve.EASE_OUT_QUART,
+        )
+
     def _build_timed_lyrics(self, data, player, offset, use_curved=False):
         pos = player.position_ms + offset
         current_idx = 0
@@ -777,72 +889,21 @@ class PlayerScreen(ft.Container):
         pw = self._page.width or 400
         is_desktop = pw > 800
 
-        if use_curved:
-            HALF_VISIBLE = 5
-            ARC_ANGLE = 0.55
         max_w = int(pw * (0.4 if is_desktop else 0.8))
-        align_x = -1
         text_align = ft.TextAlign.LEFT
 
         self._lyrics_widgets = []
         total = len(data.lines)
         if use_curved:
-            half = HALF_VISIBLE
-            start = max(0, current_idx - half)
-            end = min(total, current_idx + half + 1)
-            self._lyrics_start = start
-            above_spacers = half - (current_idx - start)
-            below_spacers = half - (end - 1 - current_idx)
-            controls = []
-
-            for _ in range(above_spacers):
-                controls.append(ft.Container(height=40))
-
-            for i in range(start, end):
-                dist = abs(i - current_idx)
-                direction = -1 if i < current_idx else 1
-                t = dist / half
-                rotate_val = direction * t * ARC_ANGLE
-                is_active = i == current_idx
-                h_off = int(60 * t * t)
-                v_pivot = direction * t * 2 if not is_active else 0
-                pivot = ft.Alignment(-1.2, v_pivot)
-
-                if is_active:
-                    fsize, fw, color = 18, ft.FontWeight.BOLD, ft.Colors.PRIMARY
-                else:
-                    fsize, fw, color = 16, ft.FontWeight.NORMAL, ft.Colors.with_opacity(0.7, ft.Colors.ON_SURFACE)
-
-                txt_container = ft.Container(
-                    height=40,
-                    padding=ft.Padding(32 - h_off, 0, 24, 0),
-                    alignment=ft.Alignment(-1, 0),
-                    rotate=ft.Rotate(rotate_val, pivot) if use_curved else None,
-                    width=max_w,
-                    on_click=lambda e, t=data.lines[i].time_ms: player.seek(t) if t else None,
-                )
-                txt_container.content = ft.Text(data.lines[i].text, size=fsize, weight=fw,
-                                                color=color, max_lines=1,
-                                                overflow=ft.TextOverflow.ELLIPSIS,
-                                                text_align=text_align)
-                self._lyrics_widgets.append(txt_container)
-                controls.append(txt_container)
-
-            for _ in range(below_spacers):
-                controls.append(ft.Container(height=40))
-
+            lv = self._build_curved_listview(data, current_idx, player, max_w, text_align)
             return ft.Container(
                 expand=True,
-                padding=ft.Padding(48, 10, 16, 10),
-                content=ft.Column(
-                    expand=True,
-                    alignment=ft.MainAxisAlignment.CENTER,
-                    horizontal_alignment=ft.CrossAxisAlignment.CENTER,
-                    spacing=4,
-                    controls=controls,
-                ),
+                padding=0,
+                content=lv,
             )
         else:
+            self._lyrics_list_view = None
+            self._lyrics_need_initial_scroll = False
             self._lyrics_start = 0
             lines = []
             for i, line in enumerate(data.lines):
@@ -884,41 +945,40 @@ class PlayerScreen(ft.Container):
 
         HALF_VISIBLE = 5
         ARC_ANGLE = 0.55
-        half = HALF_VISIBLE
         start = getattr(self, '_lyrics_start', 0)
 
         if use_curved:
-            self._rebuild()
+            lv = getattr(self, '_lyrics_list_view', None)
+            if lv is None:
+                self._rebuild()
+                self._last_lyrics_idx = new_idx
+                return
+            old_idx = self._last_lyrics_idx
+            half = self._LY_HALF
+            lo = max(0, min(old_idx, new_idx) - half - 1)
+            hi = min(total, max(old_idx, new_idx) + half + 2)
+            for i in range(lo, hi):
+                container = self._lyrics_widgets[i]
+                self._style_lyric_line(container, i, new_idx)
+                container.update()
+            self._last_lyrics_idx = new_idx
+            # 大跨度跳转（拖动进度条/seek）直接瞬间定位，避免长动画叠加破碎；
+            # 相邻推进才用非线性滚动动画
+            is_jump = abs(new_idx - old_idx) > 2
+            duration = 0 if is_jump else self._LY_ANIM_MS
+            self._lyrics_scroll_seq += 1
+            self._page.run_task(self._animate_lyrics_scroll, new_idx, duration, self._lyrics_scroll_seq)
             return
 
         for i, container in enumerate(self._lyrics_widgets):
             line_idx = start + i
-            dist = abs(line_idx - new_idx)
-
-            if use_curved:
-                in_range = dist <= half
-                container.opacity = 1.0 if in_range else 0.0
-                direction = -1 if line_idx < new_idx else 1
-                t = min(dist / half, 1.0) if dist > 0 else 0
-                v_pivot = direction * t * 2 if line_idx != new_idx else 0
-                pivot = ft.Alignment(-1.2, v_pivot)
-                container.rotate = ft.Rotate(direction * t * ARC_ANGLE, pivot) if in_range else ft.Rotate(0, ft.Alignment(-1.2, 0))
-                h_off = int(60 * t * t) if dist > 0 else 0
-                container.padding = ft.Padding(32 - h_off, 0, 24, 0)
-                container.alignment = ft.Alignment(-1, 0)
-
-                if line_idx == new_idx:
-                    fsize, fw, color = 18, ft.FontWeight.BOLD, ft.Colors.PRIMARY
-                else:
-                    fsize, fw, color = 16, ft.FontWeight.NORMAL, ft.Colors.with_opacity(0.7, ft.Colors.ON_SURFACE)
+            container.rotate = None
+            container.padding = ft.Padding(32, 0, 32, 0)
+            container.alignment = ft.Alignment(0, 0)
+            if line_idx == new_idx:
+                fsize, fw, color = 18, ft.FontWeight.BOLD, ft.Colors.PRIMARY
             else:
-                container.rotate = None
-                container.padding = ft.Padding(32, 0, 32, 0)
-                container.alignment = ft.Alignment(0, 0)
-                if line_idx == new_idx:
-                    fsize, fw, color = 18, ft.FontWeight.BOLD, ft.Colors.PRIMARY
-                else:
-                    fsize, fw, color = 16, ft.FontWeight.NORMAL, ft.Colors.with_opacity(0.7, ft.Colors.ON_SURFACE)
+                fsize, fw, color = 16, ft.FontWeight.NORMAL, ft.Colors.with_opacity(0.7, ft.Colors.ON_SURFACE)
 
             txt = container.content
             txt.size = fsize
