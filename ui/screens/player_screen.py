@@ -123,6 +123,9 @@ class PlayerScreen(ft.Container):
             self._dur_text.value = format_duration(dur_ms)
             self._dur_text.update()
 
+        if self._sync_active:
+            self._refresh_sync_preview()
+
         if self._view_mode == "lyrics":
             player = self._get_player()
             if player and player.queue:
@@ -511,6 +514,7 @@ class PlayerScreen(ft.Container):
             offset_text.update()
             fine_slider.value = float(v)
             fine_slider.update()
+            self._refresh_sync_preview()
 
         def on_slider(e):
             update_offset(int(e.control.value))
@@ -520,9 +524,15 @@ class PlayerScreen(ft.Container):
             update_offset(self._sync_temp_offset + delta)
 
         try:
-            preview = self._build_sync_lyrics_preview(track, player, self._sync_temp_offset)
+            preview_content = self._build_sync_lyrics_preview(track, player, self._sync_temp_offset)
         except Exception:
-            preview = None
+            preview_content = None
+
+        self._sync_preview_col = ft.Column(
+            tight=True,
+            horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+            controls=preview_content.controls if preview_content else [],
+        )
 
         inner = [
             ft.Text(tr("offsetMs"), size=14, color=ft.Colors.with_opacity(0.7, ft.Colors.ON_SURFACE)),
@@ -546,7 +556,7 @@ class PlayerScreen(ft.Container):
             ft.Row(tight=True, controls=[self._pos_text, ft.Container(expand=True), self._dur_text]),
             ft.Divider(height=1),
             ft.Text(tr("liveLyricsSync"), size=12, color=ft.Colors.with_opacity(0.6, ft.Colors.ON_SURFACE)),
-            preview if preview else ft.Text(tr("noLyricsAvailable")),
+            self._sync_preview_col if self._sync_preview_col.controls else ft.Text(tr("noLyricsAvailable")),
         ]
 
         return ft.Container(
@@ -635,6 +645,26 @@ class PlayerScreen(ft.Container):
                 )
             items.append(ft.Container(padding=ft.Padding(16, 4, 16, 4), content=txt))
         return ft.Column(tight=True, horizontal_alignment=ft.CrossAxisAlignment.CENTER, controls=items)
+
+    def _refresh_sync_preview(self):
+        """刷新同步模式下的歌词预览（偏移量变化或播放进度变化时调用）"""
+        if not self._sync_active:
+            return
+        preview_col = getattr(self, '_sync_preview_col', None)
+        if preview_col is None:
+            return
+        player = self._get_player()
+        if not player:
+            return
+        track = player.get_current_track()
+        if not track or not track.lyrics:
+            return
+        try:
+            new_preview = self._build_sync_lyrics_preview(track, player, self._sync_temp_offset)
+            preview_col.controls = new_preview.controls if new_preview else []
+            preview_col.update()
+        except Exception:
+            pass
 
     def _show_lyrics_options(self, track, player):
         def do_refetch(e):
