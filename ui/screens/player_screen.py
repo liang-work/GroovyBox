@@ -48,6 +48,7 @@ class PlayerScreen(ft.Container):
         self._lyrics_user_scrolling = False
         self._lyrics_snap_timer = None
         self._lyrics_current_idx = 0
+        self._last_lyrics_progress = 0.0
 
         page.on_keyboard_event = self._on_keyboard
         self._initialized = False
@@ -124,7 +125,28 @@ class PlayerScreen(ft.Container):
             self._dur_text.update()
 
         if self._sync_active:
-            self._refresh_sync_preview()
+            player = self._get_player()
+            if player:
+                track = player.get_current_track()
+                if track and track.lyrics:
+                    data = getattr(self, '_lyrics_data', None) or None
+                    if data is None:
+                        try:
+                            from logic.lyrics_parser import lyrics_from_json
+                            data = lyrics_from_json(track.lyrics)
+                        except Exception:
+                            data = None
+                    if data and data.type == "timed" and data.lines:
+                        pos = player.position_ms + self._sync_temp_offset
+                        new_idx = 0
+                        for i, ln in enumerate(data.lines):
+                            if (ln.time_ms or 0) <= pos:
+                                new_idx = i
+                            else:
+                                break
+                        if new_idx != getattr(self, '_last_sync_preview_idx', -1):
+                            self._last_sync_preview_idx = new_idx
+                            self._refresh_sync_preview()
 
         if self._view_mode == "lyrics":
             player = self._get_player()
@@ -146,7 +168,7 @@ class PlayerScreen(ft.Container):
                                 self._lyrics_need_initial_scroll = False
                                 self._last_lyrics_idx = new_idx
                                 self._lyrics_current_idx = new_idx
-                            elif new_idx != self._last_lyrics_idx:
+                            elif new_idx != self._last_lyrics_idx or getattr(self, '_lyrics_use_curved', False):
                                 self._update_lyrics_styles(new_idx)
                     except Exception:
                         pass
@@ -830,18 +852,8 @@ class PlayerScreen(ft.Container):
         txt.weight = ft.FontWeight.NORMAL
         txt.color = ft.Colors.with_opacity(alpha, ft.Colors.ON_SURFACE)
 
-    @staticmethod
-    def _lerp_color(c1: str, c2: str, t: float) -> str:
-        """在两个十六进制颜色之间线性插值，t ∈ [0, 1]"""
-        r1, g1, b1 = int(c1[1:3], 16), int(c1[3:5], 16), int(c1[5:7], 16)
-        r2, g2, b2 = int(c2[1:3], 16), int(c2[3:5], 16), int(c2[5:7], 16)
-        r = int(r1 + (r2 - r1) * t)
-        g = int(g1 + (g2 - g1) * t)
-        b = int(b1 + (b2 - b1) * t)
-        return f"#{r:02x}{g:02x}{b:02x}"
-
-    def _build_visible_lines(self, data, viewport_center, highlight_idx, player, max_w, text_align):
-        """构建居中的可见歌词行，viewport_center 决定视口位置，highlight_idx 决定高亮行"""
+    def _build_visible_lines(self, data, viewport_center, highlight_idx, player, max_w, text_align, progress=0.0):
+        """构建居中的可见歌词行，viewport_center 决定视口位置，highlight_idx 决定高亮行，progress 为高亮行内进度"""
         half = self._LY_HALF
         total = len(data.lines)
         self._lyrics_widgets = []
@@ -872,26 +884,27 @@ class PlayerScreen(ft.Container):
             )
             self._style_lyric_line(container, i, viewport_center)
             if i == highlight_idx:
-                chars = list(line.text)
-                n = len(chars)
-                if n > 0:
-                    c_start = "#2EB0C6"
-                    c_end = "#00E5FF"
-                    char_widgets = []
-                    for j, ch in enumerate(chars):
-                        t = j / max(n - 1, 1)
-                        color = self._lerp_color(c_start, c_end, t)
-                        char_widgets.append(ft.Text(
-                            ch,
+                if 0 < progress < 1:
+                    container.content = ft.ShaderMask(
+                        shader=ft.LinearGradient(
+                            begin=ft.Alignment(-1, 0),
+                            end=ft.Alignment(1, 0),
+                            colors=[ft.Colors.PRIMARY, ft.Colors.with_opacity(0.5, ft.Colors.ON_SURFACE)],
+                            stops=[progress, progress],
+                        ),
+                        content=ft.Text(
+                            line.text,
                             size=19,
                             weight=ft.FontWeight.BOLD,
-                            color=color,
-                        ))
-                    container.content = ft.Row(
-                        tight=True,
-                        spacing=0,
-                        controls=char_widgets,
+                            text_align=text_align,
+                        ),
+                        blend_mode=ft.BlendMode.SRC_IN,
                     )
+                else:
+                    txt = container.content
+                    txt.size = 19
+                    txt.weight = ft.FontWeight.BOLD
+                    txt.color = ft.Colors.PRIMARY
             self._lyrics_widgets.append(container)
             controls.append(container)
 
@@ -941,11 +954,12 @@ class PlayerScreen(ft.Container):
         )
         return gesture
 
-    def _rebuild_lyrics_column(self, viewport_center, highlight_idx):
+    def _rebuild_lyrics_column(self, viewport_center, highlight_idx, progress=0.0):
         """创建新的歌词列并更新 AnimatedSwitcher，触发过渡动画"""
         controls = self._build_visible_lines(
             self._lyrics_data_obj, viewport_center, highlight_idx,
             self._lyrics_player, self._lyrics_max_w, self._lyrics_text_align,
+            progress=progress,
         )
         new_column = ft.Column(
             controls=controls,
@@ -1087,11 +1101,27 @@ class PlayerScreen(ft.Container):
         if use_curved:
             if self._lyrics_user_scrolling:
                 return
+
+            progress = 0.0
+            if 0 <= new_idx < total:
+                ln = data.lines[new_idx]
+                s = ln.time_ms or 0
+                e = (data.lines[new_idx + 1].time_ms or s) if new_idx < total - 1 else self._lyrics_player.duration_ms
+                if e > s:
+                    player = self._lyrics_player
+                    pos = player.position_ms + getattr(self, '_lyrics_offset', 0)
+                    progress = max(0.0, min(1.0, (pos - s) / (e - s)))
+
             if new_idx == self._last_lyrics_idx:
-                return
-            self._last_lyrics_idx = new_idx
-            self._lyrics_current_idx = new_idx
-            self._rebuild_lyrics_column(new_idx, new_idx)
+                old_progress = getattr(self, '_last_lyrics_progress', 0.0)
+                if abs(progress - old_progress) < 0.02:
+                    return
+            else:
+                self._last_lyrics_idx = new_idx
+                self._lyrics_current_idx = new_idx
+
+            self._last_lyrics_progress = progress
+            self._rebuild_lyrics_column(new_idx, new_idx, progress=progress)
             return
 
         start = getattr(self, '_lyrics_start', 0)
