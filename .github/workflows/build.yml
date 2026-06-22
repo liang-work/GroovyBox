@@ -231,15 +231,18 @@ jobs:
           else
             echo "HAS_SIGNING=0" >> $GITHUB_ENV
           fi
+      - name: Package unsigned IPA
+        if: env.HAS_SIGNING == '0'
+        run: |
+          APP_PATH=$(find build/ipa -name "*.app" -path "*/Products/Applications/*" | head -1)
+          if [ -n "$APP_PATH" ]; then
+            mkdir -p build/ipa/Payload
+            cp -r "$APP_PATH" build/ipa/Payload/
+            cd build/ipa && zip -r -y GroovyBox-unsigned.ipa Payload
+            rm -rf Payload
+          fi
       - uses: actions/upload-artifact@v4
-        if: env.HAS_SIGNING == '1'
         with:
           name: GroovyBox-iOS
           path: build/ipa/*.ipa
-          if-no-files-found: warn
-      - uses: actions/upload-artifact@v4
-        if: env.HAS_SIGNING == '0'
-        with:
-          name: GroovyBox-iOS
-          path: build/ipa/**/*.xcarchive/Products/Applications/*.app
           if-no-files-found: warn
