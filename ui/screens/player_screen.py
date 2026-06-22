@@ -776,45 +776,39 @@ class PlayerScreen(ft.Container):
     _LY_ANIM_CURVE = ft.AnimationCurve.EASE_OUT_CUBIC
 
     def _style_lyric_line(self, container, i, current_idx):
-        """根据与当前行的距离设置某一歌词行的弧度/透明度/字体（供构建与更新复用）"""
+        """根据与当前行的距离设置某一歌词行的弧度/透明度（不设置高亮样式）"""
         half = self._LY_HALF
         arc = self._LY_ARC
         dist = abs(i - current_idx)
-        is_active = i == current_idx
         in_window = dist <= half
         direction = -1 if i < current_idx else 1
         t = min(dist / half, 1.0) if half > 0 else 0
         if in_window:
             rotate_val = direction * t * arc
-            v_pivot = direction * t * 2 if not is_active else 0
+            v_pivot = direction * t * 2 if i != current_idx else 0
             container.rotate = ft.Rotate(rotate_val, ft.Alignment(-1.2, v_pivot))
             h_off = int(50 * t * t)
             container.padding = ft.Padding(32 - h_off, 0, 24, 0)
-            container.opacity = 1.0 if is_active else max(0.25, 1.0 - t * 0.6)
+            container.opacity = 1.0 if i == current_idx else max(0.25, 1.0 - t * 0.6)
         else:
             container.rotate = ft.Rotate(0, ft.Alignment(-1.2, 0))
             container.padding = ft.Padding(32, 0, 24, 0)
             container.opacity = 0.0
         txt = container.content
-        if is_active:
-            txt.size = 19
-            txt.weight = ft.FontWeight.BOLD
-            txt.color = ft.Colors.PRIMARY
-        else:
-            alpha = max(0.4, 0.85 - t * 0.45)
-            txt.size = 16
-            txt.weight = ft.FontWeight.NORMAL
-            txt.color = ft.Colors.with_opacity(alpha, ft.Colors.ON_SURFACE)
+        alpha = max(0.4, 0.85 - t * 0.45)
+        txt.size = 16
+        txt.weight = ft.FontWeight.NORMAL
+        txt.color = ft.Colors.with_opacity(alpha, ft.Colors.ON_SURFACE)
 
-    def _build_visible_lines(self, data, current_idx, player, max_w, text_align):
-        """构建居中的可见歌词行（current_idx ± _LY_HALF），返回 controls 列表"""
+    def _build_visible_lines(self, data, viewport_center, highlight_idx, player, max_w, text_align):
+        """构建居中的可见歌词行，viewport_center 决定视口位置，highlight_idx 决定高亮行"""
         half = self._LY_HALF
         total = len(data.lines)
         self._lyrics_widgets = []
-        above_count = min(half, current_idx)
-        below_count = min(half, total - 1 - current_idx)
-        start_idx = current_idx - above_count
-        end_idx = current_idx + below_count + 1
+        above_count = min(half, viewport_center)
+        below_count = min(half, total - 1 - viewport_center)
+        start_idx = viewport_center - above_count
+        end_idx = viewport_center + below_count + 1
 
         controls = []
         controls.append(ft.Container(height=self._LY_ITEM_H * (half - above_count + 1)))
@@ -836,7 +830,12 @@ class PlayerScreen(ft.Container):
                     text_align=text_align,
                 ),
             )
-            self._style_lyric_line(container, i, current_idx)
+            self._style_lyric_line(container, i, viewport_center)
+            if i == highlight_idx:
+                txt = container.content
+                txt.size = 19
+                txt.weight = ft.FontWeight.BOLD
+                txt.color = ft.Colors.PRIMARY
             self._lyrics_widgets.append(container)
             controls.append(container)
 
@@ -852,7 +851,7 @@ class PlayerScreen(ft.Container):
         self._lyrics_player = player
         self._lyrics_drag_accum = 0.0
 
-        controls = self._build_visible_lines(data, current_idx, player, max_w, text_align)
+        controls = self._build_visible_lines(data, current_idx, current_idx, player, max_w, text_align)
 
         column = ft.Column(
             spacing=0,
@@ -901,7 +900,7 @@ class PlayerScreen(ft.Container):
         self._schedule_snap()
 
     def _step_lyrics(self, direction):
-        """步进到上/下一行，重建可见行"""
+        """步进到上/下一行，只移动视口，不改变高亮（播放位置）"""
         lines = getattr(self, '_lyrics_data_lines', None)
         if lines is None:
             return
@@ -910,10 +909,9 @@ class PlayerScreen(ft.Container):
         if new_idx == self._lyrics_current_idx:
             return
         self._lyrics_current_idx = new_idx
-        self._last_lyrics_idx = new_idx
         controls = self._build_visible_lines(
-            self._lyrics_data_obj, new_idx, self._lyrics_player,
-            self._lyrics_max_w, self._lyrics_text_align,
+            self._lyrics_data_obj, new_idx, self._last_lyrics_idx,
+            self._lyrics_player, self._lyrics_max_w, self._lyrics_text_align,
         )
         self._lyrics_column.controls = controls
         try:
@@ -931,8 +929,19 @@ class PlayerScreen(ft.Container):
         self._lyrics_snap_timer.start()
 
     def _snap_to_nearest_line(self):
-        """吸附完成：清除用户滚动标志"""
+        """吸附回播放位置：视口回到当前播放行"""
         self._lyrics_user_scrolling = False
+        playback_idx = self._last_lyrics_idx
+        self._lyrics_current_idx = playback_idx
+        controls = self._build_visible_lines(
+            self._lyrics_data_obj, playback_idx, playback_idx,
+            self._lyrics_player, self._lyrics_max_w, self._lyrics_text_align,
+        )
+        self._lyrics_column.controls = controls
+        try:
+            self._lyrics_column.update()
+        except RuntimeError:
+            pass
 
     def _build_timed_lyrics(self, data, player, offset, use_curved=False):
         pos = player.position_ms + offset
@@ -1011,11 +1020,11 @@ class PlayerScreen(ft.Container):
                 return
             if new_idx == self._last_lyrics_idx:
                 return
-            self._lyrics_current_idx = new_idx
             self._last_lyrics_idx = new_idx
+            self._lyrics_current_idx = new_idx
             controls = self._build_visible_lines(
-                self._lyrics_data_obj, new_idx, self._lyrics_player,
-                self._lyrics_max_w, self._lyrics_text_align,
+                self._lyrics_data_obj, new_idx, new_idx,
+                self._lyrics_player, self._lyrics_max_w, self._lyrics_text_align,
             )
             self._lyrics_column.controls = controls
             try:
