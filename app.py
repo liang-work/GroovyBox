@@ -75,23 +75,29 @@ class GroovyBoxApp:
             return
         try:
             import flet_permission_handler as fph
-
-            storage_status = await self._ph.get_status(fph.Permission.STORAGE)
+            
+            # Try READ_MEDIA_AUDIO first (Android 13+), fallback to STORAGE
+            permission = getattr(fph.Permission, 'READ_MEDIA_AUDIO', None) or fph.Permission.STORAGE
+            
+            storage_status = await self._ph.get_status(permission)
             logger.info(f"Storage permission status: {storage_status}")
 
             if storage_status == fph.PermissionStatus.GRANTED:
                 logger.info("Storage permission already granted")
                 return
 
-            self._show_permission_dialog(fph)
+            self._show_permission_dialog(fph, permission)
         except Exception as ex:
             logger.warning(f"Permission check skipped: {ex}")
 
-    def _show_permission_dialog(self, fph):
+    def _show_permission_dialog(self, fph, permission=None):
+        if permission is None:
+            permission = fph.Permission.STORAGE
+            
         async def on_grant(e):
             self.page.pop_dialog()
             try:
-                status = await self._ph.request(fph.Permission.STORAGE)
+                status = await self._ph.request(permission)
                 logger.info(f"Storage permission after request: {status}")
                 if status != fph.PermissionStatus.GRANTED:
                     self._show_permission_denied_dialog(fph)

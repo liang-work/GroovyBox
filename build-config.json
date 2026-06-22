@@ -17,12 +17,13 @@
       "READ_EXTERNAL_STORAGE",
       "WRITE_EXTERNAL_STORAGE"
     ],
-    "target_sdk_version": 30,
+    "target_sdk_version": 33,
     "adaptive_icon_background": "#1e1e2e"
   },
   "ios": {
     "info_plist": {
       "NSAppleMusicUsageDescription": "GroovyBox needs access to your music library to play songs.",
+      "NSDocumentsFolderUsageDescription": "GroovyBox needs access to import music files from your documents.",
       "UIBackgroundModes": ["audio"]
     }
   },
