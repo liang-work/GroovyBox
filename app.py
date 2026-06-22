@@ -13,7 +13,6 @@ class GroovyBoxApp:
         self.theme_seed_color = "#2EB0C6"
         self.theme_mode = ft.ThemeMode.SYSTEM
         self.shell = None
-        self._ph = None
 
         db.init_database()
         self._load_locale()
@@ -46,7 +45,6 @@ class GroovyBoxApp:
             pass
 
         page.run_task(page.push_route, "/library")
-        self._request_permissions()
         self._set_window_icon()
 
     def _set_window_icon(self):
@@ -58,88 +56,6 @@ class GroovyBoxApp:
                 self.page.update()
         except Exception:
             pass
-
-    def _request_permissions(self):
-        if self.page.platform == ft.PagePlatform.ANDROID:
-            try:
-                import flet_permission_handler as fph
-                self._ph = fph.PermissionHandler()
-                self.page.run_task(self._check_and_request_perms)
-            except ImportError:
-                logger.warning("flet_permission_handler not installed, skipping permissions")
-            except Exception as ex:
-                logger.warning(f"PermissionHandler init skipped: {ex}")
-
-    async def _check_and_request_perms(self):
-        if not self._ph:
-            return
-        try:
-            import flet_permission_handler as fph
-            
-            # Try READ_MEDIA_AUDIO first (Android 13+), fallback to STORAGE
-            permission = getattr(fph.Permission, 'READ_MEDIA_AUDIO', None) or fph.Permission.STORAGE
-            
-            storage_status = await self._ph.get_status(permission)
-            logger.info(f"Storage permission status: {storage_status}")
-
-            if storage_status == fph.PermissionStatus.GRANTED:
-                logger.info("Storage permission already granted")
-                return
-
-            self._show_permission_dialog(fph, permission)
-        except Exception as ex:
-            logger.warning(f"Permission check skipped: {ex}")
-
-    def _show_permission_dialog(self, fph, permission=None):
-        if permission is None:
-            permission = fph.Permission.STORAGE
-            
-        async def on_grant(e):
-            self.page.pop_dialog()
-            try:
-                status = await self._ph.request(permission)
-                logger.info(f"Storage permission after request: {status}")
-                if status != fph.PermissionStatus.GRANTED:
-                    self._show_permission_denied_dialog(fph)
-            except Exception as ex:
-                logger.warning(f"Permission request failed: {ex}")
-                self._show_permission_denied_dialog(fph)
-
-        def on_cancel(e):
-            self.page.pop_dialog()
-
-        dlg = ft.AlertDialog(
-            title=ft.Text(tr("permissionRequired")),
-            content=ft.Text(tr("permissionMessage")),
-            actions=[
-                ft.TextButton(tr("cancel"), on_click=on_cancel),
-                ft.FilledButton(tr("grantPermission"), on_click=on_grant),
-            ],
-            actions_alignment=ft.MainAxisAlignment.END,
-        )
-        self.page.show_dialog(dlg)
-
-    def _show_permission_denied_dialog(self, fph):
-        async def on_settings(e):
-            self.page.pop_dialog()
-            try:
-                await self._ph.open_app_settings()
-            except Exception as ex:
-                logger.warning(f"Failed to open app settings: {ex}")
-
-        def on_cancel(e):
-            self.page.pop_dialog()
-
-        dlg = ft.AlertDialog(
-            title=ft.Text(tr("permissionDenied")),
-            content=ft.Text(tr("permissionDeniedMessage")),
-            actions=[
-                ft.TextButton(tr("cancel"), on_click=on_cancel),
-                ft.FilledButton(tr("openSettings"), on_click=on_settings),
-            ],
-            actions_alignment=ft.MainAxisAlignment.END,
-        )
-        self.page.show_dialog(dlg)
 
     def _load_locale(self):
         lang = db.get_setting("language", "en")
