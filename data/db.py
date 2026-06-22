@@ -12,6 +12,8 @@ def get_db_path():
     if DB_PATH is None:
         if "ANDROID_ROOT" in os.environ:
             base = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        elif os.environ.get("FLET_APP_DATA_DIR"):
+            base = os.environ["FLET_APP_DATA_DIR"]
         else:
             base = os.path.expanduser("~")
         app_dir = os.path.join(base, ".groovybox")
