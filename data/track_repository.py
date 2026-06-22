@@ -2,7 +2,7 @@ import asyncio
 import os
 from typing import List, Optional
 import threading
-from data.db import get_connection
+from data.db import get_connection, get_app_data_dir
 from logic.logger import logger
 from data.models import Track
 from logic.metadata_service import get_metadata, SUPPORTED_EXTENSIONS
@@ -46,7 +46,7 @@ def import_files(file_paths: List[str], callback=None):
                 ).fetchall()
             }
             new_paths = [p for p in file_paths if p not in existing]
-            art_dir = os.path.join(os.path.expanduser("~"), ".groovybox", "art")
+            art_dir = os.path.join(get_app_data_dir(), "groovybox", "art")
             os.makedirs(art_dir, exist_ok=True)
             imported = 0
             for path in new_paths:
@@ -104,7 +104,7 @@ def _import_sync(file_paths: List[str]) -> int:
         ).fetchall()
     }
     new_paths = [p for p in file_paths if p not in existing]
-    art_dir = os.path.join(os.path.expanduser("~"), ".groovybox", "art")
+    art_dir = os.path.join(get_app_data_dir(), "groovybox", "art")
     os.makedirs(art_dir, exist_ok=True)
     imported = 0
     for path in new_paths:
@@ -228,7 +228,7 @@ def delete_track(track_id: int):
 
 
 def clear_all_tracks():
-    art_dir = os.path.join(os.path.expanduser("~"), ".groovybox", "art")
+    art_dir = os.path.join(get_app_data_dir(), "groovybox", "art")
     if os.path.isdir(art_dir):
         for f in os.listdir(art_dir):
             try:
