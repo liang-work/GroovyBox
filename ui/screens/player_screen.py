@@ -919,6 +919,53 @@ class PlayerScreen(ft.Container):
     _LY_ANIM_MS = 400
     _LY_ANIM_CURVE = ft.AnimationCurve.EASE_OUT_CUBIC
 
+    @staticmethod
+    def _estimate_text_width(text, font_size):
+        """估算文本像素宽度（CJK 按全角，其余按半角）"""
+        w = 0.0
+        for ch in text:
+            if ord(ch) > 0x7F:
+                w += font_size * 1.0
+            else:
+                w += font_size * 0.55
+        return w
+
+    def _build_scrolling_lyric_line(self, text, font_size, font_weight, color,
+                                     container_width, progress, text_align):
+        """构建带水平滚动的歌词行：长文本按 progress 左移，由外层 ShaderMask 处理颜色"""
+        text_w = self._estimate_text_width(text, font_size)
+        overflow_px = max(0.0, text_w - container_width)
+
+        if overflow_px > 0 and 0 < progress < 1:
+            scroll_px = overflow_px * progress
+            return ft.Container(
+                clip_behavior=ft.ClipBehavior.HARD_EDGE,
+                width=container_width,
+                content=ft.Container(
+                    offset=ft.Offset(-scroll_px / container_width, 0),
+                    content=ft.Text(
+                        text,
+                        size=font_size,
+                        weight=font_weight,
+                        no_wrap=True,
+                        text_align=text_align,
+                    ),
+                ),
+            )
+        else:
+            return ft.Container(
+                clip_behavior=ft.ClipBehavior.HARD_EDGE,
+                width=container_width,
+                content=ft.Text(
+                    text,
+                    size=font_size,
+                    weight=font_weight,
+                    color=color,
+                    no_wrap=True,
+                    text_align=text_align,
+                ),
+            )
+
     def _style_lyric_line(self, container, i, current_idx):
         """根据与当前行的距离设置某一歌词行的弧度/透明度（不设置高亮样式）"""
         half = self._LY_HALF
@@ -976,27 +1023,26 @@ class PlayerScreen(ft.Container):
             )
             self._style_lyric_line(container, i, viewport_center)
             if i == highlight_idx:
-                if 0 < progress < 1:
-                    container.content = ft.ShaderMask(
-                        shader=ft.LinearGradient(
-                            begin=ft.Alignment(-1, 0),
-                            end=ft.Alignment(1, 0),
-                            colors=[ft.Colors.PRIMARY, ft.Colors.with_opacity(0.5, ft.Colors.ON_SURFACE)],
-                            stops=[progress, progress],
-                        ),
-                        content=ft.Text(
-                            line.text,
-                            size=19,
-                            weight=ft.FontWeight.BOLD,
-                            text_align=text_align,
-                        ),
-                        blend_mode=ft.BlendMode.SRC_IN,
-                    )
-                else:
-                    txt = container.content
-                    txt.size = 19
-                    txt.weight = ft.FontWeight.BOLD
-                    txt.color = ft.Colors.PRIMARY
+                line_text = line.text
+                text_w = self._estimate_text_width(line_text, 19)
+                adj_progress = progress
+                if text_w > max_w:
+                    adj_progress = min(1.0, progress * (text_w / max_w))
+
+                scroll_widget = self._build_scrolling_lyric_line(
+                    line_text, 19, ft.FontWeight.BOLD, ft.Colors.PRIMARY,
+                    max_w, adj_progress, text_align,
+                )
+                container.content = ft.ShaderMask(
+                    shader=ft.LinearGradient(
+                        begin=ft.Alignment(-1, 0),
+                        end=ft.Alignment(1, 0),
+                        colors=[ft.Colors.PRIMARY, ft.Colors.with_opacity(0.5, ft.Colors.ON_SURFACE)],
+                        stops=[adj_progress, adj_progress],
+                    ),
+                    content=scroll_widget,
+                    blend_mode=ft.BlendMode.SRC_IN,
+                )
             self._lyrics_widgets.append(container)
             controls.append(container)
 
@@ -1201,7 +1247,7 @@ class PlayerScreen(ft.Container):
             )
 
     def _build_flat_lyrics_controls(self, data, viewport_center, highlight_idx, progress, max_w, text_align, player):
-        """构建平面歌词的所有行控件（带渐变高亮）"""
+        """构建平面歌词的所有行控件（带渐变高亮 + 长歌词渐进滚动）"""
         line_h = 36
         half_visible = 5
         total = len(data.lines)
@@ -1224,32 +1270,27 @@ class PlayerScreen(ft.Container):
                 on_click=lambda e, t=line.time_ms: player.seek(t) if t else None,
             )
             if i == highlight_idx:
-                if 0 < progress < 1:
-                    container.content = ft.ShaderMask(
-                        shader=ft.LinearGradient(
-                            begin=ft.Alignment(-1, 0),
-                            end=ft.Alignment(1, 0),
-                            colors=[ft.Colors.PRIMARY, ft.Colors.with_opacity(0.5, ft.Colors.ON_SURFACE)],
-                            stops=[progress, progress],
-                        ),
-                        content=ft.Text(
-                            line.text,
-                            size=19,
-                            weight=ft.FontWeight.BOLD,
-                            text_align=text_align,
-                        ),
-                        blend_mode=ft.BlendMode.SRC_IN,
-                    )
-                else:
-                    container.content = ft.Text(
-                        line.text,
-                        size=19,
-                        weight=ft.FontWeight.BOLD,
-                        color=ft.Colors.PRIMARY,
-                        max_lines=1,
-                        overflow=ft.TextOverflow.ELLIPSIS,
-                        text_align=text_align,
-                    )
+                line_text = line.text
+                text_w = self._estimate_text_width(line_text, 19)
+                effective_w = max_w - 56
+                adj_progress = progress
+                if text_w > effective_w:
+                    adj_progress = min(1.0, progress * (text_w / effective_w))
+
+                scroll_widget = self._build_scrolling_lyric_line(
+                    line_text, 19, ft.FontWeight.BOLD, ft.Colors.PRIMARY,
+                    effective_w, adj_progress, text_align,
+                )
+                container.content = ft.ShaderMask(
+                    shader=ft.LinearGradient(
+                        begin=ft.Alignment(-1, 0),
+                        end=ft.Alignment(1, 0),
+                        colors=[ft.Colors.PRIMARY, ft.Colors.with_opacity(0.5, ft.Colors.ON_SURFACE)],
+                        stops=[adj_progress, adj_progress],
+                    ),
+                    content=scroll_widget,
+                    blend_mode=ft.BlendMode.SRC_IN,
+                )
             else:
                 container.content = ft.Text(
                     line.text,
