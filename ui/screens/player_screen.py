@@ -125,28 +125,7 @@ class PlayerScreen(ft.Container):
             self._dur_text.update()
 
         if self._sync_active:
-            player = self._get_player()
-            if player:
-                track = player.get_current_track()
-                if track and track.lyrics:
-                    data = getattr(self, '_lyrics_data', None) or None
-                    if data is None:
-                        try:
-                            from logic.lyrics_parser import lyrics_from_json
-                            data = lyrics_from_json(track.lyrics)
-                        except Exception:
-                            data = None
-                    if data and data.type == "timed" and data.lines:
-                        pos = player.position_ms + self._sync_temp_offset
-                        new_idx = 0
-                        for i, ln in enumerate(data.lines):
-                            if (ln.time_ms or 0) <= pos:
-                                new_idx = i
-                            else:
-                                break
-                        if new_idx != getattr(self, '_last_sync_preview_idx', -1):
-                            self._last_sync_preview_idx = new_idx
-                            self._refresh_sync_preview()
+            self._refresh_sync_preview()
 
         if self._view_mode == "lyrics":
             player = self._get_player()
@@ -550,11 +529,22 @@ class PlayerScreen(ft.Container):
         except Exception:
             preview_content = None
 
-        self._sync_preview_col = ft.Column(
+        preview_column = ft.Column(
             tight=True,
             horizontal_alignment=ft.CrossAxisAlignment.CENTER,
             controls=preview_content.controls if preview_content else [],
         )
+        self._sync_preview_col = preview_column
+
+        switcher = ft.AnimatedSwitcher(
+            content=preview_column,
+            transition=ft.AnimatedSwitcherTransition.FADE,
+            duration=150,
+            switch_in_curve=ft.AnimationCurve.EASE_OUT,
+            switch_out_curve=ft.AnimationCurve.EASE_IN,
+            expand=True,
+        )
+        self._sync_preview_switcher = switcher
 
         inner = [
             ft.Text(tr("offsetMs"), size=14, color=ft.Colors.with_opacity(0.7, ft.Colors.ON_SURFACE)),
@@ -578,7 +568,7 @@ class PlayerScreen(ft.Container):
             ft.Row(tight=True, controls=[self._pos_text, ft.Container(expand=True), self._dur_text]),
             ft.Divider(height=1),
             ft.Text(tr("liveLyricsSync"), size=12, color=ft.Colors.with_opacity(0.6, ft.Colors.ON_SURFACE)),
-            self._sync_preview_col if self._sync_preview_col.controls else ft.Text(tr("noLyricsAvailable")),
+            switcher if preview_content else ft.Text(tr("noLyricsAvailable")),
         ]
 
         return ft.Container(
@@ -637,6 +627,7 @@ class PlayerScreen(ft.Container):
             else:
                 break
         items = []
+        self._sync_preview_lines = []
         start = max(0, current_idx - 3)
         end = min(len(data.lines), current_idx + 4)
         for i in range(start, end):
@@ -648,32 +639,36 @@ class PlayerScreen(ft.Container):
                 e = (data.lines[i + 1].time_ms or s) if i < len(data.lines) - 1 else player.duration_ms
                 if e > s:
                     progress = max(0.0, min(1.0, (pos - s) / (e - s)))
-            if is_active and progress > 0 and progress < 1:
-                txt = ft.ShaderMask(
-                    shader=ft.LinearGradient(
-                        begin=ft.Alignment(-1, 0), end=ft.Alignment(1, 0),
-                        colors=[ft.Colors.PRIMARY, ft.Colors.with_opacity(0.5, ft.Colors.ON_SURFACE)],
-                        stops=[progress, progress],
-                    ),
-                    content=ft.Text(ln.text, size=18, weight=ft.FontWeight.BOLD, text_align=ft.TextAlign.CENTER),
-                    blend_mode=ft.BlendMode.SRC_IN,
-                )
-            else:
-                txt = ft.Text(
-                    ln.text, size=16 if is_active else 14,
-                    weight=ft.FontWeight.BOLD if is_active else ft.FontWeight.NORMAL,
-                    color=ft.Colors.PRIMARY if is_active else ft.Colors.with_opacity(0.6, ft.Colors.ON_SURFACE),
-                    text_align=ft.TextAlign.CENTER,
-                )
-            items.append(ft.Container(padding=ft.Padding(16, 4, 16, 4), content=txt))
+            container = ft.Container(padding=ft.Padding(16, 4, 16, 4))
+            self._set_sync_line_content(container, ln, is_active, progress)
+            self._sync_preview_lines.append((i, container))
+            items.append(container)
+        self._sync_preview_current_idx = current_idx
         return ft.Column(tight=True, horizontal_alignment=ft.CrossAxisAlignment.CENTER, controls=items)
 
+    @staticmethod
+    def _set_sync_line_content(container, ln, is_active, progress):
+        if is_active and 0 < progress < 1:
+            container.content = ft.ShaderMask(
+                shader=ft.LinearGradient(
+                    begin=ft.Alignment(-1, 0), end=ft.Alignment(1, 0),
+                    colors=[ft.Colors.PRIMARY, ft.Colors.with_opacity(0.5, ft.Colors.ON_SURFACE)],
+                    stops=[progress, progress],
+                ),
+                content=ft.Text(ln.text, size=18, weight=ft.FontWeight.BOLD, text_align=ft.TextAlign.CENTER),
+                blend_mode=ft.BlendMode.SRC_IN,
+            )
+        else:
+            container.content = ft.Text(
+                ln.text, size=18 if is_active else 14,
+                weight=ft.FontWeight.BOLD if is_active else ft.FontWeight.NORMAL,
+                color=ft.Colors.PRIMARY if is_active else ft.Colors.with_opacity(0.6, ft.Colors.ON_SURFACE),
+                text_align=ft.TextAlign.CENTER,
+            )
+
     def _refresh_sync_preview(self):
-        """刷新同步模式下的歌词预览（偏移量变化或播放进度变化时调用）"""
+        """刷新同步模式下的歌词预览（行切换用 AnimatedSwitcher，进度更新用原地更新）"""
         if not self._sync_active:
-            return
-        preview_col = getattr(self, '_sync_preview_col', None)
-        if preview_col is None:
             return
         player = self._get_player()
         if not player:
@@ -682,11 +677,52 @@ class PlayerScreen(ft.Container):
         if not track or not track.lyrics:
             return
         try:
-            new_preview = self._build_sync_lyrics_preview(track, player, self._sync_temp_offset)
-            preview_col.controls = new_preview.controls if new_preview else []
-            preview_col.update()
+            data = lyrics_from_json(track.lyrics)
         except Exception:
-            pass
+            return
+        if data.type != "timed" or not data.lines:
+            return
+        pos = player.position_ms + self._sync_temp_offset
+        new_idx = 0
+        for i, ln in enumerate(data.lines):
+            if (ln.time_ms or 0) <= pos:
+                new_idx = i
+            else:
+                break
+        old_idx = getattr(self, '_sync_preview_current_idx', -1)
+        lines = getattr(self, '_sync_preview_lines', [])
+
+        if new_idx != old_idx or not lines:
+            # 行切换 → AnimatedSwitcher 全量重建
+            self._sync_preview_current_idx = new_idx
+            try:
+                new_preview = self._build_sync_lyrics_preview(track, player, self._sync_temp_offset)
+                new_column = ft.Column(
+                    tight=True,
+                    horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+                    controls=new_preview.controls if new_preview else [],
+                )
+                self._sync_preview_col = new_column
+                switcher = self._sync_preview_switcher
+                switcher.content = new_column
+                switcher.update()
+            except Exception:
+                pass
+        else:
+            # 行内进度 → 只更新活跃行容器
+            progress = 0.0
+            s = data.lines[new_idx].time_ms or 0
+            e = (data.lines[new_idx + 1].time_ms or s) if new_idx < len(data.lines) - 1 else player.duration_ms
+            if e > s:
+                progress = max(0.0, min(1.0, (pos - s) / (e - s)))
+            for line_idx, container in lines:
+                if line_idx == new_idx:
+                    self._set_sync_line_content(container, data.lines[new_idx], True, progress)
+                    try:
+                        container.update()
+                    except RuntimeError:
+                        pass
+                    break
 
     def _show_lyrics_options(self, track, player):
         def do_refetch(e):
