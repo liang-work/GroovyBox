@@ -7,21 +7,30 @@ from typing import Optional, Any
 DB_PATH = None
 
 
+def _is_mobile() -> bool:
+    return "ANDROID_ROOT" in os.environ or os.environ.get("FLET_APP_DATA_DIR") is not None
+
+
 def get_app_data_dir() -> str:
     """Return a writable app data directory on all platforms."""
     if "ANDROID_ROOT" in os.environ:
         return os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     if os.environ.get("FLET_APP_DATA_DIR"):
         return os.environ["FLET_APP_DATA_DIR"]
-    # iOS / macOS / Linux / Windows fallback
-    return os.environ.get("HOME") or os.path.expanduser("~")
+    return os.path.expanduser("~")
+
+
+def get_app_dir() -> str:
+    """Return the full path to the groovybox data directory."""
+    base = get_app_data_dir()
+    name = "groovybox" if _is_mobile() else ".groovybox"
+    return os.path.join(base, name)
 
 
 def get_db_path():
     global DB_PATH
     if DB_PATH is None:
-        base = get_app_data_dir()
-        app_dir = os.path.join(base, "groovybox")
+        app_dir = get_app_dir()
         os.makedirs(app_dir, exist_ok=True)
         DB_PATH = os.path.join(app_dir, "groovybox.db")
     return DB_PATH
