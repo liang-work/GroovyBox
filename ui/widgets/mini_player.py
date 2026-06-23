@@ -72,6 +72,40 @@ class MiniPlayerWidget(ft.Container):
             return ft.Colors.PRIMARY
         return ft.Colors.with_opacity(0.4, ft.Colors.ON_SURFACE)
 
+    _PLAY_MODE_CYCLE = [
+        (False, "all"),    # 列表循环
+        (False, "one"),    # 单曲循环
+        (True,  "none"),   # 随机播放
+        (False, "none"),   # 顺序播放
+    ]
+
+    def _cycle_play_mode(self):
+        app = self._page.session.store.get("app")
+        if not app or not app.audio_player:
+            return
+        player = app.audio_player
+        current = (player.shuffle, player.repeat_mode or "none")
+        try:
+            idx = (self._PLAY_MODE_CYCLE.index(current) + 1) % len(self._PLAY_MODE_CYCLE)
+        except ValueError:
+            idx = 0
+        player.shuffle, player.repeat_mode = self._PLAY_MODE_CYCLE[idx]
+        self.refresh()
+
+    def _get_play_mode_icon(self):
+        app = self._page.session.store.get("app")
+        if not app or not app.audio_player:
+            return ft.Icons.REPEAT, ft.Colors.with_opacity(0.4, ft.Colors.ON_SURFACE)
+        player = app.audio_player
+        if player.shuffle:
+            return ft.Icons.SHUFFLE, ft.Colors.PRIMARY
+        mode = player.repeat_mode or "none"
+        if mode == "one":
+            return ft.Icons.REPEAT_ONE, ft.Colors.PRIMARY
+        if mode == "all":
+            return ft.Icons.REPEAT, ft.Colors.PRIMARY
+        return ft.Icons.REPEAT, ft.Colors.with_opacity(0.4, ft.Colors.ON_SURFACE)
+
     def _open_queue(self, e):
         app = self._page.session.store.get("app")
         if not app or not app.audio_player:
@@ -263,6 +297,7 @@ class MiniPlayerWidget(ft.Container):
         return self._play_btn
 
     def _build_mobile(self):
+        _pm_icon, _pm_color = self._get_play_mode_icon()
         return ft.Container(
             height=self.height,
             padding=ft.Padding(0, 0, 0, self._page.padding.bottom if self._page.padding else 0),
@@ -279,10 +314,10 @@ class MiniPlayerWidget(ft.Container):
                             tight=True,
                             controls=[
                                 ft.Container(
-                                    width=56, height=56,
+                                    width=48, height=48,
                                     border_radius=8,
                                     clip_behavior=ft.ClipBehavior.ANTI_ALIAS,
-                                    content=ft.Image(src=self.current_track.art_uri, fit=ft.BoxFit.COVER) if self.current_track.art_uri else ft.Icon(ft.Icons.MUSIC_NOTE, size=24),
+                                    content=ft.Image(src=self.current_track.art_uri, fit=ft.BoxFit.COVER) if self.current_track.art_uri else ft.Icon(ft.Icons.MUSIC_NOTE, size=20),
                                     bgcolor=ft.Colors.with_opacity(0.3, ft.Colors.GREY),
                                     margin=ft.Margin(left=8, top=0, right=0, bottom=0),
                                 ),
@@ -292,19 +327,16 @@ class MiniPlayerWidget(ft.Container):
                                     content=ft.Column(
                                         tight=True, spacing=2,
                                         controls=[
-                                            ft.Text(self.current_track.title or "", weight=ft.FontWeight.BOLD, max_lines=1, overflow=ft.TextOverflow.ELLIPSIS, size=14),
-                                            ft.Text(self.current_track.artist or "", max_lines=1, overflow=ft.TextOverflow.ELLIPSIS, size=12, color=ft.Colors.with_opacity(0.7, ft.Colors.ON_SURFACE)),
+                                            ft.Text(self.current_track.title or "", weight=ft.FontWeight.BOLD, max_lines=1, overflow=ft.TextOverflow.ELLIPSIS, size=13),
+                                            ft.Text(self.current_track.artist or "", max_lines=1, overflow=ft.TextOverflow.ELLIPSIS, size=11, color=ft.Colors.with_opacity(0.7, ft.Colors.ON_SURFACE)),
                                         ],
                                     ),
                                 ),
-                                ft.IconButton(ft.Icons.SKIP_PREVIOUS, icon_size=22, on_click=lambda _: self._on_prev() if self._on_prev else None),
+                                ft.IconButton(_pm_icon, icon_size=20, icon_color=_pm_color, on_click=lambda _: self._cycle_play_mode()),
                                 ft.Container(
                                     padding=ft.Padding(2, 0, 2, 0),
                                     content=self._build_play_button(icon_size=28),
                                 ),
-                                ft.IconButton(ft.Icons.SKIP_NEXT, icon_size=22, on_click=lambda _: self._on_next() if self._on_next else None),
-                                ft.IconButton(ft.Icons.SHUFFLE, icon_size=18, icon_color=self._shuffle_color(), on_click=lambda _: self._on_toggle_shuffle() if self._on_toggle_shuffle else None),
-                                ft.IconButton(ft.Icons.REPEAT, icon_size=18, icon_color=self._repeat_color(), on_click=lambda _: self._on_toggle_repeat() if self._on_toggle_repeat else None),
                                 ft.IconButton(ft.Icons.QUEUE_MUSIC, icon_size=20, on_click=self._open_queue),
                             ],
                         ),
@@ -314,6 +346,7 @@ class MiniPlayerWidget(ft.Container):
         )
 
     def _build_desktop(self):
+        _pm_icon, _pm_color = self._get_play_mode_icon()
         return ft.Container(
             height=self.height,
             padding=ft.Padding(0, 0, 0, self._page.padding.bottom if self._page.padding else 0),
@@ -362,7 +395,7 @@ class MiniPlayerWidget(ft.Container):
                                         tight=True,
                                         alignment=ft.MainAxisAlignment.CENTER,
                                         controls=[
-                                            ft.IconButton(ft.Icons.REPEAT, icon_size=20, icon_color=self._repeat_color(), on_click=lambda _: self._on_toggle_repeat() if self._on_toggle_repeat else None),
+                                            ft.IconButton(_pm_icon, icon_size=20, icon_color=_pm_color, on_click=lambda _: self._cycle_play_mode()),
                                             ft.IconButton(ft.Icons.SKIP_PREVIOUS, icon_size=24, on_click=lambda _: self._on_prev() if self._on_prev else None),
                                             ft.Container(
                                                 padding=ft.Padding(8, 0, 8, 0),

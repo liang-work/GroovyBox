@@ -60,34 +60,49 @@ class LibraryScreen(ft.Column):
         )
 
     def _build_mobile_layout(self):
-        tabs = ft.Tabs(
-            length=3,
-            selected_index=self.selected_tab,
-            on_change=self._on_tab_change,
-            expand=True,
-            content=ft.Column(
-                expand=True,
-                spacing=0,
+        def _make_tab(idx, icon, label):
+            is_sel = self.selected_tab == idx
+            return ft.TextButton(
+                content=ft.Row(
+                    tight=True,
+                    controls=[
+                        ft.Icon(icon, size=18, color=ft.Colors.PRIMARY if is_sel else ft.Colors.with_opacity(0.6, ft.Colors.ON_SURFACE)),
+                        ft.Text(label, size=13, weight=ft.FontWeight.BOLD if is_sel else ft.FontWeight.NORMAL,
+                                color=ft.Colors.PRIMARY if is_sel else ft.Colors.with_opacity(0.6, ft.Colors.ON_SURFACE)),
+                    ],
+                ),
+                on_click=lambda e, i=idx: self._on_mobile_tab_change(i),
+                style=ft.ButtonStyle(
+                    bgcolor=ft.Colors.with_opacity(0.12, ft.Colors.PRIMARY) if is_sel else ft.Colors.TRANSPARENT,
+                    shape=ft.RoundedRectangleBorder(radius=8),
+                    padding=ft.Padding(12, 8, 12, 8),
+                ),
+            )
+
+        tab_row = ft.Container(
+            padding=ft.Padding(8, 8, 8, 4),
+            content=ft.Row(
+                tight=True,
+                alignment=ft.MainAxisAlignment.SPACE_EVENLY,
                 controls=[
-                    ft.TabBar(
-                        tabs=[
-                            ft.Tab(label=tr("tracks"), icon=ft.Icons.AUDIOTRACK),
-                            ft.Tab(label=tr("albums"), icon=ft.Icons.ALBUM),
-                            ft.Tab(label=tr("playlists"), icon=ft.Icons.QUEUE_MUSIC),
-                        ]
-                    ),
-                    ft.TabBarView(
-                        expand=True,
-                        controls=[self._build_tab_content()],
-                    ),
+                    _make_tab(0, ft.Icons.AUDIOTRACK, tr("tracks")),
+                    _make_tab(1, ft.Icons.ALBUM, tr("albums")),
+                    _make_tab(2, ft.Icons.QUEUE_MUSIC, tr("playlists")),
                 ],
             ),
         )
+        content = self._build_tab_content()
         return ft.Column(
             expand=True,
             spacing=0,
-            controls=[tabs],
+            controls=[tab_row, ft.Container(expand=True, content=content)],
         )
+
+    def _on_mobile_tab_change(self, idx):
+        self.selected_tab = idx
+        self.selected_ids.clear()
+        self._build()
+        self.update()
 
     def _on_nav_change(self, e):
         self.selected_tab = int(e.control.selected_index)

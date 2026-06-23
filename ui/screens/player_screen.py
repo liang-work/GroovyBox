@@ -1,3 +1,4 @@
+import asyncio
 import flet as ft
 import os
 import threading
@@ -147,8 +148,7 @@ class PlayerScreen(ft.Container):
                                 self._lyrics_need_initial_scroll = False
                                 self._last_lyrics_idx = new_idx
                                 self._lyrics_current_idx = new_idx
-                            elif new_idx != self._last_lyrics_idx or getattr(self, '_lyrics_use_curved', False):
-                                self._update_lyrics_styles(new_idx)
+                            self._update_lyrics_styles(new_idx)
                     except Exception:
                         pass
 
@@ -194,6 +194,8 @@ class PlayerScreen(ft.Container):
         self._inner.controls = [ft.Stack(expand=True, controls=[bg, content])]
         if self._initialized:
             self.update()
+        if getattr(self, '_lyrics_need_initial_scroll', False):
+            self._schedule_initial_lyrics_scroll()
 
     def _build_background(self, track):
         has_art = track and track.art_uri
@@ -217,16 +219,38 @@ class PlayerScreen(ft.Container):
         if self._view_mode == "cover":
             inner = self._build_cover_view(track, meta, player, is_desktop)
         elif self._view_mode == "lyrics":
-            inner = self._build_split_view(track, meta, player, "lyrics") if is_desktop else self._build_lyrics_view(track, player, use_curved)
+            if is_desktop:
+                inner = self._build_split_view(track, meta, player, "lyrics")
+            else:
+                inner = self._build_mobile_lyrics_layout(track, player, use_curved)
         else:
             inner = self._build_split_view(track, meta, player, "queue") if is_desktop else self._build_queue_view(player)
+
+        top_right_controls = [
+            ft.IconButton(
+                icon=_get_view_icon(self._view_mode),
+                icon_size=28,
+                on_click=self.cycle_view,
+                tooltip=_get_view_tooltip(self._view_mode),
+            ),
+        ]
+        if is_desktop:
+            top_right_controls.append(
+                ft.IconButton(
+                    icon=ft.Icons.QUEUE_MUSIC,
+                    icon_size=28,
+                    on_click=self.toggle_queue,
+                    tooltip=tr("showCover") if self._view_mode == "queue" else tr("showQueue"),
+                    icon_color=ft.Colors.PRIMARY if self._view_mode == "queue" else None,
+                ),
+            )
 
         return ft.Stack(
             expand=True,
             controls=[
                 inner,
                 ft.Container(
-                    left=8, top=8,
+                    left=4, top=4,
                     content=ft.IconButton(
                         icon=ft.Icons.ARROW_BACK,
                         icon_size=24,
@@ -235,24 +259,11 @@ class PlayerScreen(ft.Container):
                     ),
                 ),
                 ft.Container(
-                    right=8, top=8,
+                    right=0, top=0,
+                    padding=ft.Padding(0, 2, 2, 0),
                     content=ft.Row(
                         tight=True,
-                        controls=[
-                            ft.IconButton(
-                                icon=_get_view_icon(self._view_mode),
-                                icon_size=32,
-                                on_click=self.cycle_view,
-                                tooltip=_get_view_tooltip(self._view_mode),
-                            ),
-                            ft.IconButton(
-                                icon=ft.Icons.QUEUE_MUSIC,
-                                icon_size=32,
-                                on_click=self.toggle_queue,
-                                tooltip=tr("showCover") if self._view_mode == "queue" else tr("showQueue"),
-                                icon_color=ft.Colors.PRIMARY if self._view_mode == "queue" else None,
-                            ),
-                        ],
+                        controls=top_right_controls,
                     ),
                 ),
             ],
@@ -268,6 +279,55 @@ class PlayerScreen(ft.Container):
         else:
             right = ft.Container(content=self._build_queue_view(player), expand=4)
         return ft.Row(expand=True, spacing=0, controls=[left, right])
+
+    def _build_mobile_lyrics_layout(self, track, player, use_curved=False):
+        """窄屏歌词模式：上半歌词 + 下半控制器（底部对齐）"""
+        lyrics_content = self._build_lyrics_view(track, player, use_curved)
+
+        progress = self._build_progress_slider(player)
+        self._play_btn = ft.IconButton(
+            icon=ft.Icons.PAUSE_ROUNDED if player.is_playing else ft.Icons.PLAY_ARROW_ROUNDED,
+            icon_size=36,
+            on_click=lambda e: player.toggle_play_pause(),
+            bgcolor=ft.Colors.PRIMARY_CONTAINER,
+        )
+        _pm_icon, _pm_color = _get_play_mode_icon(self._page)
+        ctrl_row = ft.Row(
+            tight=True,
+            alignment=ft.MainAxisAlignment.CENTER,
+            controls=[
+                ft.IconButton(_pm_icon, icon_color=_pm_color, on_click=lambda e: _cycle_play_mode(self._page)),
+                ft.IconButton(ft.Icons.SKIP_PREVIOUS, icon_size=28, on_click=lambda e: player.previous()),
+                self._play_btn,
+                ft.IconButton(ft.Icons.SKIP_NEXT, icon_size=28, on_click=lambda e: player.next()),
+                ft.IconButton(
+                    icon=ft.Icons.QUEUE_MUSIC,
+                    icon_size=24,
+                    on_click=self.toggle_queue,
+                    tooltip=tr("showCover") if self._view_mode == "queue" else tr("showQueue"),
+                    icon_color=ft.Colors.PRIMARY if self._view_mode == "queue" else None,
+                ),
+            ],
+        )
+        bottom_controls = ft.Container(
+            padding=ft.Padding(16, 12, 16, 12),
+            bgcolor=ft.Colors.with_opacity(0.85, ft.Colors.SURFACE),
+            border_radius=ft.border_radius.BorderRadius(16, 16, 0, 0),
+            content=ft.Column(
+                tight=True,
+                horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+                spacing=8,
+                controls=[progress, ctrl_row],
+            ),
+        )
+        return ft.Column(
+            expand=True,
+            spacing=0,
+            controls=[
+                ft.Container(expand=True, content=lyrics_content),
+                bottom_controls,
+            ],
+        )
 
     def _build_volume_row(self, player):
         pw = self._page.width or 400
@@ -319,22 +379,18 @@ class PlayerScreen(ft.Container):
             bgcolor=ft.Colors.PRIMARY_CONTAINER,
         )
 
+        _pm_icon, _pm_color = _get_play_mode_icon(self._page)
         ctrl_row = ft.Row(
             tight=True,
             alignment=ft.MainAxisAlignment.CENTER,
             controls=[
-                ft.IconButton(ft.Icons.SHUFFLE,
-                              icon_color=ft.Colors.PRIMARY if player.shuffle else ft.Colors.with_opacity(0.4, ft.Colors.ON_SURFACE),
-                              on_click=lambda e: _toggle_shuffle(self._page)),
+                ft.IconButton(_pm_icon, icon_color=_pm_color, on_click=lambda e: _cycle_play_mode(self._page)),
                 ft.IconButton(ft.Icons.SKIP_PREVIOUS, icon_size=32, on_click=lambda e: player.previous()),
                 ft.Container(
                     padding=ft.Padding(12, 0, 12, 0),
                     content=self._play_btn,
                 ),
                 ft.IconButton(ft.Icons.SKIP_NEXT, icon_size=32, on_click=lambda e: player.next()),
-                ft.IconButton(_repeat_icon(player.repeat_mode),
-                              icon_color=_repeat_color(player.repeat_mode),
-                              on_click=lambda e: _toggle_repeat(self._page)),
             ],
         )
 
@@ -966,8 +1022,13 @@ class PlayerScreen(ft.Container):
         )
         self._lyrics_column = column
 
-        switcher = ft.AnimatedSwitcher(
+        padded_column = ft.Container(
+            padding=ft.Padding(48, 0, 16, 0),
             content=column,
+        )
+
+        switcher = ft.AnimatedSwitcher(
+            content=padded_column,
             transition=ft.AnimatedSwitcherTransition.FADE,
             duration=300,
             switch_in_curve=ft.AnimationCurve.EASE_OUT,
@@ -979,12 +1040,9 @@ class PlayerScreen(ft.Container):
         gesture = ft.GestureDetector(
             expand=True,
             mouse_cursor=ft.MouseCursor.BASIC,
-            content=ft.Container(
-                expand=True,
-                padding=ft.Padding(48, 0, 16, 0),
-                content=switcher,
-            ),
+            content=switcher,
             on_scroll=self._on_lyrics_wheel,
+            on_vertical_drag_start=lambda e: None,
             on_vertical_drag_update=self._on_lyrics_drag_update,
             on_vertical_drag_end=self._on_lyrics_drag_end,
         )
@@ -1004,7 +1062,10 @@ class PlayerScreen(ft.Container):
             horizontal_alignment=ft.CrossAxisAlignment.CENTER,
         )
         self._lyrics_column = new_column
-        self._lyrics_switcher.content = new_column
+        self._lyrics_switcher.content = ft.Container(
+            padding=ft.Padding(48, 0, 16, 0),
+            content=new_column,
+        )
         try:
             self._lyrics_switcher.update()
         except RuntimeError:
@@ -1062,6 +1123,20 @@ class PlayerScreen(ft.Container):
         self._lyrics_current_idx = playback_idx
         self._rebuild_lyrics_column(playback_idx, playback_idx)
 
+    def _schedule_initial_lyrics_scroll(self):
+        """初次构建平面歌词后，延迟重建到当前播放行"""
+        target_idx = getattr(self, '_last_lyrics_idx', 0)
+
+        async def _do_rebuild():
+            await asyncio.sleep(0.15)
+            try:
+                self._rebuild_flat_lyrics(target_idx)
+                self._lyrics_need_initial_scroll = False
+            except Exception:
+                pass
+
+        self._page.run_task(_do_rebuild)
+
     def _build_timed_lyrics(self, data, player, offset, use_curved=False):
         pos = player.position_ms + offset
         current_idx = 0
@@ -1088,46 +1163,134 @@ class PlayerScreen(ft.Container):
         if use_curved:
             self._lyrics_data_obj = data
             gesture = self._build_curved_listview(data, current_idx, player, max_w, text_align)
-            return ft.Container(
-                expand=True,
-                padding=0,
-                content=gesture,
-            )
+            return gesture
         else:
-            self._lyrics_need_initial_scroll = False
+            self._lyrics_need_initial_scroll = True
             self._lyrics_start = 0
-            lines = []
-            for i, line in enumerate(data.lines):
-                is_active = i == current_idx
-                if is_active:
-                    fsize, fw, color = 18, ft.FontWeight.BOLD, ft.Colors.PRIMARY
-                else:
-                    fsize, fw, color = 16, ft.FontWeight.NORMAL, ft.Colors.with_opacity(0.7, ft.Colors.ON_SURFACE)
+            self._flat_lyrics_data = data
+            self._flat_lyrics_player = player
+            self._flat_lyrics_max_w = max_w
+            self._flat_lyrics_text_align = text_align
+            self._flat_lyrics_current_idx = current_idx
 
-                txt_container = ft.Container(
-                    height=36,
-                    padding=ft.Padding(32, 0, 24, 0),
-                    alignment=ft.Alignment(-1, 0),
-                    width=max_w,
-                    on_click=lambda e, t=line.time_ms: player.seek(t) if t else None,
-                )
-                txt_container.content = ft.Text(line.text, size=fsize, weight=fw,
-                                                color=color, max_lines=1,
-                                                overflow=ft.TextOverflow.ELLIPSIS,
-                                                text_align=text_align)
-                self._lyrics_widgets.append(txt_container)
-                lines.append(txt_container)
+            controls = self._build_flat_lyrics_controls(data, current_idx, current_idx, 0.0, max_w, text_align, player)
+
+            lyrics_column = ft.Column(
+                expand=True,
+                scroll=ft.ScrollMode.AUTO,
+                alignment=ft.MainAxisAlignment.CENTER,
+                horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+                controls=controls,
+            )
+            self._lyrics_flat_column = lyrics_column
+
+            switcher = ft.AnimatedSwitcher(
+                content=lyrics_column,
+                transition=ft.AnimatedSwitcherTransition.FADE,
+                duration=200,
+                switch_in_curve=ft.AnimationCurve.EASE_OUT,
+                switch_out_curve=ft.AnimationCurve.EASE_IN,
+                expand=True,
+            )
+            self._flat_lyrics_switcher = switcher
 
             return ft.Container(
                 expand=True,
                 padding=ft.Padding(0, 20, 0, 20),
-                content=ft.Column(
-                    expand=True,
-                    alignment=ft.MainAxisAlignment.CENTER,
-                    horizontal_alignment=ft.CrossAxisAlignment.CENTER,
-                    controls=lines,
-                ),
+                content=switcher,
             )
+
+    def _build_flat_lyrics_controls(self, data, viewport_center, highlight_idx, progress, max_w, text_align, player):
+        """构建平面歌词的所有行控件（带渐变高亮）"""
+        line_h = 36
+        half_visible = 5
+        total = len(data.lines)
+        above = min(half_visible, viewport_center)
+        below = min(half_visible, total - 1 - viewport_center)
+        start_idx = viewport_center - above
+        end_idx = viewport_center + below + 1
+
+        controls = []
+        controls.append(ft.Container(height=line_h * (half_visible - above + 1)))
+
+        for i in range(start_idx, end_idx):
+            line = data.lines[i]
+            container = ft.Container(
+                key=f"lyric_line_{i}",
+                height=line_h,
+                padding=ft.Padding(32, 0, 24, 0),
+                alignment=ft.Alignment(-1, 0),
+                width=max_w,
+                on_click=lambda e, t=line.time_ms: player.seek(t) if t else None,
+            )
+            if i == highlight_idx:
+                if 0 < progress < 1:
+                    container.content = ft.ShaderMask(
+                        shader=ft.LinearGradient(
+                            begin=ft.Alignment(-1, 0),
+                            end=ft.Alignment(1, 0),
+                            colors=[ft.Colors.PRIMARY, ft.Colors.with_opacity(0.5, ft.Colors.ON_SURFACE)],
+                            stops=[progress, progress],
+                        ),
+                        content=ft.Text(
+                            line.text,
+                            size=19,
+                            weight=ft.FontWeight.BOLD,
+                            text_align=text_align,
+                        ),
+                        blend_mode=ft.BlendMode.SRC_IN,
+                    )
+                else:
+                    container.content = ft.Text(
+                        line.text,
+                        size=19,
+                        weight=ft.FontWeight.BOLD,
+                        color=ft.Colors.PRIMARY,
+                        max_lines=1,
+                        overflow=ft.TextOverflow.ELLIPSIS,
+                        text_align=text_align,
+                    )
+            else:
+                container.content = ft.Text(
+                    line.text,
+                    size=16,
+                    weight=ft.FontWeight.NORMAL,
+                    color=ft.Colors.with_opacity(0.7, ft.Colors.ON_SURFACE),
+                    max_lines=1,
+                    overflow=ft.TextOverflow.ELLIPSIS,
+                    text_align=text_align,
+                )
+            controls.append(container)
+
+        controls.append(ft.Container(height=line_h * (half_visible - below + 1)))
+        return controls
+
+    def _rebuild_flat_lyrics(self, highlight_idx, progress=0.0):
+        """重建平面歌词列并更新 AnimatedSwitcher（与弧形模式一致的更新方式）"""
+        data = getattr(self, '_flat_lyrics_data', None)
+        player = getattr(self, '_flat_lyrics_player', None)
+        max_w = getattr(self, '_flat_lyrics_max_w', 400)
+        text_align = getattr(self, '_flat_lyrics_text_align', ft.TextAlign.LEFT)
+        switcher = getattr(self, '_flat_lyrics_switcher', None)
+        if not data or not player or not switcher:
+            return
+
+        controls = self._build_flat_lyrics_controls(
+            data, highlight_idx, highlight_idx, progress, max_w, text_align, player,
+        )
+        new_column = ft.Column(
+            expand=True,
+            scroll=ft.ScrollMode.AUTO,
+            alignment=ft.MainAxisAlignment.CENTER,
+            horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+            controls=controls,
+        )
+        self._lyrics_flat_column = new_column
+        switcher.content = new_column
+        try:
+            switcher.update()
+        except RuntimeError:
+            pass
 
     def _update_lyrics_styles(self, new_idx):
         data = self._lyrics_data
@@ -1160,24 +1323,27 @@ class PlayerScreen(ft.Container):
             self._rebuild_lyrics_column(new_idx, new_idx, progress=progress)
             return
 
-        start = getattr(self, '_lyrics_start', 0)
-        for i, container in enumerate(self._lyrics_widgets):
-            line_idx = start + i
-            container.rotate = None
-            container.padding = ft.Padding(32, 0, 32, 0)
-            container.alignment = ft.Alignment(0, 0)
-            if line_idx == new_idx:
-                fsize, fw, color = 18, ft.FontWeight.BOLD, ft.Colors.PRIMARY
-            else:
-                fsize, fw, color = 16, ft.FontWeight.NORMAL, ft.Colors.with_opacity(0.7, ft.Colors.ON_SURFACE)
+        progress = 0.0
+        if 0 <= new_idx < total:
+            ln = data.lines[new_idx]
+            s = ln.time_ms or 0
+            e = (data.lines[new_idx + 1].time_ms or s) if new_idx < total - 1 else self._lyrics_player.duration_ms
+            if e > s:
+                player = self._lyrics_player
+                pos = player.position_ms + getattr(self, '_lyrics_offset', 0)
+                progress = max(0.0, min(1.0, (pos - s) / (e - s)))
 
-            txt = container.content
-            txt.size = fsize
-            txt.weight = fw
-            txt.color = color
-            container.update()
+        if new_idx == self._last_lyrics_idx:
+            old_progress = getattr(self, '_last_lyrics_progress', 0.0)
+            if abs(progress - old_progress) < 0.02:
+                return
+        else:
+            self._last_lyrics_idx = new_idx
+            self._lyrics_current_idx = new_idx
 
-        self._last_lyrics_idx = new_idx
+        self._last_lyrics_progress = progress
+        self._rebuild_flat_lyrics(new_idx, progress=progress)
+        self._lyrics_need_initial_scroll = False
 
     def _build_plain_lyrics(self, data):
         return ft.Column(
@@ -1333,3 +1499,40 @@ def _repeat_color(mode: str):
     if mode in ("one", "all"):
         return ft.Colors.PRIMARY
     return ft.Colors.with_opacity(0.4, ft.Colors.ON_SURFACE)
+
+
+_PLAY_MODE_CYCLE = [
+    (False, "all"),    # 列表循环
+    (False, "one"),    # 单曲循环
+    (True,  "none"),   # 随机播放
+    (False, "none"),   # 顺序播放
+]
+
+
+def _cycle_play_mode(page):
+    app = page.session.store.get("app")
+    if not app or not app.audio_player:
+        return
+    player = app.audio_player
+    current = (player.shuffle, player.repeat_mode or "none")
+    try:
+        idx = (_PLAY_MODE_CYCLE.index(current) + 1) % len(_PLAY_MODE_CYCLE)
+    except ValueError:
+        idx = 0
+    player.shuffle, player.repeat_mode = _PLAY_MODE_CYCLE[idx]
+    page.update()
+
+
+def _get_play_mode_icon(page):
+    app = page.session.store.get("app")
+    if not app or not app.audio_player:
+        return ft.Icons.REPEAT, ft.Colors.with_opacity(0.4, ft.Colors.ON_SURFACE)
+    player = app.audio_player
+    if player.shuffle:
+        return ft.Icons.SHUFFLE, ft.Colors.PRIMARY
+    mode = player.repeat_mode or "none"
+    if mode == "one":
+        return ft.Icons.REPEAT_ONE, ft.Colors.PRIMARY
+    if mode == "all":
+        return ft.Icons.REPEAT, ft.Colors.PRIMARY
+    return ft.Icons.REPEAT, ft.Colors.with_opacity(0.4, ft.Colors.ON_SURFACE)
