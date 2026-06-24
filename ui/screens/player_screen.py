@@ -941,15 +941,19 @@ class PlayerScreen(ft.Container):
             return ft.Container(
                 clip_behavior=ft.ClipBehavior.HARD_EDGE,
                 width=container_width,
-                content=ft.Container(
-                    offset=ft.Offset(-scroll_px / container_width, 0),
-                    content=ft.Text(
-                        text,
-                        size=font_size,
-                        weight=font_weight,
-                        no_wrap=True,
-                        text_align=text_align,
-                    ),
+                content=ft.Stack(
+                    controls=[
+                        ft.Container(
+                            left=-scroll_px,
+                            content=ft.Text(
+                                text,
+                                size=font_size,
+                                weight=font_weight,
+                                no_wrap=True,
+                                text_align=text_align,
+                            ),
+                        ),
+                    ],
                 ),
             )
         else:
