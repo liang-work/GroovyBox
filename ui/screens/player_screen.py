@@ -1131,7 +1131,7 @@ class PlayerScreen(ft.Container):
 
     def _on_lyrics_drag_update(self, e):
         """移动端拖动事件：累积拖动距离，跨过一行高度时步进"""
-        self._lyrics_drag_accum += e.delta_y
+        self._lyrics_drag_accum += e.dy
         stride = self._LY_ITEM_H
         while self._lyrics_drag_accum >= stride:
             self._step_lyrics(1)
