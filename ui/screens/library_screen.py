@@ -17,7 +17,6 @@ class LibraryScreen(ft.Column):
         self.selected_ids = set()
         self.search_query = ""
         self.selected_tab = 0
-
         self._build()
 
     def _get_app(self):
@@ -157,7 +156,8 @@ class LibraryScreen(ft.Column):
                     border=ft.InputBorder.OUTLINE,
                     border_radius=24,
                     dense=True,
-                    on_change=on_search,
+                    value=self.search_query,
+                    on_submit=on_search,
                     filled=True,
                     fill_color=ft.Colors.with_opacity(0.08, ft.Colors.ON_SURFACE),
                 ),
