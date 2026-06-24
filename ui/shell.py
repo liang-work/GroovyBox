@@ -81,6 +81,10 @@ class ShellView(ft.View):
             self._page.pop_dialog()
             self._page.run_task(self._import_zip)
 
+        def do_path(e):
+            self._page.pop_dialog()
+            self._page.run_task(self._import_from_path)
+
         bs = ft.BottomSheet(
             content=ft.Column(
                 tight=True,
@@ -89,6 +93,8 @@ class ShellView(ft.View):
                     ft.ListTile(leading=ft.Icon(ft.Icons.FOLDER_OPEN), title=ft.Text(tr("importFolder")), on_click=do_folder),
                     ft.ListTile(leading=ft.Icon(ft.Icons.QUEUE_MUSIC), title=ft.Text(tr("importPlaylist")), on_click=do_playlist),
                     ft.ListTile(leading=ft.Icon(ft.Icons.FOLDER_ZIP), title=ft.Text(tr("importZip")), on_click=do_zip),
+                    ft.Divider(),
+                    ft.ListTile(leading=ft.Icon(ft.Icons.KEYBOARD), title=ft.Text(tr("importFromPath")), on_click=do_path),
                 ],
             ),
         )
@@ -169,6 +175,90 @@ class ShellView(ft.View):
         if all_lyrics:
             await self._import_lyrics_files(all_lyrics)
         await self._reload_after_import()
+
+    async def _import_from_path(self):
+        path_field = ft.TextField(
+            hint_text=tr("pathPlaceholder"),
+            expand=True,
+            autofocus=True,
+        )
+
+        async def do_import(e):
+            path = path_field.value.strip()
+            if not path:
+                return
+            self._page.pop_dialog()
+            await self._handle_path_import(path)
+
+        dialog = ft.AlertDialog(
+            title=ft.Text(tr("importFromPath")),
+            content=ft.Column(
+                tight=True,
+                width=400,
+                controls=[
+                    ft.Text(tr("enterPath")),
+                    path_field,
+                ],
+            ),
+            actions=[
+                ft.TextButton(tr("cancel"), on_click=lambda e: self._page.pop_dialog()),
+                ft.FilledButton(tr("importAction"), on_click=do_import),
+            ],
+            actions_alignment=ft.MainAxisAlignment.END,
+        )
+        self._page.show_dialog(dialog)
+
+    async def _handle_path_import(self, path):
+        import os
+        from data import track_repository as trepo
+
+        if not os.path.exists(path):
+            self._page.show_dialog(ft.SnackBar(ft.Text(tr("pathNotFound", path))))
+            return
+
+        if os.path.isdir(path):
+            n = await trepo.scan_directory_async(path)
+            if n:
+                msg = tr("imported") + f" {n} " + tr("tracks")
+                self._page.show_dialog(ft.SnackBar(ft.Text(msg)))
+            await self._reload_after_import()
+            return
+
+        ext = os.path.splitext(path)[1].lower().lstrip(".")
+
+        if ext in AUDIO_EXTENSIONS:
+            await self._import_files([path])
+
+        elif ext in ("m3u", "m3u8", "pls"):
+            from logic.playlist_parser import parse_playlist
+            audio_paths = parse_playlist(path)
+            if audio_paths:
+                n = await trepo.import_files_async(audio_paths)
+                msg = tr("imported") + f" {n} " + tr("tracks")
+                self._page.show_dialog(ft.SnackBar(ft.Text(msg)))
+            await self._reload_after_import()
+
+        elif ext == "zip":
+            from logic.zip_importer import extract_zip
+            import tempfile
+            dest = tempfile.mkdtemp(prefix="groovybox_zip_")
+            audio_files, lyrics_files, playlist_files = extract_zip(path, dest)
+            for pp in playlist_files:
+                from logic.playlist_parser import parse_playlist
+                audio_files.extend(parse_playlist(pp))
+            n_audio = 0
+            if audio_files:
+                n_audio = await trepo.import_files_async(audio_files)
+            if lyrics_files:
+                await self._import_lyrics_files(lyrics_files)
+            msg = tr("imported") + f" {n_audio} " + tr("tracks")
+            if lyrics_files:
+                msg += f", {len(lyrics_files)} " + tr("lyricsLines")
+            self._page.show_dialog(ft.SnackBar(ft.Text(msg)))
+            await self._reload_after_import()
+
+        else:
+            self._page.show_dialog(ft.SnackBar(ft.Text(tr("unsupportedFileType", ext))))
 
     async def _import_lyrics_files(self, lyrics_paths):
         from logic.encoding_helper import read_with_encoding
