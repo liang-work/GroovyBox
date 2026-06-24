@@ -1141,6 +1141,7 @@ class PlayerScreen(ft.Container):
 
     def _on_lyrics_drag_update(self, e):
         """移动端拖动事件：累积拖动距离，跨过一行高度时步进"""
+        self._lyrics_user_scrolling = True
         self._lyrics_drag_accum += e.dy
         stride = self._LY_ITEM_H
         while self._lyrics_drag_accum >= stride:
@@ -1157,6 +1158,7 @@ class PlayerScreen(ft.Container):
 
     def _step_lyrics(self, direction):
         """步进到上/下一行，只移动视口，不改变高亮（播放位置）"""
+        self._lyrics_user_scrolling = True
         lines = getattr(self, '_lyrics_data_lines', None)
         if lines is None:
             return
@@ -1172,16 +1174,13 @@ class PlayerScreen(ft.Container):
         """重置吸附防抖定时器"""
         if self._lyrics_snap_timer:
             self._lyrics_snap_timer.cancel()
-        self._lyrics_snap_timer = threading.Timer(0.5, self._snap_to_nearest_line)
+        self._lyrics_snap_timer = threading.Timer(1.0, self._snap_to_nearest_line)
         self._lyrics_snap_timer.daemon = True
         self._lyrics_snap_timer.start()
 
     def _snap_to_nearest_line(self):
-        """吸附回播放位置：视口回到当前播放行"""
+        """清除用户滚动标记，下次歌词行切换时自动恢复到播放位置"""
         self._lyrics_user_scrolling = False
-        playback_idx = self._last_lyrics_idx
-        self._lyrics_current_idx = playback_idx
-        self._rebuild_lyrics_column(playback_idx, playback_idx)
 
     def _schedule_initial_lyrics_scroll(self):
         """初次构建平面歌词后，延迟重建到当前播放行"""
@@ -1376,6 +1375,9 @@ class PlayerScreen(ft.Container):
 
             self._last_lyrics_progress = progress
             self._rebuild_lyrics_column(new_idx, new_idx, progress=progress)
+            return
+
+        if self._lyrics_user_scrolling:
             return
 
         progress = 0.0
