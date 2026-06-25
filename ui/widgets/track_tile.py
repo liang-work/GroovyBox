@@ -1,3 +1,11 @@
+"""Track Tile Widget for GroovyBox.
+
+This module provides a reusable TrackTile function that creates a
+consistent track list item with album art, title, artist info,
+and optional trailing actions. Used across library, playlist,
+and artist screens.
+"""
+
 import flet as ft
 from typing import Optional, Callable
 from data.models import Track
@@ -17,11 +25,32 @@ def TrackTile(
     padding: float = 8,
     trailing_icon: str = ft.Icons.MORE_VERT,
 ) -> ft.Container:
-
+    """Create a track list item widget.
+    
+    Renders a track with album art thumbnail, title, artist/duration
+    subtitle, and optional action button. Highlights the currently
+    playing track with primary color accents.
+    
+    Args:
+        track: The Track data object to display.
+        on_tap: Callback when the tile is tapped.
+        on_long_press: Callback when the tile is long-pressed.
+        is_playing: Whether this track is currently playing (enables highlighting).
+        show_trailing: Whether to show the trailing action button.
+        on_trailing_pressed: Callback when the trailing button is pressed.
+        leading: Optional leading control (e.g., track number).
+        padding: Vertical padding override for the tile.
+        trailing_icon: Icon to use for the trailing button.
+    
+    Returns:
+        A Container widget with the styled track tile.
+    """
+    # Apply highlighting for the currently playing track
     bg = ft.Colors.with_opacity(0.15, ft.Colors.PRIMARY) if is_playing else ft.Colors.TRANSPARENT
     title_color = ft.Colors.PRIMARY if is_playing else ft.Colors.ON_SURFACE
     title_weight = ft.FontWeight.BOLD if is_playing else ft.FontWeight.NORMAL
 
+    # Build subtitle: "Artist • Duration"
     subtitle = f"{track.artist or tr('unknownArtist', 'Unknown Artist')} \u2022 {format_duration(track.duration)}"
 
     tile = ft.ListTile(

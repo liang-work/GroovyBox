@@ -1,3 +1,9 @@
+"""Playlists Screen for GroovyBox.
+
+This module displays the list of user-created playlists with options
+to create new playlists, open existing ones, and delete playlists.
+"""
+
 import flet as ft
 from data import playlist_repository as prepo
 from logic.localize import tr
@@ -5,9 +11,21 @@ from data.models import Playlist
 
 
 def PlaylistsScreen(page: ft.Page) -> ft.Control:
+    """Build the playlists management screen.
+    
+    Shows a list of all playlists with create and delete options.
+    Tapping a playlist navigates to its detail view.
+    
+    Args:
+        page: The Flet page instance.
+    
+    Returns:
+        A scrollable Column with playlist list items.
+    """
     playlists = prepo.watch_all_playlists()
 
     def create_new(e):
+        """Show dialog for creating a new playlist."""
         name_f = ft.TextField(
             label=tr("playlistName"),
             autofocus=True,
@@ -15,6 +33,7 @@ def PlaylistsScreen(page: ft.Page) -> ft.Control:
         )
 
         def do_create(e):
+            """Handle playlist creation."""
             name = name_f.value
             page.pop_dialog()
             if name and name.strip():
@@ -47,9 +66,11 @@ def PlaylistsScreen(page: ft.Page) -> ft.Control:
         page.show_dialog(bs)
 
     def open_playlist(pl):
+        """Navigate to a playlist's detail view."""
         page.session.store.set("playlist_data", pl)
         page.run_task(page.push_route, "/playlist")
 
+    # Build playlist tiles
     tiles = []
     tiles.append(
         ft.ListTile(
@@ -82,6 +103,7 @@ def PlaylistsScreen(page: ft.Page) -> ft.Control:
             )
 
     def _delete_pl(pid, pname=""):
+        """Show confirmation dialog for playlist deletion."""
         def confirm_yes(e):
             page.pop_dialog()
             page.update()

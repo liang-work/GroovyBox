@@ -1,3 +1,10 @@
+"""Universal Image Widget for GroovyBox.
+
+This module provides a UniversalImage container that handles displaying
+images from various sources (local files, network URLs) with automatic
+fallback to an icon when the image cannot be loaded.
+"""
+
 import flet as ft
 import os
 from typing import Optional
@@ -5,6 +12,20 @@ from logic.localize import tr
 
 
 class UniversalImage(ft.Container):
+    """An image container that supports local files and network URLs.
+    
+    Automatically displays a fallback icon when:
+    - The URI is None or empty
+    - The file doesn't exist on disk
+    - The image fails to load
+    
+    Attributes:
+        _uri: The image source URI (local path or URL).
+        _fit: How the image should fit within its bounds.
+        _fallback_icon: Icon to display when image is unavailable.
+        _fallback_icon_size: Size of the fallback icon.
+    """
+
     def __init__(
         self,
         uri: Optional[str] = None,
@@ -33,9 +54,23 @@ class UniversalImage(ft.Container):
         )
 
     def _is_network(self, uri: str) -> bool:
+        """Check if a URI points to a network resource.
+        
+        Args:
+            uri: The URI string to check.
+        
+        Returns:
+            True if the URI starts with http:// or https://.
+        """
         return uri.startswith("http://") or uri.startswith("https://")
 
     def _build_content(self):
+        """Build the appropriate content based on the URI type.
+        
+        Returns:
+            An Image widget for valid URIs, or a fallback Icon widget.
+        """
+        # Show fallback icon for missing or non-existent local files
         if not self._uri or not os.path.isfile(self._uri):
             return ft.Icon(
                 icon=self._fallback_icon,
@@ -43,6 +78,7 @@ class UniversalImage(ft.Container):
                 color=ft.Colors.WHITE54,
             )
 
+        # Network or local file image
         if self._is_network(self._uri):
             return ft.Image(
                 src=self._uri,

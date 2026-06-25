@@ -1,18 +1,40 @@
+"""Database Module for GroovyBox.
+
+This module handles all database operations including connection management,
+schema initialization, and application settings persistence. Uses SQLite
+with WAL journal mode for concurrent read/write performance.
+"""
+
 import sqlite3
 import os
 import json
 from typing import Optional, Any
 
 
+# Global cached database path to avoid repeated path resolution
 DB_PATH = None
 
 
 def _is_mobile() -> bool:
+    """Check if the application is running on a mobile platform.
+    
+    Returns:
+        True if running on Android or in a Flet mobile environment.
+    """
     return "ANDROID_ROOT" in os.environ or os.environ.get("FLET_APP_DATA_DIR") is not None
 
 
 def get_app_data_dir() -> str:
-    """Return a writable app data directory on all platforms."""
+    """Return a writable app data directory on all platforms.
+    
+    Resolves the appropriate base directory based on the platform:
+    - Android: Application's parent directory
+    - Flet mobile: FLET_APP_DATA_DIR environment variable
+    - Desktop: User's home directory
+    
+    Returns:
+        Absolute path to the writable application data directory.
+    """
     if "ANDROID_ROOT" in os.environ:
         return os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     if os.environ.get("FLET_APP_DATA_DIR"):
@@ -21,13 +43,29 @@ def get_app_data_dir() -> str:
 
 
 def get_app_dir() -> str:
-    """Return the full path to the groovybox data directory."""
+    """Return the full path to the GroovyBox data directory.
+    
+    Creates a platform-appropriate subdirectory:
+    - Mobile: "groovybox" (without dot prefix)
+    - Desktop: ".groovybox" (hidden directory)
+    
+    Returns:
+        Absolute path to the GroovyBox data directory.
+    """
     base = get_app_data_dir()
     name = "groovybox" if _is_mobile() else ".groovybox"
     return os.path.join(base, name)
 
 
 def get_db_path():
+    """Get the path to the SQLite database file.
+    
+    Creates the data directory if it doesn't exist. Caches the path
+    in the global DB_PATH variable for subsequent calls.
+    
+    Returns:
+        Absolute path to the groovybox.db database file.
+    """
     global DB_PATH
     if DB_PATH is None:
         app_dir = get_app_dir()
@@ -37,6 +75,17 @@ def get_db_path():
 
 
 def get_connection():
+    """Create and configure a new SQLite database connection.
+    
+    Configures the connection with:
+    - Row factory for dict-like access to query results
+    - WAL journal mode for better concurrent access
+    - Foreign key enforcement
+    - UTF-8 encoding
+    
+    Returns:
+        A configured sqlite3.Connection instance.
+    """
     conn = sqlite3.connect(get_db_path())
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA journal_mode=WAL")
@@ -47,6 +96,15 @@ def get_connection():
 
 
 def init_database():
+    """Initialize the database schema.
+    
+    Creates all required tables if they don't exist:
+    - tracks: Music track library
+    - playlists: User-created playlists
+    - playlist_entries: Many-to-many relationship between playlists and tracks
+    - watch_folders: Monitored music library folders
+    - app_settings: Key-value store for application preferences
+    """
     conn = get_connection()
     conn.executescript("""
         CREATE TABLE IF NOT EXISTS tracks (
@@ -97,6 +155,15 @@ def init_database():
 # --- Settings helpers ---
 
 def get_setting(key: str, default: str = "") -> str:
+    """Retrieve an application setting value.
+    
+    Args:
+        key: The setting key to look up.
+        default: Default value if the key doesn't exist.
+    
+    Returns:
+        The setting value as a string, or the default if not found.
+    """
     conn = get_connection()
     row = conn.execute("SELECT value FROM app_settings WHERE key = ?", (key,)).fetchone()
     conn.close()
@@ -106,6 +173,14 @@ def get_setting(key: str, default: str = "") -> str:
 
 
 def set_setting(key: str, value: str):
+    """Save an application setting value.
+    
+    Creates the setting if it doesn't exist, or updates it if it does.
+    
+    Args:
+        key: The setting key to save.
+        value: The string value to store.
+    """
     conn = get_connection()
     conn.execute(
         "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",

@@ -1,3 +1,11 @@
+"""Shell View for GroovyBox.
+
+This module defines the main application shell layout that wraps
+all screens except the full-screen player. Provides a toolbar with
+navigation and import actions, a content area for screen switching,
+and a persistent mini player at the bottom.
+"""
+
 import flet as ft
 from logic.localize import tr
 from logic.logger import logger
@@ -6,14 +14,28 @@ from ui.widgets.mini_player import MiniPlayerWidget
 
 
 class ShellView(ft.View):
+    """Main application shell that provides the common layout structure.
+    
+    Contains three main sections:
+    - Toolbar: Navigation buttons (Home, Settings) and import action
+    - Content view: Swappable area for different screens
+    - Mini player: Persistent playback controls at the bottom
+    
+    Attributes:
+        content_view: Column container for the active screen content.
+        mini_player: The MiniPlayerWidget instance at the bottom.
+    """
+
     def __init__(self, page: ft.Page):
         super().__init__(route="/", padding=0, spacing=0)
         self._page = page
         self.app = page.session.store.get("app")
 
+        # Main content area and mini player
         self.content_view = ft.Column(expand=True, spacing=0)
         self.mini_player = MiniPlayerWidget(page)
 
+        # Assemble the shell layout
         body = ft.Column(
             expand=True,
             spacing=0,
@@ -28,12 +50,20 @@ class ShellView(ft.View):
 
     @property
     def page(self):
+        """Access the Flet page instance."""
         return self._page
 
     def refresh_mini_player(self):
+        """Force a refresh of the mini player widget."""
         self.mini_player.refresh()
 
     def _build_toolbar(self):
+        """Build the top toolbar with navigation and import buttons.
+        
+        Returns:
+            A Container with the toolbar layout including Home, Settings,
+            and Import buttons.
+        """
         return ft.Container(
             height=44,
             bgcolor=ft.Colors.SURFACE_CONTAINER,
@@ -65,6 +95,15 @@ class ShellView(ft.View):
         )
 
     def _show_import_menu(self, e):
+        """Show the import options bottom sheet menu.
+        
+        Offers multiple import methods:
+        - Audio files: Individual file selection
+        - Folder: Scan an entire directory
+        - Playlist: Import from M3U/PLS files
+        - ZIP: Extract and import from ZIP archives
+        - Path: Manual path entry
+        """
         def do_files(e):
             self._page.pop_dialog()
             self._page.run_task(self._import_files)
@@ -101,6 +140,14 @@ class ShellView(ft.View):
         self._page.show_dialog(bs)
 
     async def _import_files(self, paths=None):
+        """Import audio and lyrics files from file picker or provided paths.
+        
+        Separates audio files from lyrics files, imports audio into the
+        database, and attempts to match lyrics to existing tracks.
+        
+        Args:
+            paths: Optional list of file paths. If None, opens file picker.
+        """
         from logic.file_dialog import pick_files
         all_ext = list(AUDIO_EXTENSIONS | LYRICS_EXTENSIONS)
         if paths is None:
@@ -112,6 +159,7 @@ class ShellView(ft.View):
         from data import track_repository as trepo
         import os
 
+        # Separate audio and lyrics files
         audio_paths = [p for p in paths if p.split(".")[-1].lower() in AUDIO_EXTENSIONS]
         lyrics_paths = [p for p in paths if p.split(".")[-1].lower() in LYRICS_EXTENSIONS]
         logger.debug(f"_import_files: audio={len(audio_paths)} lyrics={len(lyrics_paths)}")
@@ -126,6 +174,7 @@ class ShellView(ft.View):
         await self._reload_after_import()
 
     async def _import_folder(self):
+        """Import all audio files from a selected folder."""
         from logic.file_dialog import pick_directory
         folder = await pick_directory(self._page, title=tr("importFolder"))
         if not folder:
@@ -137,6 +186,7 @@ class ShellView(ft.View):
         await self._reload_after_import()
 
     async def _import_playlist_file(self):
+        """Import audio files referenced in M3U/PLS playlist files."""
         from logic.file_dialog import pick_files
         paths = await pick_files(self._page, title=tr("importPlaylist"), extensions=["m3u", "m3u8", "pls"])
         if not paths:
@@ -152,6 +202,7 @@ class ShellView(ft.View):
             await self._reload_after_import()
 
     async def _import_zip(self):
+        """Import audio files from ZIP archives."""
         from logic.file_dialog import pick_files
         paths = await pick_files(self._page, title=tr("importZip"), extensions=["zip"])
         if not paths:
@@ -166,6 +217,7 @@ class ShellView(ft.View):
             audio_files, lyrics_files, playlist_files = extract_zip(zp, dest)
             all_audio.extend(audio_files)
             all_lyrics.extend(lyrics_files)
+            # Parse any playlist files found in the ZIP
             for pp in playlist_files:
                 from logic.playlist_parser import parse_playlist
                 all_audio.extend(parse_playlist(pp))
@@ -177,6 +229,7 @@ class ShellView(ft.View):
         await self._reload_after_import()
 
     async def _import_from_path(self):
+        """Show dialog for manual path entry and import."""
         path_field = ft.TextField(
             hint_text=tr("pathPlaceholder"),
             expand=True,
@@ -209,6 +262,14 @@ class ShellView(ft.View):
         self._page.show_dialog(dialog)
 
     async def _handle_path_import(self, path):
+        """Handle import from a manually entered path.
+        
+        Detects whether the path is a directory, audio file,
+        playlist file, or ZIP archive and imports accordingly.
+        
+        Args:
+            path: The file or directory path to import.
+        """
         import os
         from data import track_repository as trepo
 
@@ -216,6 +277,7 @@ class ShellView(ft.View):
             self._page.show_dialog(ft.SnackBar(ft.Text(tr("pathNotFound", path))))
             return
 
+        # Directory: scan for audio files
         if os.path.isdir(path):
             n = await trepo.scan_directory_async(path)
             if n:
@@ -226,9 +288,11 @@ class ShellView(ft.View):
 
         ext = os.path.splitext(path)[1].lower().lstrip(".")
 
+        # Audio file: import directly
         if ext in AUDIO_EXTENSIONS:
             await self._import_files([path])
 
+        # Playlist file: parse and import referenced files
         elif ext in ("m3u", "m3u8", "pls"):
             from logic.playlist_parser import parse_playlist
             audio_paths = parse_playlist(path)
@@ -238,6 +302,7 @@ class ShellView(ft.View):
                 self._page.show_dialog(ft.SnackBar(ft.Text(msg)))
             await self._reload_after_import()
 
+        # ZIP archive: extract and import contents
         elif ext == "zip":
             from logic.zip_importer import extract_zip
             import tempfile
@@ -261,6 +326,14 @@ class ShellView(ft.View):
             self._page.show_dialog(ft.SnackBar(ft.Text(tr("unsupportedFileType", ext))))
 
     async def _import_lyrics_files(self, lyrics_paths):
+        """Batch import lyrics files by matching filenames to track titles.
+        
+        Attempts to match each lyrics file to an existing track by
+        comparing the filename (without extension) to track titles.
+        
+        Args:
+            lyrics_paths: List of absolute paths to lyrics files.
+        """
         from logic.encoding_helper import read_with_encoding
         from data import track_repository as trepo
         import os
@@ -270,6 +343,7 @@ class ShellView(ft.View):
         for lp in lyrics_paths:
             base = os.path.splitext(os.path.basename(lp))[0].lower()
             match = None
+            # Try to find a matching track by title
             for t in all_tracks:
                 if t.title.lower() == base or base in t.title.lower() or t.title.lower() in base:
                     match = t
@@ -287,6 +361,11 @@ class ShellView(ft.View):
         self._page.show_dialog(ft.SnackBar(ft.Text(msg)))
 
     async def _reload_after_import(self):
+        """Reload the UI after completing an import operation.
+        
+        Refreshes the page and triggers a full UI rebuild to reflect
+        the newly imported tracks.
+        """
         from data import track_repository as trepo
         n = len(trepo.watch_all_tracks())
         logger.info("_reload_after_import: %d tracks in DB, reloading UI", n)

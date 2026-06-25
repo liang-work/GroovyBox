@@ -1,3 +1,10 @@
+"""Settings Screen for GroovyBox.
+
+This module provides the application settings interface, including
+music library management, player configuration, theme settings,
+language selection, database management, and log export.
+"""
+
 import flet as ft
 import threading
 from data import db
@@ -7,9 +14,27 @@ from logic.logger import logger
 
 
 def SettingsScreen(page: ft.Page) -> ft.Column:
+    """Build the settings screen with all configuration sections.
+    
+    Sections include:
+    - Auto Scan: Toggle automatic library scanning
+    - Music Libraries: Manage watch folders
+    - Player Settings: Default screen, lyrics mode, continue playing
+    - App Settings: Language, theme mode
+    - Database Management: Reset track database
+    - Logs: Log level and export
+    - About: Application information
+    
+    Args:
+        page: The Flet page instance.
+    
+    Returns:
+        A scrollable Column with all settings sections.
+    """
     app = page.session.store.get("app")
 
     def load_settings():
+        """Load current settings from the database."""
         return {
             "auto_scan": db.get_setting("auto_scan", "true") == "true",
             "default_player_screen": db.get_setting("default_player_screen", "cover"),
@@ -21,22 +46,27 @@ def SettingsScreen(page: ft.Page) -> ft.Column:
     settings = load_settings()
 
     def save_setting(key, value):
+        """Save a setting and refresh the local cache."""
         db.set_setting(key, str(value).lower())
         nonlocal settings
         settings = load_settings()
 
     def refresh():
+        """Refresh the page display."""
         page.update()
 
     def on_auto_scan_change(e):
+        """Handle auto-scan toggle change."""
         save_setting("auto_scan", e.control.value)
         refresh()
 
     def on_continue_plays_change(e):
+        """Handle continue-playing toggle change."""
         save_setting("continue_plays", e.control.value)
         refresh()
 
     def on_language_change(e):
+        """Handle language selection change."""
         lang = e.control.value
         load_locale(lang)
         db.set_setting("language", lang)
@@ -45,14 +75,17 @@ def SettingsScreen(page: ft.Page) -> ft.Column:
             app._reload_ui()
 
     def on_default_screen_change(e):
+        """Handle default player screen selection change."""
         save_setting("default_player_screen", e.control.value)
         refresh()
 
     def on_lyrics_mode_change(e):
+        """Handle lyrics display mode change."""
         save_setting("lyrics_mode", e.control.value)
         refresh()
 
     def on_theme_mode_change(e):
+        """Handle theme mode change (system/light/dark)."""
         val = e.control.value
         save_setting("theme_mode", val)
         mode_map = {"system": ft.ThemeMode.SYSTEM, "light": ft.ThemeMode.LIGHT, "dark": ft.ThemeMode.DARK}
@@ -62,6 +95,7 @@ def SettingsScreen(page: ft.Page) -> ft.Column:
             app.page.update()
 
     async def add_library(e):
+        """Add a new music library watch folder."""
         from logic.file_dialog import pick_directory
         path = await pick_directory(page, title="Select music library folder")
         if path:
@@ -82,6 +116,7 @@ def SettingsScreen(page: ft.Page) -> ft.Column:
             refresh()
 
     def scan_libraries(e):
+        """Manually trigger a scan of all active watch folders."""
         conn = db.get_connection()
         folders = conn.execute("SELECT * FROM watch_folders WHERE is_active=1").fetchall()
         conn.close()
@@ -99,6 +134,7 @@ def SettingsScreen(page: ft.Page) -> ft.Column:
         page.update()
 
     def reset_database(e):
+        """Show confirmation dialog for database reset."""
         def confirm_yes(e):
             trepo.clear_all_tracks()
             page.pop_dialog()
@@ -119,7 +155,7 @@ def SettingsScreen(page: ft.Page) -> ft.Column:
         )
         page.show_dialog(dlg)
 
-    # Build libraries list
+    # Build libraries list from database
     conn = db.get_connection()
     folders = conn.execute("SELECT * FROM watch_folders ORDER BY added_at").fetchall()
     conn.close()
@@ -147,6 +183,7 @@ def SettingsScreen(page: ft.Page) -> ft.Column:
         )
 
     def _toggle_folder(fid, active):
+        """Toggle a watch folder's active status."""
         conn = db.get_connection()
         conn.execute("UPDATE watch_folders SET is_active=? WHERE id=?", (int(active), fid))
         conn.commit()
@@ -154,6 +191,7 @@ def SettingsScreen(page: ft.Page) -> ft.Column:
         refresh()
 
     def _delete_folder(fid):
+        """Delete a watch folder from the database."""
         conn = db.get_connection()
         conn.execute("DELETE FROM watch_folders WHERE id=?", (fid,))
         conn.commit()
@@ -161,6 +199,7 @@ def SettingsScreen(page: ft.Page) -> ft.Column:
         refresh()
 
     def _set_log_level(e):
+        """Change the application log level."""
         lvl = e.control.value
         db.set_setting("log_level", lvl)
         from logic.logger import set_log_level
@@ -168,6 +207,7 @@ def SettingsScreen(page: ft.Page) -> ft.Column:
         refresh()
 
     async def export_logs(e):
+        """Export application logs to a file."""
         from logic.file_dialog import save_file
         path = await save_file(page, title="Export logs", default_name="groovybox_logs.txt", extensions=["txt"])
         if path:
@@ -180,6 +220,7 @@ def SettingsScreen(page: ft.Page) -> ft.Column:
                 page.show_dialog(ft.SnackBar(ft.Text(tr("errorExportingLogs", str(ex)))))
                 logger.error(f"Failed to export logs: {ex}")
 
+    # Build the settings content
     content = ft.Column(
         scroll=ft.ScrollMode.AUTO,
         spacing=8,

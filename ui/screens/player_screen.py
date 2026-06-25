@@ -1,3 +1,14 @@
+"""Player Screen for GroovyBox.
+
+This module implements the full-screen music player with multiple view modes:
+- Cover: Album art with playback controls
+- Lyrics: Synchronized lyrics display (curved or flat mode)
+- Queue: Reorderable playback queue
+
+Features include keyboard shortcuts, lyrics synchronization, online lyrics
+fetching from multiple sources, and a lyrics offset adjustment tool.
+"""
+
 import asyncio
 import flet as ft
 import os
@@ -11,6 +22,7 @@ from logic.logger import logger
 
 
 def _safe_seek(e, player):
+    """Safely seek to a position, catching runtime errors during shutdown."""
     try:
         player.seek(int(e.control.value))
     except RuntimeError:
@@ -18,6 +30,7 @@ def _safe_seek(e, player):
 
 
 def _safe_volume(e, player):
+    """Safely set volume, catching runtime errors during shutdown."""
     try:
         player.set_volume(e.control.value / 100)
     except RuntimeError:
@@ -25,6 +38,15 @@ def _safe_volume(e, player):
 
 
 class PlayerScreen(ft.Container):
+    """Full-screen music player with cover art, lyrics, and queue views.
+    
+    Provides multiple display modes and handles keyboard shortcuts,
+    lyrics synchronization, and real-time position tracking.
+    
+    Attributes:
+        _view_mode: Current display mode ("cover", "lyrics", or "queue").
+    """
+
     def __init__(self, page: ft.Page):
         super().__init__(expand=True, padding=0)
         self._page = page
@@ -33,6 +55,7 @@ class PlayerScreen(ft.Container):
         self._inner = ft.Column(spacing=0)
         self.content = self._inner
 
+        # UI element references for efficient updates
         self._pos_slider = None
         self._pos_text = None
         self._dur_text = None
@@ -40,10 +63,14 @@ class PlayerScreen(ft.Container):
         self._prev_view_mode = None
         self._last_lyrics_idx = -1
         self._cached_dur = 0
+        
+        # Lyrics sync state
         self._sync_active = False
         self._sync_track = None
         self._sync_temp_offset = 0
         self._seeking = False
+        
+        # Curved lyrics state
         self._lyrics_column = None
         self._lyrics_need_initial_scroll = False
         self._lyrics_user_scrolling = False
@@ -51,19 +78,32 @@ class PlayerScreen(ft.Container):
         self._lyrics_current_idx = 0
         self._last_lyrics_progress = 0.0
 
+        # Register keyboard shortcuts
         page.on_keyboard_event = self._on_keyboard
         self._initialized = False
         self._rebuild()
         self._initialized = True
 
     def _get_app(self):
+        """Get the application instance from the session store."""
         return self._page.session.store.get("app")
 
     def _get_player(self):
+        """Get the audio player instance."""
         app = self._get_app()
         return app.audio_player if app else None
 
     def _on_keyboard(self, e: ft.KeyboardEvent):
+        """Handle keyboard shortcuts for player control.
+        
+        Shortcuts:
+        - Space: Toggle play/pause
+        - Left Arrow: Seek back 5 seconds
+        - Right Arrow: Seek forward 5 seconds
+        - Up Arrow: Volume up 5%
+        - Down Arrow: Volume down 5%
+        - Escape: Return to library
+        """
         player = self._get_player()
         if not player:
             return
@@ -86,6 +126,7 @@ class PlayerScreen(ft.Container):
                 self._page.run_task(self._page.push_route, "/library")
 
     def cycle_view(self, e=None):
+        """Cycle between cover and lyrics view modes."""
         modes = ["cover", "lyrics"]
         idx = (modes.index(self._view_mode) + 1) % 2 if self._view_mode in modes else 0
         self._view_mode = modes[idx]
@@ -93,6 +134,7 @@ class PlayerScreen(ft.Container):
         self._rebuild()
 
     def toggle_queue(self, e=None):
+        """Toggle the queue view on/off."""
         if self._view_mode == "queue":
             self._view_mode = self._prev_view_mode or "cover"
         else:
@@ -102,14 +144,24 @@ class PlayerScreen(ft.Container):
         self._rebuild()
 
     def refresh(self):
+        """Force a complete rebuild of the player screen."""
         self._rebuild()
 
     def _progress_ratio(self, pos_ms: int, dur_ms: int) -> float:
+        """Calculate progress as a ratio (0.0 to 1.0)."""
         max_val = max(dur_ms, 1)
         pos = max(0, min(pos_ms, max_val))
         return float(pos) / float(max_val)
 
     def refresh_position(self, pos_ms: int, dur_ms: int):
+        """Update position display and progress bar efficiently.
+        
+        Also handles lyrics line highlighting and sync preview updates.
+        
+        Args:
+            pos_ms: Current playback position in milliseconds.
+            dur_ms: Total track duration in milliseconds.
+        """
         max_val = max(dur_ms, 1)
         if self._pos_slider and not self._seeking:
             if max_val != getattr(self, "_cached_dur", 0):
@@ -125,9 +177,11 @@ class PlayerScreen(ft.Container):
             self._dur_text.value = format_duration(dur_ms)
             self._dur_text.update()
 
+        # Update sync preview if in sync mode
         if self._sync_active:
             self._refresh_sync_preview()
 
+        # Update lyrics highlighting
         if self._view_mode == "lyrics":
             player = self._get_player()
             if player and player.queue:
@@ -155,11 +209,18 @@ class PlayerScreen(ft.Container):
         self._page.update()
 
     def refresh_play_state(self, is_playing: bool):
+        """Update the play/pause button icon.
+        
+        Args:
+            is_playing: True if currently playing, False if paused.
+        """
         if self._play_btn:
             self._play_btn.icon = ft.Icons.PAUSE_ROUNDED if is_playing else ft.Icons.PLAY_ARROW_ROUNDED
             self._play_btn.update()
 
     def _rebuild(self):
+        """Rebuild the entire player screen based on current state."""
+        # Show sync content if in lyrics sync mode
         if self._sync_active:
             content = self._build_sync_content()
             self._inner.controls = [content]
@@ -170,6 +231,7 @@ class PlayerScreen(ft.Container):
         app = self._get_app()
         player = self._get_player()
 
+        # Show empty state if no tracks loaded
         if not player or not player.queue:
             self._inner.controls = [
                 ft.Container(
@@ -188,6 +250,7 @@ class PlayerScreen(ft.Container):
         ly_mode = db.get_setting("lyrics_mode", "auto")
         use_curved = (ly_mode == "curved") or (ly_mode == "auto" and is_desktop)
 
+        # Build background with blurred album art
         bg = self._build_background(track)
         content = self._build_main_content(track, meta, player, is_desktop, use_curved)
 
@@ -198,6 +261,14 @@ class PlayerScreen(ft.Container):
             self._schedule_initial_lyrics_scroll()
 
     def _build_background(self, track):
+        """Build the blurred album art background.
+        
+        Args:
+            track: The current track with art_uri.
+        
+        Returns:
+            A Stack with album art and semi-transparent overlay.
+        """
         has_art = track and track.art_uri
         arts = []
         if has_art:
@@ -216,6 +287,18 @@ class PlayerScreen(ft.Container):
         return ft.Stack(expand=True, controls=arts)
 
     def _build_main_content(self, track, meta, player, is_desktop, use_curved=False):
+        """Build the main content area based on the current view mode.
+        
+        Args:
+            track: Current track data.
+            meta: Current track metadata.
+            player: AudioPlayer instance.
+            is_desktop: Whether running on a wide screen.
+            use_curved: Whether to use curved lyrics mode.
+        
+        Returns:
+            A Stack with the main content and overlay controls.
+        """
         if self._view_mode == "cover":
             inner = self._build_cover_view(track, meta, player, is_desktop)
         elif self._view_mode == "lyrics":
@@ -226,6 +309,7 @@ class PlayerScreen(ft.Container):
         else:
             inner = self._build_split_view(track, meta, player, "queue") if is_desktop else self._build_queue_view(player)
 
+        # Top-right view toggle buttons
         top_right_controls = [
             ft.IconButton(
                 icon=_get_view_icon(self._view_mode),
@@ -270,6 +354,17 @@ class PlayerScreen(ft.Container):
         )
 
     def _build_split_view(self, track, meta, player, right_mode):
+        """Build desktop split view with cover on left and content on right.
+        
+        Args:
+            track: Current track data.
+            meta: Current track metadata.
+            player: AudioPlayer instance.
+            right_mode: Content for right panel ("lyrics" or "queue").
+        
+        Returns:
+            A Row with cover view and lyrics/queue side by side.
+        """
         left = ft.Container(
             content=self._build_cover_view(track, meta, player, is_desktop=True, compact=True),
             expand=3,
@@ -281,7 +376,16 @@ class PlayerScreen(ft.Container):
         return ft.Row(expand=True, spacing=0, controls=[left, right])
 
     def _build_mobile_lyrics_layout(self, track, player, use_curved=False):
-        """窄屏歌词模式：上半歌词 + 下半控制器（底部对齐）"""
+        """Build mobile lyrics layout with lyrics on top and controls at bottom.
+        
+        Args:
+            track: Current track data.
+            player: AudioPlayer instance.
+            use_curved: Whether to use curved lyrics mode.
+        
+        Returns:
+            A Column with lyrics and bottom control panel.
+        """
         lyrics_content = self._build_lyrics_view(track, player, use_curved)
 
         progress = self._build_progress_slider(player)
@@ -330,6 +434,14 @@ class PlayerScreen(ft.Container):
         )
 
     def _build_volume_row(self, player):
+        """Build the volume control slider row.
+        
+        Args:
+            player: AudioPlayer instance.
+        
+        Returns:
+            A Row with volume icon and slider.
+        """
         pw = self._page.width or 400
         vol_w = max(80, int((min(400, pw - 80)) * 0.85))
         return ft.Row(
@@ -347,10 +459,23 @@ class PlayerScreen(ft.Container):
         )
 
     def _build_cover_view(self, track, meta, player, is_desktop, compact=False):
+        """Build the album art cover view with controls.
+        
+        Args:
+            track: Current track data.
+            meta: Current track metadata.
+            player: AudioPlayer instance.
+            is_desktop: Whether on a wide screen.
+            compact: Whether to use compact sizing (for split view).
+        
+        Returns:
+            A Container with album art, title, controls, and progress.
+        """
         has_art = track and track.art_uri
         title = meta.title if meta and meta.title else (track.title if track else "")
         artist = meta.artist if meta and meta.artist else (track.artist or "")
 
+        # Calculate art size based on screen
         if compact:
             art_size = 180
         elif is_desktop:
@@ -432,6 +557,14 @@ class PlayerScreen(ft.Container):
         )
 
     def _build_progress_slider(self, player):
+        """Build the progress slider with time labels.
+        
+        Args:
+            player: AudioPlayer instance.
+        
+        Returns:
+            A Column with slider and position/duration labels.
+        """
         bar_width = min(400, self._page.width - 80) if self._page.width else 400
         max_val = max(player.duration_ms, 1)
         pos_val = max(0, min(player.position_ms, max_val))
@@ -473,6 +606,16 @@ class PlayerScreen(ft.Container):
         )
 
     def _build_lyrics_view(self, track, player, use_curved=False):
+        """Build the lyrics display view.
+        
+        Args:
+            track: Current track data.
+            player: AudioPlayer instance.
+            use_curved: Whether to use curved lyrics mode.
+        
+        Returns:
+            A lyrics display widget (curved, flat, or plain).
+        """
         if track is None or not track.lyrics:
             return ft.Container(
                 expand=True,
@@ -505,6 +648,10 @@ class PlayerScreen(ft.Container):
         return lyrics_content
 
     def _show_lyrics_menu(self, track, player):
+        """Show the lyrics options bottom sheet.
+        
+        Options: Fetch online, Manual import, Clear lyrics, Adjust offset
+        """
         def do_fetch(e):
             self._page.pop_dialog()
             self._show_fetch_lyrics(track, player)
@@ -536,6 +683,14 @@ class PlayerScreen(ft.Container):
         self._page.show_dialog(bs)
 
     def _build_sync_content(self):
+        """Build the lyrics synchronization adjustment interface.
+        
+        Provides controls for fine-tuning lyrics offset with
+        real-time preview of the adjusted lyrics.
+        
+        Returns:
+            A Container with sync controls and lyrics preview.
+        """
         player = self._get_player()
         if not player:
             return ft.Container(expand=True, content=ft.Text(tr("noMediaSelected")))
@@ -635,10 +790,12 @@ class PlayerScreen(ft.Container):
         )
 
     def _on_sync_back(self):
+        """Cancel lyrics sync and return to player view."""
         self._sync_active = False
         self._rebuild()
 
     def _on_sync_save(self):
+        """Save the lyrics offset and return to player view."""
         track = self._sync_track
         if track:
             adj = self._sync_temp_offset - track.lyrics_offset
@@ -656,6 +813,16 @@ class PlayerScreen(ft.Container):
         self._rebuild()
 
     def _build_sync_lyrics_preview(self, track, player, temp_offset):
+        """Build a preview of lyrics with the current sync offset.
+        
+        Args:
+            track: Current track data.
+            player: AudioPlayer instance.
+            temp_offset: Temporary offset being tested.
+        
+        Returns:
+            A Container with scrollable lyrics preview, or None.
+        """
         if not track or not track.lyrics:
             return None
         try:
@@ -708,6 +875,14 @@ class PlayerScreen(ft.Container):
 
     @staticmethod
     def _set_sync_line_content(container, ln, is_active, progress):
+        """Set the content of a sync preview line with gradient highlighting.
+        
+        Args:
+            container: The Container to update.
+            ln: The LyricsLine data.
+            is_active: Whether this is the current line.
+            progress: Progress within the line (0.0 to 1.0).
+        """
         if is_active and 0 < progress < 1:
             container.content = ft.ShaderMask(
                 shader=ft.LinearGradient(
@@ -727,7 +902,7 @@ class PlayerScreen(ft.Container):
             )
 
     def _refresh_sync_preview(self):
-        """刷新同步模式下的歌词预览（原地更新样式 + 自动滚动到当前行）"""
+        """Refresh the lyrics preview in sync mode with current playback position."""
         if not self._sync_active:
             return
         player = self._get_player()
@@ -791,6 +966,7 @@ class PlayerScreen(ft.Container):
                     break
 
     def _show_lyrics_options(self, track, player):
+        """Show lyrics management options for a track without lyrics."""
         def do_refetch(e):
             self._page.pop_dialog()
             self._show_fetch_lyrics(track, player)
@@ -818,6 +994,7 @@ class PlayerScreen(ft.Container):
         self._page.show_dialog(bs)
 
     def _show_fetch_lyrics(self, track, player):
+        """Show lyrics source selection for online fetching."""
         def search_musixmatch(e):
             self._page.pop_dialog()
             self._search_lyrics_online(track, "musixmatch")
@@ -843,6 +1020,14 @@ class PlayerScreen(ft.Container):
         self._page.show_dialog(bs)
 
     def _search_lyrics_online(self, track, source):
+        """Search and fetch lyrics from an online source.
+        
+        Supported sources: lrclib, netease
+        
+        Args:
+            track: The track to fetch lyrics for.
+            source: The lyrics source identifier.
+        """
         query = f"{track.artist or ''} {track.title or ''}".strip()
         if not query:
             self._page.show_dialog(ft.SnackBar(ft.Text(tr("error").replace("{}", "No track info"))))
@@ -897,6 +1082,7 @@ class PlayerScreen(ft.Container):
             self._page.show_dialog(ft.SnackBar(ft.Text(tr("error").replace("{}", str(ex)))))
 
     def _clear_lyrics(self, track):
+        """Remove lyrics from a track."""
         trepo.update_lyrics(track.id, None)
         player = self._get_player()
         if player and hasattr(player, 'current_track') and player.current_track and player.current_track.id == track.id:
@@ -904,6 +1090,11 @@ class PlayerScreen(ft.Container):
         self._rebuild()
 
     async def _import_lyrics_file(self, track):
+        """Import lyrics from a file picker dialog.
+        
+        Args:
+            track: The track to import lyrics for.
+        """
         from logic.file_dialog import pick_files
         from data.track_repository import LYRICS_EXTENSIONS
         paths = await pick_files(self._page, title=tr("manualImport"), extensions=list(LYRICS_EXTENSIONS))
@@ -923,15 +1114,16 @@ class PlayerScreen(ft.Container):
         self._rebuild()
         self._page.show_dialog(ft.SnackBar(ft.Text(tr("importedLyricsLines").replace("{}", str(len(ldata.lines))).replace("{}", track.title or ""))))
 
-    _LY_HALF = 5
-    _LY_ARC = 0.45
-    _LY_ITEM_H = 44
-    _LY_ANIM_MS = 400
+    # Curved lyrics constants
+    _LY_HALF = 5          # Number of lines above/below center
+    _LY_ARC = 0.45        # Arc rotation intensity
+    _LY_ITEM_H = 44       # Height per lyrics line
+    _LY_ANIM_MS = 400     # Animation duration in ms
     _LY_ANIM_CURVE = ft.AnimationCurve.EASE_OUT_CUBIC
 
     @staticmethod
     def _estimate_text_width(text, font_size):
-        """估算文本像素宽度（CJK 按全角，其余按半角）"""
+        """Estimate text pixel width (CJK chars count as full-width)."""
         w = 0.0
         for ch in text:
             if ord(ch) > 0x7F:
@@ -942,7 +1134,20 @@ class PlayerScreen(ft.Container):
 
     def _build_scrolling_lyric_line(self, text, font_size, font_weight, color,
                                      container_width, progress, text_align):
-        """构建带水平滚动的歌词行：长文本按 progress 左移，由外层 ShaderMask 处理颜色"""
+        """Build a horizontally scrolling lyric line for long text.
+        
+        Args:
+            text: The lyrics text.
+            font_size: Font size in pixels.
+            font_weight: Font weight.
+            color: Text color.
+            container_width: Available width.
+            progress: Scroll progress (0.0 to 1.0).
+            text_align: Text alignment.
+        
+        Returns:
+            A Container with scrolling text if overflow, otherwise static.
+        """
         text_w = self._estimate_text_width(text, font_size)
         overflow_px = max(0.0, text_w - container_width)
 
@@ -981,7 +1186,13 @@ class PlayerScreen(ft.Container):
             )
 
     def _style_lyric_line(self, container, i, current_idx):
-        """根据与当前行的距离设置某一歌词行的弧度/透明度（不设置高亮样式）"""
+        """Apply curved styling to a lyrics line based on distance from center.
+        
+        Args:
+            container: The Container to style.
+            i: Index of this line.
+            current_idx: Index of the currently active line.
+        """
         half = self._LY_HALF
         arc = self._LY_ARC
         dist = abs(i - current_idx)
@@ -1006,7 +1217,20 @@ class PlayerScreen(ft.Container):
         txt.color = ft.Colors.with_opacity(alpha, ft.Colors.ON_SURFACE)
 
     def _build_visible_lines(self, data, viewport_center, highlight_idx, player, max_w, text_align, progress=0.0):
-        """构建居中的可见歌词行，viewport_center 决定视口位置，highlight_idx 决定高亮行，progress 为高亮行内进度"""
+        """Build centered visible lyrics lines with curved styling.
+        
+        Args:
+            data: LyricsData object.
+            viewport_center: Index of the center line.
+            highlight_idx: Index of the highlighted (active) line.
+            player: AudioPlayer instance.
+            max_w: Maximum width for lyrics text.
+            text_align: Text alignment.
+            progress: Progress within the highlighted line (0.0 to 1.0).
+        
+        Returns:
+            List of controls for the lyrics column.
+        """
         half = self._LY_HALF
         total = len(data.lines)
         self._lyrics_widgets = []
@@ -1064,7 +1288,18 @@ class PlayerScreen(ft.Container):
         return controls
 
     def _build_curved_listview(self, data, current_idx, player, max_w, text_align):
-        """构建固定容器 + GestureDetector，歌词内容翻转而非容器滚动"""
+        """Build the curved lyrics view with gesture controls.
+        
+        Args:
+            data: LyricsData object.
+            current_idx: Initial active line index.
+            player: AudioPlayer instance.
+            max_w: Maximum width for lyrics.
+            text_align: Text alignment.
+        
+        Returns:
+            A GestureDetector with curved lyrics display.
+        """
         self._lyrics_data_lines = data.lines
         self._lyrics_current_idx = current_idx
         self._lyrics_max_w = max_w
@@ -1109,7 +1344,7 @@ class PlayerScreen(ft.Container):
         return gesture
 
     def _rebuild_lyrics_column(self, viewport_center, highlight_idx, progress=0.0):
-        """创建新的歌词列并更新 AnimatedSwitcher，触发过渡动画"""
+        """Rebuild the curved lyrics column with updated styling."""
         controls = self._build_visible_lines(
             self._lyrics_data_obj, viewport_center, highlight_idx,
             self._lyrics_player, self._lyrics_max_w, self._lyrics_text_align,
@@ -1132,7 +1367,7 @@ class PlayerScreen(ft.Container):
             pass
 
     def _on_lyrics_wheel(self, e: ft.ScrollEvent):
-        """桌面滚轮事件：向上/向下步进歌词"""
+        """Handle mouse wheel events for lyrics scrolling."""
         delta_y = e.scroll_delta.y
         if delta_y > 10:
             self._step_lyrics(1)
@@ -1140,7 +1375,7 @@ class PlayerScreen(ft.Container):
             self._step_lyrics(-1)
 
     def _on_lyrics_drag_update(self, e):
-        """移动端拖动事件：累积拖动距离，跨过一行高度时步进"""
+        """Handle touch drag events for lyrics scrolling."""
         self._lyrics_user_scrolling = True
         self._lyrics_drag_accum += e.dy
         stride = self._LY_ITEM_H
@@ -1152,12 +1387,16 @@ class PlayerScreen(ft.Container):
             self._lyrics_drag_accum += stride
 
     def _on_lyrics_drag_end(self, e):
-        """移动端拖动结束：重置累积并触发吸附"""
+        """Handle end of touch drag - reset accumulator and schedule snap."""
         self._lyrics_drag_accum = 0.0
         self._schedule_snap()
 
     def _step_lyrics(self, direction):
-        """步进到上/下一行，只移动视口，不改变高亮（播放位置）"""
+        """Step to the next/previous lyrics line.
+        
+        Args:
+            direction: 1 for next, -1 for previous.
+        """
         self._lyrics_user_scrolling = True
         lines = getattr(self, '_lyrics_data_lines', None)
         if lines is None:
@@ -1171,7 +1410,7 @@ class PlayerScreen(ft.Container):
         self._schedule_snap()
 
     def _schedule_snap(self):
-        """重置吸附防抖定时器"""
+        """Reset the snap-back timer for returning to the active lyrics line."""
         if self._lyrics_snap_timer:
             self._lyrics_snap_timer.cancel()
         self._lyrics_snap_timer = threading.Timer(1.0, self._snap_to_nearest_line)
@@ -1179,11 +1418,11 @@ class PlayerScreen(ft.Container):
         self._lyrics_snap_timer.start()
 
     def _snap_to_nearest_line(self):
-        """清除用户滚动标记，下次歌词行切换时自动恢复到播放位置"""
+        """Clear user scrolling flag to resume auto-tracking."""
         self._lyrics_user_scrolling = False
 
     def _schedule_initial_lyrics_scroll(self):
-        """初次构建平面歌词后，延迟重建到当前播放行"""
+        """Schedule initial scroll to the current lyrics line after build."""
         target_idx = getattr(self, '_last_lyrics_idx', 0)
 
         async def _do_rebuild():
@@ -1197,6 +1436,17 @@ class PlayerScreen(ft.Container):
         self._page.run_task(_do_rebuild)
 
     def _build_timed_lyrics(self, data, player, offset, use_curved=False):
+        """Build timed lyrics display (curved or flat mode).
+        
+        Args:
+            data: LyricsData with timed lines.
+            player: AudioPlayer instance.
+            offset: Lyrics synchronization offset in ms.
+            use_curved: Whether to use curved display mode.
+        
+        Returns:
+            A lyrics display widget.
+        """
         pos = player.position_ms + offset
         current_idx = 0
         for i, line in enumerate(data.lines):
@@ -1260,7 +1510,20 @@ class PlayerScreen(ft.Container):
             )
 
     def _build_flat_lyrics_controls(self, data, viewport_center, highlight_idx, progress, max_w, text_align, player):
-        """构建平面歌词的所有行控件（带渐变高亮 + 长歌词渐进滚动）"""
+        """Build flat lyrics line controls with gradient highlighting.
+        
+        Args:
+            data: LyricsData object.
+            viewport_center: Center line index.
+            highlight_idx: Active line index.
+            progress: Progress within active line.
+            max_w: Maximum width.
+            text_align: Text alignment.
+            player: AudioPlayer instance.
+        
+        Returns:
+            List of controls for the flat lyrics view.
+        """
         line_h = 36
         half_visible = 5
         total = len(data.lines)
@@ -1320,7 +1583,7 @@ class PlayerScreen(ft.Container):
         return controls
 
     def _rebuild_flat_lyrics(self, highlight_idx, progress=0.0):
-        """重建平面歌词列并更新 AnimatedSwitcher（与弧形模式一致的更新方式）"""
+        """Rebuild flat lyrics column with updated highlighting."""
         data = getattr(self, '_flat_lyrics_data', None)
         player = getattr(self, '_flat_lyrics_player', None)
         max_w = getattr(self, '_flat_lyrics_max_w', 400)
@@ -1347,6 +1610,11 @@ class PlayerScreen(ft.Container):
             pass
 
     def _update_lyrics_styles(self, new_idx):
+        """Update lyrics highlighting when the active line changes.
+        
+        Args:
+            new_idx: Index of the newly active lyrics line.
+        """
         data = self._lyrics_data
         use_curved = getattr(self, '_lyrics_use_curved', False)
         total = len(data.lines)
@@ -1403,6 +1671,14 @@ class PlayerScreen(ft.Container):
         self._lyrics_need_initial_scroll = False
 
     def _build_plain_lyrics(self, data):
+        """Build plain (unsynchronized) lyrics display.
+        
+        Args:
+            data: LyricsData with plain lines.
+        
+        Returns:
+            A scrollable Column with lyrics text.
+        """
         return ft.Column(
             expand=True,
             scroll=ft.ScrollMode.AUTO,
@@ -1416,6 +1692,14 @@ class PlayerScreen(ft.Container):
         )
 
     def _build_queue_view(self, player):
+        """Build the playback queue view.
+        
+        Args:
+            player: AudioPlayer instance.
+        
+        Returns:
+            A scrollable ReorderableListView of queued tracks.
+        """
         if not player.queue:
             return ft.Container(
                 expand=True,
@@ -1426,6 +1710,7 @@ class PlayerScreen(ft.Container):
         from ui.widgets.track_tile import TrackTile
 
         def on_reorder(e):
+            """Handle drag-to-reorder in the queue."""
             old_idx = e.old_index if hasattr(e, 'old_index') else e.oldIndex
             new_idx = e.new_index if hasattr(e, 'new_index') else e.newIndex
             if old_idx < new_idx:
@@ -1469,6 +1754,11 @@ class PlayerScreen(ft.Container):
         )
 
     def _remove_from_queue(self, idx):
+        """Remove a track from the queue by index.
+        
+        Args:
+            idx: Index of the track to remove.
+        """
         player = self._get_player()
         if not player or idx < 0 or idx >= len(player.queue):
             return
@@ -1487,15 +1777,20 @@ class PlayerScreen(ft.Container):
         self._rebuild()
 
 
+# Module-level helper functions
+
 def _get_view_icon(mode: str) -> str:
+    """Get the icon for toggling between cover and lyrics views."""
     return ft.Icons.LYRICS if mode == "cover" else ft.Icons.ALBUM
 
 
 def _get_view_tooltip(mode: str) -> str:
+    """Get the tooltip text for the view toggle button."""
     return tr("showLyrics") if mode == "cover" else tr("showCover")
 
 
 def _build_progress_slider(page, player):
+    """Build a standalone progress slider (used in some layouts)."""
     max_val = max(player.duration_ms, 1)
     pos_val = max(0, min(player.position_ms, max_val))
     return ft.Column(
@@ -1522,10 +1817,8 @@ def _build_progress_slider(page, player):
     )
 
 
-
-
-
 def _jump_to(page, index):
+    """Jump to a specific track in the queue."""
     app = page.session.store.get("app")
     if app and app.audio_player:
         app.audio_player.current_index = index
@@ -1533,6 +1826,7 @@ def _jump_to(page, index):
 
 
 def _toggle_shuffle(page):
+    """Toggle shuffle mode."""
     app = page.session.store.get("app")
     if app and app.audio_player:
         app.audio_player.shuffle = not app.audio_player.shuffle
@@ -1540,6 +1834,7 @@ def _toggle_shuffle(page):
 
 
 def _toggle_repeat(page):
+    """Cycle through repeat modes."""
     app = page.session.store.get("app")
     if app and app.audio_player:
         modes = ["none", "one", "all"]
@@ -1549,24 +1844,28 @@ def _toggle_repeat(page):
 
 
 def _repeat_icon(mode: str) -> str:
+    """Get the icon for the current repeat mode."""
     return {None: ft.Icons.REPEAT, "none": ft.Icons.REPEAT, "one": ft.Icons.REPEAT_ONE, "all": ft.Icons.REPEAT}.get(mode, ft.Icons.REPEAT)
 
 
 def _repeat_color(mode: str):
+    """Get the color for the repeat mode button."""
     if mode in ("one", "all"):
         return ft.Colors.PRIMARY
     return ft.Colors.with_opacity(0.4, ft.Colors.ON_SURFACE)
 
 
+# Play mode cycle: (shuffle, repeat_mode) pairs
 _PLAY_MODE_CYCLE = [
-    (False, "all"),    # 列表循环
-    (False, "one"),    # 单曲循环
-    (True,  "none"),   # 随机播放
-    (False, "none"),   # 顺序播放
+    (False, "all"),    # List repeat
+    (False, "one"),    # Single repeat
+    (True,  "none"),   # Shuffle
+    (False, "none"),   # Sequential
 ]
 
 
 def _cycle_play_mode(page):
+    """Cycle through play modes: list repeat -> single repeat -> shuffle -> sequential."""
     app = page.session.store.get("app")
     if not app or not app.audio_player:
         return
@@ -1581,6 +1880,7 @@ def _cycle_play_mode(page):
 
 
 def _get_play_mode_icon(page):
+    """Get the icon and color for the current play mode."""
     app = page.session.store.get("app")
     if not app or not app.audio_player:
         return ft.Icons.REPEAT, ft.Colors.with_opacity(0.4, ft.Colors.ON_SURFACE)

@@ -1,3 +1,11 @@
+"""Artist Detail Screen for GroovyBox.
+
+This module displays the detail view for a specific artist, showing
+the artist avatar, track count, and a list of all tracks by the artist.
+Provides options for track management including add to playlist,
+edit metadata, and delete.
+"""
+
 import flet as ft
 from data import playlist_repository as prepo
 from logic.localize import tr
@@ -6,13 +14,27 @@ from logic.metadata_service import format_duration
 
 
 def ArtistDetailScreen(page: ft.Page, artist_name: str) -> ft.Control:
+    """Build the artist detail screen.
+    
+    Displays the artist's avatar, name, track count, and all tracks.
+    Includes a "Play All" button and track context menus for management.
+    
+    Args:
+        page: The Flet page instance.
+        artist_name: Name of the artist to display.
+    
+    Returns:
+        A Column widget with the artist detail layout.
+    """
     tracks = prepo.watch_artist_tracks(artist_name)
 
     def play_all(e):
+        """Play all tracks by this artist."""
         app = page.session.store.get("app")
         if app and tracks:
             app.audio_player.play_tracks(tracks)
 
+    # Artist header with avatar and info
     header = ft.Container(
         padding=16,
         content=ft.Row([
@@ -32,6 +54,7 @@ def ArtistDetailScreen(page: ft.Page, artist_name: str) -> ft.Control:
         ]),
     )
 
+    # Build track tiles
     track_tiles = []
     for t in tracks:
         tile = TrackTile(
@@ -45,11 +68,13 @@ def ArtistDetailScreen(page: ft.Page, artist_name: str) -> ft.Control:
         track_tiles.append(tile)
 
     def _play_track(track):
+        """Play a single track."""
         app = page.session.store.get("app")
         if app:
             app.audio_player.play_track(track)
 
     def _show_options(track):
+        """Show the context menu for a track."""
         def do_add_to_pl(e):
             page.pop_dialog()
             _show_add_to_playlist(track)
@@ -79,6 +104,7 @@ def ArtistDetailScreen(page: ft.Page, artist_name: str) -> ft.Control:
         page.show_dialog(bs)
 
     def _show_add_to_playlist(track):
+        """Show playlist selection dialog for adding a track."""
         playlists = prepo.watch_all_playlists()
         if not playlists:
             page.show_dialog(ft.SnackBar(ft.Text(tr("noPlaylistsAvailable"))))
@@ -99,6 +125,7 @@ def ArtistDetailScreen(page: ft.Page, artist_name: str) -> ft.Control:
         page.show_dialog(dlg)
 
     def _show_track_details(track):
+        """Show detailed information about a track."""
         import os as _os
         file_size = tr("unknown")
         try:
@@ -123,6 +150,7 @@ def ArtistDetailScreen(page: ft.Page, artist_name: str) -> ft.Control:
         page.show_dialog(dlg)
 
     def _show_edit_dialog(track):
+        """Show dialog for editing track metadata."""
         tf = ft.TextField(label=tr("title"), value=track.title)
         af = ft.TextField(label=tr("artist"), value=track.artist or "")
         alf = ft.TextField(label=tr("album"), value=track.album or "")
@@ -142,6 +170,7 @@ def ArtistDetailScreen(page: ft.Page, artist_name: str) -> ft.Control:
         page.show_dialog(dlg)
 
     def _detail_row(label, value):
+        """Create a label-value row for the details dialog."""
         return ft.Row(
             tight=True,
             controls=[

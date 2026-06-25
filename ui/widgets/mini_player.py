@@ -1,3 +1,11 @@
+"""Mini Player Widget for GroovyBox.
+
+This module provides the MiniPlayerWidget that appears at the bottom
+of the shell view. Displays current track info, playback controls,
+progress bar, and play mode options in a compact format.
+Adapts layout for desktop (wide) and mobile (narrow) screens.
+"""
+
 import flet as ft
 from typing import Optional, Callable
 from data.models import CurrentTrackData
@@ -6,6 +14,16 @@ from logic.logger import logger
 
 
 class MiniPlayerWidget(ft.Container):
+    """Compact persistent player widget at the bottom of the screen.
+    
+    Shows current track info, play/pause/skip controls, progress bar,
+    and play mode cycling. Automatically switches between desktop and
+    mobile layouts based on screen width.
+    
+    Attributes:
+        current_track: The currently playing track data.
+    """
+
     def __init__(self, page: ft.Page):
         super().__init__(height=0)
         self._page = page
@@ -18,6 +36,7 @@ class MiniPlayerWidget(ft.Container):
         self.repeat_mode = "none"
         self.shuffle = False
 
+        # Callback functions bound to the audio player
         self._on_toggle_play = None
         self._on_next = None
         self._on_prev = None
@@ -27,18 +46,28 @@ class MiniPlayerWidget(ft.Container):
         self._on_toggle_repeat = None
         self._on_toggle_shuffle = None
 
+        # Inner column for content
         self.inner = ft.Column(tight=True, spacing=0)
         self.content = self.inner
 
+        # State tracking for efficient updates
         self._pos_slider = None
         self._play_btn = None
         self._seeking = False
 
     @property
     def page(self):
+        """Access the Flet page instance."""
         return self._page
 
     def bind(self, app):
+        """Bind the mini player to the application's audio player.
+        
+        Sets up all callback references to the audio player's methods.
+        
+        Args:
+            app: The GroovyBoxApp instance.
+        """
         if not app:
             return
         player = app.audio_player
@@ -52,6 +81,7 @@ class MiniPlayerWidget(ft.Container):
         self._on_toggle_shuffle = self._toggle_shuffle_helper
 
     def _toggle_repeat_helper(self):
+        """Cycle through repeat modes: none -> one -> all -> none."""
         app = self._page.session.store.get("app")
         if app and app.audio_player:
             modes = ["none", "one", "all"]
@@ -60,6 +90,7 @@ class MiniPlayerWidget(ft.Container):
             self.refresh()
 
     def _repeat_color(self):
+        """Get the appropriate color for the repeat button based on state."""
         app = self._page.session.store.get("app")
         mode = app.audio_player.repeat_mode if app and app.audio_player else "none"
         if mode in ("one", "all"):
@@ -67,19 +98,22 @@ class MiniPlayerWidget(ft.Container):
         return ft.Colors.with_opacity(0.4, ft.Colors.ON_SURFACE)
 
     def _shuffle_color(self):
+        """Get the appropriate color for the shuffle button based on state."""
         app = self._page.session.store.get("app")
         if app and app.audio_player and app.audio_player.shuffle:
             return ft.Colors.PRIMARY
         return ft.Colors.with_opacity(0.4, ft.Colors.ON_SURFACE)
 
+    # Play mode cycle: (shuffle, repeat_mode) pairs
     _PLAY_MODE_CYCLE = [
-        (False, "all"),    # 列表循环
-        (False, "one"),    # 单曲循环
-        (True,  "none"),   # 随机播放
-        (False, "none"),   # 顺序播放
+        (False, "all"),    # List repeat
+        (False, "one"),    # Single repeat
+        (True,  "none"),   # Shuffle
+        (False, "none"),   # Sequential
     ]
 
     def _cycle_play_mode(self):
+        """Cycle through play modes: list repeat -> single repeat -> shuffle -> sequential."""
         app = self._page.session.store.get("app")
         if not app or not app.audio_player:
             return
@@ -93,6 +127,11 @@ class MiniPlayerWidget(ft.Container):
         self.refresh()
 
     def _get_play_mode_icon(self):
+        """Get the icon and color for the current play mode.
+        
+        Returns:
+            Tuple of (icon_name, color) for the play mode button.
+        """
         app = self._page.session.store.get("app")
         if not app or not app.audio_player:
             return ft.Icons.REPEAT, ft.Colors.with_opacity(0.4, ft.Colors.ON_SURFACE)
@@ -107,6 +146,11 @@ class MiniPlayerWidget(ft.Container):
         return ft.Icons.REPEAT, ft.Colors.with_opacity(0.4, ft.Colors.ON_SURFACE)
 
     def _open_queue(self, e):
+        """Show the playback queue in a bottom sheet.
+        
+        Displays all tracks in the queue with options to reorder
+        and select tracks. The currently playing track is highlighted.
+        """
         app = self._page.session.store.get("app")
         if not app or not app.audio_player:
             return
@@ -115,6 +159,7 @@ class MiniPlayerWidget(ft.Container):
         tracks = []
 
         def on_reorder(e):
+            """Handle drag-to-reorder in the queue."""
             old_idx = e.old_index if hasattr(e, 'old_index') else e.oldIndex
             new_idx = e.new_index if hasattr(e, 'new_index') else e.newIndex
             if old_idx < new_idx:
@@ -123,6 +168,7 @@ class MiniPlayerWidget(ft.Container):
             elif old_idx > new_idx:
                 for i in range(old_idx, new_idx, -1):
                     player.queue[i], player.queue[i - 1] = player.queue[i - 1], player.queue[i]
+            # Update current_index to follow the moved track
             if player.current_index == old_idx:
                 player.current_index = new_idx
             elif old_idx < player.current_index <= new_idx:
@@ -178,6 +224,11 @@ class MiniPlayerWidget(ft.Container):
         self._page.show_dialog(bs)
 
     def _on_queue_select(self, idx: int):
+        """Handle track selection from the queue sheet.
+        
+        Args:
+            idx: Index of the selected track in the queue.
+        """
         app = self._page.session.store.get("app")
         if app and app.audio_player:
             player = app.audio_player
@@ -187,12 +238,18 @@ class MiniPlayerWidget(ft.Container):
             self._page.pop_dialog()
 
     def _toggle_shuffle_helper(self):
+        """Toggle shuffle mode on/off."""
         app = self._page.session.store.get("app")
         if app and app.audio_player:
             app.audio_player.shuffle = not app.audio_player.shuffle
             self.refresh()
 
     def refresh(self):
+        """Rebuild the mini player UI based on current state.
+        
+        Switches between desktop and mobile layouts based on screen width.
+        Hides the player entirely if no track is loaded.
+        """
         app = self._page.session.store.get("app")
         if not app or not app.current_track:
             self.height = 0
@@ -200,6 +257,7 @@ class MiniPlayerWidget(ft.Container):
             self.update()
             return
 
+        # Sync state from audio player
         self.current_track = app.current_track
         player = app.audio_player
         self._is_playing = player.is_playing
@@ -211,6 +269,7 @@ class MiniPlayerWidget(ft.Container):
         self.repeat_mode = player.repeat_mode
         self.shuffle = player.shuffle
 
+        # Calculate height with bottom padding for mobile devices
         try:
             bottom_pad = self._page.padding.bottom if self._page.padding else 0
         except RuntimeError:
@@ -222,6 +281,7 @@ class MiniPlayerWidget(ft.Container):
         self._play_btn = None
         self._seeking = False
 
+        # Choose layout based on screen width
         if is_desktop:
             self.inner.controls = [self._build_desktop()]
         else:
@@ -230,11 +290,20 @@ class MiniPlayerWidget(ft.Container):
         self.update()
 
     def _progress_ratio(self) -> float:
+        """Calculate the current progress as a ratio (0.0 to 1.0)."""
         max_val = max(self._duration_ms, 1)
         pos = max(0, min(self._position_ms, max_val))
         return float(pos) / float(max_val)
 
     def refresh_position(self, pos_ms: int, dur_ms: int):
+        """Update the progress bar position efficiently.
+        
+        Only updates the slider widget, avoiding full rebuilds.
+        
+        Args:
+            pos_ms: Current position in milliseconds.
+            dur_ms: Total duration in milliseconds.
+        """
         self._position_ms = pos_ms
         self._duration_ms = dur_ms
         if not self._pos_slider or self._seeking:
@@ -248,12 +317,18 @@ class MiniPlayerWidget(ft.Container):
         self._pos_slider.update()
 
     def refresh_play_state(self, is_playing: bool):
+        """Update the play/pause button icon efficiently.
+        
+        Args:
+            is_playing: True if currently playing, False if paused.
+        """
         self._is_playing = is_playing
         if self._play_btn:
             self._play_btn.icon = ft.Icons.PAUSE_ROUNDED if is_playing else ft.Icons.PLAY_ARROW_ROUNDED
             self._play_btn.update()
 
     def _on_slider_change(self, e: ft.ControlEvent) -> None:
+        """Handle progress bar seek events."""
         seek_ms = int(e.control.value)
         self._seeking = True
         if self._on_seek:
@@ -261,6 +336,11 @@ class MiniPlayerWidget(ft.Container):
         self._seeking = False
 
     def _build_progress(self) -> ft.Control:
+        """Build the progress bar or loading indicator.
+        
+        Returns:
+            A ProgressBar during loading, or a Slider for position tracking.
+        """
         if self._is_loading:
             self._pos_slider = None
             return ft.Container(
@@ -288,6 +368,14 @@ class MiniPlayerWidget(ft.Container):
         return self._pos_slider
 
     def _build_play_button(self, icon_size: int = 28) -> ft.IconButton:
+        """Build the play/pause button.
+        
+        Args:
+            icon_size: Size of the play/pause icon.
+        
+        Returns:
+            An IconButton with play or pause icon.
+        """
         self._play_btn = ft.IconButton(
             icon=ft.Icons.PAUSE_ROUNDED if self._is_playing else ft.Icons.PLAY_ARROW_ROUNDED,
             icon_size=icon_size,
@@ -297,6 +385,10 @@ class MiniPlayerWidget(ft.Container):
         return self._play_btn
 
     def _build_mobile(self):
+        """Build the mobile layout (narrow screens).
+        
+        Layout: Progress bar + [Art | Title/Artist | PlayMode | Play | Queue]
+        """
         _pm_icon, _pm_color = self._get_play_mode_icon()
         return ft.Container(
             height=self.height,
@@ -313,6 +405,7 @@ class MiniPlayerWidget(ft.Container):
                         content=ft.Row(
                             tight=True,
                             controls=[
+                                # Album art thumbnail
                                 ft.Container(
                                     width=48, height=48,
                                     border_radius=8,
@@ -321,6 +414,7 @@ class MiniPlayerWidget(ft.Container):
                                     bgcolor=ft.Colors.with_opacity(0.3, ft.Colors.GREY),
                                     margin=ft.Margin(left=8, top=0, right=0, bottom=0),
                                 ),
+                                # Track info
                                 ft.Container(
                                     expand=True,
                                     padding=ft.Padding(8, 0, 8, 0),
@@ -332,6 +426,7 @@ class MiniPlayerWidget(ft.Container):
                                         ],
                                     ),
                                 ),
+                                # Play mode, play, and queue buttons
                                 ft.IconButton(_pm_icon, icon_size=20, icon_color=_pm_color, on_click=lambda _: self._cycle_play_mode()),
                                 ft.Container(
                                     padding=ft.Padding(2, 0, 2, 0),
@@ -346,6 +441,10 @@ class MiniPlayerWidget(ft.Container):
         )
 
     def _build_desktop(self):
+        """Build the desktop layout (wide screens).
+        
+        Layout: Progress bar + [Art/Title | PlayMode/Prev/Play/Next/Queue | Volume]
+        """
         _pm_icon, _pm_color = self._get_play_mode_icon()
         return ft.Container(
             height=self.height,
@@ -362,6 +461,7 @@ class MiniPlayerWidget(ft.Container):
                         content=ft.Row(
                             tight=True,
                             controls=[
+                                # Track info section
                                 ft.Container(
                                     expand=3,
                                     content=ft.Row(
@@ -389,6 +489,7 @@ class MiniPlayerWidget(ft.Container):
                                         ],
                                     ),
                                 ),
+                                # Playback controls section
                                 ft.Container(
                                     expand=5,
                                     content=ft.Row(
@@ -406,6 +507,7 @@ class MiniPlayerWidget(ft.Container):
                                         ],
                                     ),
                                 ),
+                                # Volume control section
                                 ft.Container(
                                     expand=2,
                                     content=ft.Row(

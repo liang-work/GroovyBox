@@ -1,3 +1,11 @@
+"""File Dialog Module for GroovyBox.
+
+This module provides wrapper functions for Flet's FilePicker,
+offering a simplified API for common file operations: picking files,
+selecting directories, and saving files. Handles platform-specific
+error cases gracefully.
+"""
+
 import logging
 from typing import Optional, List
 
@@ -5,10 +13,19 @@ import flet as ft
 
 logger = logging.getLogger("flet")
 
+# Module-level FilePicker instance (reused across calls)
 _picker: Optional[ft.FilePicker] = None
 
 
 def _ensure_picker(page: ft.Page) -> ft.FilePicker:
+    """Get or create the shared FilePicker instance.
+    
+    Args:
+        page: The Flet page to attach the picker to.
+    
+    Returns:
+        The shared FilePicker instance.
+    """
     global _picker
     if _picker is None:
         _picker = ft.FilePicker()
@@ -21,6 +38,17 @@ async def pick_files(
     extensions: Optional[List[str]] = None,
     allow_multiple: bool = True,
 ) -> Optional[List[str]]:
+    """Open a file picker dialog for selecting files.
+    
+    Args:
+        page: The Flet page instance.
+        title: Dialog window title.
+        extensions: List of allowed file extensions (e.g., ["mp3", "flac"]).
+        allow_multiple: Whether multiple files can be selected.
+    
+    Returns:
+        List of selected file paths, or None if cancelled.
+    """
     picker = _ensure_picker(page)
     try:
         file_type = ft.FilePickerFileType.CUSTOM if extensions else ft.FilePickerFileType.ANY
@@ -40,6 +68,15 @@ async def pick_directory(
     page: ft.Page,
     title: str = "Select folder",
 ) -> Optional[str]:
+    """Open a directory picker dialog.
+    
+    Args:
+        page: The Flet page instance.
+        title: Dialog window title.
+    
+    Returns:
+        Selected directory path, or None if cancelled.
+    """
     picker = _ensure_picker(page)
     try:
         path = await picker.get_directory_path(dialog_title=title)
@@ -55,6 +92,17 @@ async def save_file(
     default_name: str = "file",
     extensions: Optional[List[str]] = None,
 ) -> Optional[str]:
+    """Open a save file dialog.
+    
+    Args:
+        page: The Flet page instance.
+        title: Dialog window title.
+        default_name: Default filename suggestion.
+        extensions: List of allowed file extensions.
+    
+    Returns:
+        Selected save path, or None if cancelled.
+    """
     picker = _ensure_picker(page)
     try:
         file_type = ft.FilePickerFileType.CUSTOM if extensions else ft.FilePickerFileType.ANY

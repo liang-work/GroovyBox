@@ -1,3 +1,10 @@
+"""Albums by Artist Screen for GroovyBox.
+
+This module displays a grid of artist cards, each showing the artist's
+album art, name, and album/track counts. Tapping an artist navigates
+to the artist detail screen.
+"""
+
 import flet as ft
 from data import playlist_repository as prepo
 from logic.localize import tr
@@ -5,6 +12,17 @@ from ui.widgets.universal_image import UniversalImage
 
 
 def AlbumsByArtistScreen(page: ft.Page) -> ft.Control:
+    """Build the albums-by-artist grid screen.
+    
+    Displays all artists who have albums, with their first album's
+    art as the avatar. Shows album count and track count for each artist.
+    
+    Args:
+        page: The Flet page instance.
+    
+    Returns:
+        A scrollable GridView of artist cards, or a "no albums" message.
+    """
     artists = prepo.watch_artists_with_albums()
 
     if not artists:
@@ -15,9 +33,11 @@ def AlbumsByArtistScreen(page: ft.Page) -> ft.Control:
         )
 
     def open_artist(artist_name):
+        """Navigate to the artist detail screen."""
         page.session.store.set("artist_data", artist_name)
         page.run_task(page.push_route, "/artist")
 
+    # Build artist cards for the grid
     cards = []
     for art in artists:
         card = ft.Container(

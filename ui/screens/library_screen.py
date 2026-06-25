@@ -1,3 +1,14 @@
+"""Library Screen for GroovyBox.
+
+This module implements the main library view with three tabs:
+- Tracks: All audio tracks with search and selection
+- Albums: Albums grouped by artist
+- Playlists: User-created playlists
+
+Supports both desktop (navigation rail) and mobile (tab buttons) layouts.
+Includes batch operations for selected tracks (delete, add to playlist/queue).
+"""
+
 import flet as ft
 import os as _os
 from data import track_repository as trepo
@@ -11,6 +22,17 @@ from logic.logger import logger
 
 
 class LibraryScreen(ft.Column):
+    """Main library screen with tabbed navigation.
+    
+    Provides access to tracks, albums, and playlists. Supports
+    multi-select mode for batch operations and real-time search filtering.
+    
+    Attributes:
+        selected_ids: Set of track IDs selected in multi-select mode.
+        search_query: Current search filter text.
+        selected_tab: Active tab index (0=tracks, 1=albums, 2=playlists).
+    """
+
     def __init__(self, page: ft.Page):
         super().__init__(expand=True, spacing=0)
         self._page = page
@@ -20,9 +42,13 @@ class LibraryScreen(ft.Column):
         self._build()
 
     def _get_app(self):
+        """Get the application instance from the session store."""
         return self._page.session.store.get("app")
 
     def _build(self):
+        """Build the library screen layout.
+        Chooses between large (rail) and mobile (tabs) layout based on width.
+        """
         try:
             is_large = self._page.width > 600
             self.controls = [self._build_large_layout() if is_large else self._build_mobile_layout()]
@@ -30,6 +56,11 @@ class LibraryScreen(ft.Column):
             logger.exception("LibraryScreen._build failed")
 
     def _build_large_layout(self):
+        """Build desktop layout with NavigationRail sidebar.
+        
+        Returns:
+            A Row with NavigationRail on the left and content on the right.
+        """
         nav = ft.NavigationRail(
             selected_index=self.selected_tab,
             on_change=self._on_nav_change,
@@ -59,7 +90,13 @@ class LibraryScreen(ft.Column):
         )
 
     def _build_mobile_layout(self):
+        """Build mobile layout with horizontal tab buttons.
+        
+        Returns:
+            A Column with tab buttons at top and content below.
+        """
         def _make_tab(idx, icon, label):
+            """Create a styled tab button."""
             is_sel = self.selected_tab == idx
             return ft.TextButton(
                 content=ft.Row(
@@ -98,24 +135,32 @@ class LibraryScreen(ft.Column):
         )
 
     def _on_mobile_tab_change(self, idx):
+        """Handle tab selection on mobile layout."""
         self.selected_tab = idx
         self.selected_ids.clear()
         self._build()
         self.update()
 
     def _on_nav_change(self, e):
+        """Handle NavigationRail selection on desktop layout."""
         self.selected_tab = int(e.control.selected_index)
         self.selected_ids.clear()
         self._build()
         self.update()
 
     def _on_tab_change(self, e):
+        """Handle tab change event."""
         self.selected_tab = e.control.selected_index
         self.selected_ids.clear()
         self._build()
         self.update()
 
     def _build_tab_content(self):
+        """Build the content for the currently selected tab.
+        
+        Returns:
+            The appropriate screen widget for the active tab.
+        """
         if self.selected_tab == 1:
             from ui.screens.albums_by_artist_screen import AlbumsByArtistScreen
             return AlbumsByArtistScreen(self._page)
@@ -126,11 +171,17 @@ class LibraryScreen(ft.Column):
             return self._build_tracks_content()
 
     def _build_tracks_content(self):
+        """Build the tracks tab content with search and track list.
+        
+        Returns:
+            A Stack with search bar overlay and scrollable track list.
+        """
         all_tracks = trepo.watch_all_tracks()
         tracks = self._filter_tracks(all_tracks)
 
         is_sel_mode = bool(self.selected_ids)
 
+        # Build search hint text with track counts
         search_hint = tr("searchTracks")
         if all_tracks:
             if self.search_query:
@@ -141,10 +192,12 @@ class LibraryScreen(ft.Column):
                 search_hint = tr("searchTracksWithCount").replace("{}", str(len(all_tracks)))
 
         def on_search(e):
+            """Handle search field submission."""
             self.search_query = e.control.value
             self._build()
             self.update()
 
+        # Build top bar (search or selection)
         if is_sel_mode:
             top_bar = self._build_selection_bar()
         else:
@@ -163,6 +216,7 @@ class LibraryScreen(ft.Column):
                 ),
             )
 
+        # Build track list or empty state
         if not tracks:
             main = ft.Container(
                 expand=True,
@@ -188,6 +242,14 @@ class LibraryScreen(ft.Column):
         )
 
     def _build_selection_bar(self):
+        """Build the multi-select action bar.
+        
+        Shows selected count and action buttons for batch operations:
+        select all, deselect all, invert selection, and batch menu.
+        
+        Returns:
+            A Container with the selection bar layout.
+        """
         all_tracks = trepo.watch_all_tracks()
         total = len(all_tracks)
         sel_count = len(self.selected_ids)
@@ -285,11 +347,22 @@ class LibraryScreen(ft.Column):
         )
 
     def _exit_selection_mode(self):
+        """Exit multi-select mode and clear selections."""
         self.selected_ids.clear()
         self._build()
         self.update()
 
     def _filter_tracks(self, tracks):
+        """Filter tracks based on the current search query.
+        
+        Matches against title, artist, and album fields.
+        
+        Args:
+            tracks: List of all tracks.
+        
+        Returns:
+            Filtered list of tracks matching the search query.
+        """
         q = self.search_query.lower().strip()
         if not q:
             return tracks
@@ -307,6 +380,14 @@ class LibraryScreen(ft.Column):
         return result
 
     def _build_track_tiles(self, tracks):
+        """Build track tile widgets for the normal view.
+        
+        Args:
+            tracks: List of tracks to display.
+        
+        Returns:
+            List of TrackTile widgets.
+        """
         tiles = []
         for t in tracks:
             tile = TrackTile(
@@ -321,6 +402,14 @@ class LibraryScreen(ft.Column):
         return tiles
 
     def _build_selection_tiles(self, tracks):
+        """Build track tiles with checkboxes for multi-select mode.
+        
+        Args:
+            tracks: List of tracks to display.
+        
+        Returns:
+            List of Container widgets with checkboxes.
+        """
         tiles = []
         for t in tracks:
             is_sel = t.id in self.selected_ids
@@ -339,6 +428,11 @@ class LibraryScreen(ft.Column):
         return tiles
 
     def _toggle_select(self, tid):
+        """Toggle selection state for a track.
+        
+        Args:
+            tid: The track ID to toggle.
+        """
         if tid in self.selected_ids:
             self.selected_ids.remove(tid)
         else:
@@ -347,6 +441,11 @@ class LibraryScreen(ft.Column):
         self.update()
 
     def _play_track(self, track):
+        """Play a single track from the library.
+        
+        Args:
+            track: The Track object to play.
+        """
         app = self._get_app()
         if app:
             logger.info(f"LibraryScreen._play_track: {track.title}")
@@ -355,6 +454,13 @@ class LibraryScreen(ft.Column):
             logger.error("LibraryScreen._play_track: app is None")
 
     def _show_track_options(self, track):
+        """Show context menu for a track.
+        
+        Options: Add to Playlist, View Details, Edit Metadata, Delete
+        
+        Args:
+            track: The Track object to show options for.
+        """
         def do_add_to_pl(e):
             self._page.pop_dialog()
             self._show_add_to_playlist(track)
@@ -397,6 +503,7 @@ class LibraryScreen(ft.Column):
         self._page.show_dialog(bs)
 
     def _show_batch_add_to_playlist(self):
+        """Show playlist selection for batch adding selected tracks."""
         playlists = prepo.watch_all_playlists()
         if not playlists:
             self._page.show_dialog(ft.SnackBar(ft.Text(tr("noPlaylistsAvailable"))))
@@ -425,6 +532,11 @@ class LibraryScreen(ft.Column):
         self._page.show_dialog(dlg)
 
     def _show_add_to_playlist(self, track):
+        """Show playlist selection for adding a single track.
+        
+        Args:
+            track: The Track to add to a playlist.
+        """
         playlists = prepo.watch_all_playlists()
         if not playlists:
             self._page.show_dialog(ft.SnackBar(ft.Text(tr("noPlaylistsAvailable"))))
@@ -446,6 +558,11 @@ class LibraryScreen(ft.Column):
         self._page.show_dialog(dlg)
 
     def _show_track_details(self, track):
+        """Show detailed information about a track.
+        
+        Args:
+            track: The Track to display details for.
+        """
         file_size = tr("unknown")
         try:
             if _os.path.isfile(track.path):
@@ -471,6 +588,11 @@ class LibraryScreen(ft.Column):
         self._page.show_dialog(dlg)
 
     def _show_edit_dialog(self, track):
+        """Show dialog for editing track metadata.
+        
+        Args:
+            track: The Track to edit.
+        """
         tf = ft.TextField(label=tr("title"), value=track.title)
         af = ft.TextField(label=tr("artist"), value=track.artist or "")
         alf = ft.TextField(label=tr("album"), value=track.album or "")
@@ -492,6 +614,15 @@ class LibraryScreen(ft.Column):
         self._page.show_dialog(dlg)
 
     def _detail_row(self, label, value):
+        """Create a label-value row for the details dialog.
+        
+        Args:
+            label: The label text.
+            value: The value text.
+        
+        Returns:
+            A Row widget with label and value.
+        """
         return ft.Row(
             tight=True,
             controls=[

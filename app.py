@@ -1,3 +1,10 @@
+"""GroovyBox Main Application Module.
+
+This module contains the core GroovyBoxApp class that orchestrates the entire
+application lifecycle. It manages routing, theme configuration, audio playback
+callbacks, and UI synchronization between screens.
+"""
+
 import flet as ft
 from logic.logger import logger
 from logic.localize import tr, load_locale
@@ -6,6 +13,22 @@ from logic.metadata_service import get_metadata
 
 
 class GroovyBoxApp:
+    """Main application controller for GroovyBox.
+    
+    Responsible for initializing the database, loading user preferences,
+    setting up the audio player, and managing navigation between screens.
+    Acts as the central hub connecting the audio engine, data layer, and UI.
+    
+    Attributes:
+        page: The Flet page instance.
+        current_track: Currently playing track data (CurrentTrackData or None).
+        current_metadata: Metadata of the currently playing track.
+        theme_seed_color: Material 3 seed color for theming.
+        theme_mode: Current theme mode (system/light/dark).
+        shell: The main ShellView instance when in library/settings views.
+        audio_player: The AudioPlayer instance for playback control.
+    """
+
     def __init__(self, page: ft.Page):
         self.page = page
         self.current_track = None
@@ -14,29 +37,37 @@ class GroovyBoxApp:
         self.theme_mode = ft.ThemeMode.SYSTEM
         self.shell = None
 
+        # Initialize database and load user settings
         db.init_database()
         self._load_locale()
         self._load_theme_mode()
         self._setup_theme()
 
+        # Configure logging level from saved settings
         from logic.logger import set_log_level
         set_log_level(db.get_setting("log_level", "normal"))
 
+        # Store app reference in session for access from other components
         page.session.store.set("app", self)
 
+        # Initialize audio player with platform-appropriate backend
         from logic.audio_handler import AudioPlayer
         self.audio_player = AudioPlayer(page)
 
+        # Register audio event callbacks
         self.audio_player.on_track_change = self._on_track_change
         self.audio_player.on_loading_change = self._on_loading_change
         self.audio_player.on_play_state_change = self._on_play_state_change
         self.audio_player.on_position_change = self._on_position_change
 
+        # Capture the UI event loop for thread-safe callbacks
         page.run_task(self.audio_player.capture_ui_loop)
 
+        # Set up routing handlers
         page.on_route_change = self._on_route_change
         page.on_view_pop = self._on_view_pop
 
+        # Configure window properties
         page.title = "GroovyBox"
         try:
             page.window.min_width = 400
@@ -44,10 +75,12 @@ class GroovyBoxApp:
         except Exception:
             pass
 
+        # Navigate to the library screen as the initial view
         page.run_task(page.push_route, "/library")
         self._set_window_icon()
 
     def _set_window_icon(self):
+        """Set the application window icon from assets."""
         try:
             import os
             icon_path = os.path.join(os.path.dirname(__file__), "assets", "images", "icon.ico")
@@ -58,15 +91,22 @@ class GroovyBoxApp:
             pass
 
     def _load_locale(self):
+        """Load the user's preferred language from settings."""
         lang = db.get_setting("language", "en")
         load_locale(lang)
 
     def _load_theme_mode(self):
+        """Load and apply the saved theme mode (system/light/dark)."""
         mode = db.get_setting("theme_mode", "system")
-        mode_map = {"system": ft.ThemeMode.SYSTEM, "light": ft.ThemeMode.LIGHT, "dark": ft.ThemeMode.DARK}
+        mode_map = {
+            "system": ft.ThemeMode.SYSTEM,
+            "light": ft.ThemeMode.LIGHT,
+            "dark": ft.ThemeMode.DARK,
+        }
         self.theme_mode = mode_map.get(mode, ft.ThemeMode.SYSTEM)
 
     def _setup_theme(self):
+        """Configure Material 3 theme with the seed color for both light and dark modes."""
         self.page.theme = ft.Theme(
             color_scheme_seed=self.theme_seed_color,
             use_material3=True,
@@ -78,15 +118,31 @@ class GroovyBoxApp:
         self.page.theme_mode = self.theme_mode
 
     def _on_track_change(self, track_data):
+        """Handle track change events from the audio player.
+        
+        Updates the current track reference, loads metadata (including album art),
+        and refreshes all UI components.
+        
+        Args:
+            track_data: CurrentTrackData instance with the new track info.
+        """
         self.current_track = track_data
         if track_data and track_data.path:
             self._update_metadata(track_data.path)
         self._refresh_ui()
 
     def _on_loading_change(self, loading):
+        """Handle loading state changes (e.g., buffering)."""
         self._refresh_ui()
 
     def _on_play_state_change(self, playing):
+        """Handle play/pause state changes.
+        
+        Updates the mini player and full player screen play button icon.
+        
+        Args:
+            playing: True if currently playing, False if paused.
+        """
         try:
             if self.shell:
                 self.shell.mini_player.refresh_play_state(playing)
@@ -96,6 +152,13 @@ class GroovyBoxApp:
             logger.warning(f"_on_play_state_change skipped: {ex}")
 
     def _on_position_change(self, pos_ms):
+        """Handle playback position updates.
+        
+        Updates progress bars in both the mini player and full player screen.
+        
+        Args:
+            pos_ms: Current playback position in milliseconds.
+        """
         try:
             dur_ms = self.audio_player.duration_ms if self.audio_player else 0
             if self.shell:
@@ -105,6 +168,15 @@ class GroovyBoxApp:
             logger.warning(f"_on_position_change skipped: {ex}")
 
     def _call_player_method(self, method_name, *args):
+        """Call a method on the PlayerScreen if it's the current top view.
+        
+        This allows the app to push updates directly to the player screen
+        without maintaining a direct reference to it.
+        
+        Args:
+            method_name: Name of the method to call on PlayerScreen.
+            *args: Arguments to pass to the method.
+        """
         if len(self.page.views) > 0:
             top = self.page.views[-1]
             if getattr(top, 'route', None) == "/player" and top.controls:
@@ -114,10 +186,19 @@ class GroovyBoxApp:
                     method(*args)
 
     def _update_metadata(self, path):
+        """Load and cache metadata for the currently playing track.
+        
+        Extracts title, artist, album, and cover art from the audio file.
+        Falls back to stored album art if extraction yields no results.
+        
+        Args:
+            path: File path of the audio track.
+        """
         from data import track_repository as trepo
         track = trepo.get_track_by_path(path)
         if track:
             meta = get_metadata(path)
+            # Use stored art_uri as fallback if metadata has no embedded art
             if track.art_uri and not meta.art_bytes:
                 try:
                     with open(track.art_uri, "rb") as f:
@@ -129,9 +210,15 @@ class GroovyBoxApp:
             self.current_metadata = None
 
     def _reload_ui(self):
+        """Force a complete UI rebuild (used after data changes)."""
         self._sync_views()
 
     def _refresh_ui(self):
+        """Refresh the current UI state without full rebuild.
+        
+        Updates the content view, mini player, and player screen
+        to reflect the latest playback state.
+        """
         try:
             if self.shell:
                 self.shell.content_view.update()
@@ -142,18 +229,41 @@ class GroovyBoxApp:
             logger.warning(f"_refresh_ui skipped: {ex}")
 
     def _on_route_change(self, e):
+        """Handle route changes by synchronizing views.
+        
+        Args:
+            e: Route change event from the Flet framework.
+        """
         self._sync_views()
 
     async def _on_view_pop(self, e):
+        """Handle back navigation by popping the top view.
+        
+        Args:
+            e: View pop event from the Flet framework.
+        """
         if len(self.page.views) > 1:
             self.page.views.pop()
             top = self.page.views[-1]
             await self.page.push_route(top.route)
 
     def _sync_views(self):
+        """Synchronize the page views with the current route.
+        
+        This is the main routing logic that determines which screen to display
+        based on the URL route. Handles:
+        - /player: Full-screen player view
+        - /library or /: Main library with tracks/albums/playlists tabs
+        - /artist: Artist detail view
+        - /album: Album detail view
+        - /playlist: Playlist detail view
+        - /settings: Application settings
+        - /live-sync: Lyrics sync mode (no-op, handled by player)
+        """
         route = self.page.route
         self.page.on_keyboard_event = None
 
+        # Player screen takes full page (no shell)
         if route == "/player":
             self.page.views.clear()
             from ui.screens.player_screen import PlayerScreen
@@ -166,13 +276,16 @@ class GroovyBoxApp:
             self.page.update()
             return
 
+        # Live-sync is handled within the player screen
         if route == "/live-sync":
             return
 
+        # All other routes use the shell layout (toolbar + content + mini player)
         self.page.views.clear()
         from ui.shell import ShellView
         self.shell = ShellView(self.page)
 
+        # Determine which content screen to display
         if route == "/" or route == "/library":
             from ui.screens.library_screen import LibraryScreen
             content = LibraryScreen(self.page)
@@ -204,9 +317,11 @@ class GroovyBoxApp:
                 from ui.screens.library_screen import LibraryScreen
                 content = LibraryScreen(self.page)
         else:
+            # Default to library screen for unknown routes
             from ui.screens.library_screen import LibraryScreen
             content = LibraryScreen(self.page)
 
+        # Assemble the shell with content and mini player
         self.shell.content_view.controls = [content]
         self.shell.mini_player.bind(self)
         self.page.views.append(self.shell)

@@ -1,10 +1,30 @@
+"""Build Script for GroovyBox.
+
+This module handles building the GroovyBox application for various
+platforms (Windows, Android, iOS) using the Flet build system.
+Reads configuration from build-config.json and handles platform-specific
+options like Android signing and iOS provisioning.
+"""
+
 import json, subprocess, sys, os, shutil
 
+
 def load_config():
+    """Load the build configuration from build-config.json.
+    
+    Returns:
+        Dictionary containing build configuration.
+    """
     with open("build-config.json", encoding="utf-8") as f:
         return json.load(f)
 
+
 def copy_icons():
+    """Copy icon files to the assets root directory.
+    
+    Ensures icon.ico and icon.png are available at the assets root
+    for the build system, copying from the images subdirectory if needed.
+    """
     src_ico = os.path.join("assets", "images", "icon.ico")
     src_png = os.path.join("assets", "images", "icon.png")
     dst_ico = os.path.join("assets", "icon.ico")
@@ -16,11 +36,25 @@ def copy_icons():
         shutil.copy2(src_png, dst_png)
         print(f"Copied {src_png} -> {dst_png}")
 
+
 def build_cmd(platform: str):
+    """Build the Flet build command for the specified platform.
+    
+    Constructs the full command line with all necessary parameters
+    from the build configuration, including platform-specific options
+    for Android and iOS.
+    
+    Args:
+        platform: Target platform (windows, apk, aab, ipa, web, etc.)
+    
+    Returns:
+        List of command arguments for subprocess.run.
+    """
     cfg = load_config()
     app = cfg["app"]
     android = cfg.get("android", {})
 
+    # Base command with common options
     cmd = [
         "flet", "build", platform,
         "--yes", "--no-rich-output", "--skip-flutter-doctor",
@@ -38,14 +72,15 @@ def build_cmd(platform: str):
     if app.get("copyright"):
         cmd += ["--copyright", app["copyright"]]
 
-    # Platform-specific
+    # Android-specific options
     if platform in ("apk", "aab"):
         for perm in android.get("permissions", []):
             cmd += ["--android-permissions", f"{perm}=true"]
         bg = android.get("adaptive_icon_background")
         if bg:
             cmd += ["--android-adaptive-icon-background", bg]
-        # Signing (detect keystore file)
+        
+        # Android signing configuration (from environment variables)
         ks = "keystore.jks"
         ks_pass = os.environ.get("ANDROID_KEYSTORE_PASSWORD", "")
         key_pass = os.environ.get("ANDROID_KEY_PASSWORD", "")
@@ -58,6 +93,7 @@ def build_cmd(platform: str):
                 "--android-signing-key-alias", key_alias,
             ]
 
+    # iOS-specific options
     if platform == "ipa":
         ios_cfg = cfg.get("ios", {})
         for key, val in ios_cfg.get("info_plist", {}).items():
@@ -67,6 +103,8 @@ def build_cmd(platform: str):
                 cmd += ["--info-plist", f"{key}={'true' if val else 'false'}"]
             else:
                 cmd += ["--info-plist", f"{key}={val}"]
+        
+        # iOS signing configuration (from environment variables)
         team_id = os.environ.get("IOS_TEAM_ID", "")
         cert = os.environ.get("IOS_SIGNING_CERTIFICATE", "")
         profile = os.environ.get("IOS_PROVISIONING_PROFILE_NAME", "")
@@ -79,7 +117,9 @@ def build_cmd(platform: str):
 
     return cmd
 
+
 if __name__ == "__main__":
+    # Determine target platform from arguments or environment
     platform = sys.argv[1] if len(sys.argv) > 1 else "windows"
     plat = os.environ.get("TARGET_PLATFORM", platform)
     copy_icons()

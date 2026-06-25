@@ -1,3 +1,10 @@
+"""Metadata Service for GroovyBox.
+
+This module handles extraction of audio file metadata including
+title, artist, album, duration, and embedded album art. Uses the
+mutagen library for cross-format metadata support.
+"""
+
 import os
 from typing import Optional
 from mutagen import File as MutagenFile
@@ -8,13 +15,25 @@ from mutagen.mp4 import MP4
 from mutagen.apev2 import APEv2File
 from data.models import TrackMetadata
 
-
+# Supported audio file extensions for metadata extraction
 SUPPORTED_EXTENSIONS = {
     '.mp3', '.m4a', '.wav', '.flac', '.aac', '.ogg', '.wma', '.opus', '.aiff',
 }
 
 
 def get_metadata(file_path: str) -> TrackMetadata:
+    """Extract metadata from an audio file.
+    
+    Reads title, artist, album, duration, and embedded album art
+    from the audio file using mutagen. Returns empty metadata if
+    the file cannot be read.
+    
+    Args:
+        file_path: Absolute path to the audio file.
+    
+    Returns:
+        A TrackMetadata instance with extracted information.
+    """
     meta = TrackMetadata()
     if not os.path.isfile(file_path):
         return meta
@@ -24,20 +43,16 @@ def get_metadata(file_path: str) -> TrackMetadata:
         if audio is None:
             return meta
 
-        # Title
+        # Extract basic tags
         meta.title = _safe_tag(audio, "title")
-
-        # Artist
         meta.artist = _safe_tag(audio, "artist")
-
-        # Album
         meta.album = _safe_tag(audio, "album")
 
-        # Duration (seconds -> ms)
+        # Duration: convert seconds to milliseconds
         if hasattr(audio.info, "length") and audio.info.length:
             meta.duration = int(audio.info.length * 1000)
 
-        # Album art
+        # Extract embedded album art
         meta.art_bytes = _extract_art(audio)
 
     except Exception:
@@ -47,6 +62,18 @@ def get_metadata(file_path: str) -> TrackMetadata:
 
 
 def _safe_tag(audio, key: str) -> Optional[str]:
+    """Safely extract a tag value from an audio file.
+    
+    Handles various tag formats (single value, list) and
+    returns None if the tag doesn't exist or can't be read.
+    
+    Args:
+        audio: The mutagen audio file object.
+        key: The tag key to extract (e.g., "title", "artist").
+    
+    Returns:
+        The tag value as a string, or None if not found.
+    """
     try:
         if key in audio:
             val = audio[key]
@@ -59,8 +86,21 @@ def _safe_tag(audio, key: str) -> Optional[str]:
 
 
 def _extract_art(audio) -> Optional[bytes]:
+    """Extract embedded album art from an audio file.
+    
+    Supports multiple formats:
+    - MP3/ID3: Checks for data or picture attributes
+    - FLAC: Checks the pictures list
+    - MP4: Checks for 'covr' tag
+    
+    Args:
+        audio: The mutagen audio file object.
+    
+    Returns:
+        Raw image bytes if found, None otherwise.
+    """
     try:
-        # MP3 / ID3
+        # MP3 / ID3 tags
         if hasattr(audio, "tags") and audio.tags:
             for tag in audio.tags.values():
                 if hasattr(tag, "data"):
@@ -68,11 +108,11 @@ def _extract_art(audio) -> Optional[bytes]:
                 if hasattr(tag, "picture"):
                     return tag.picture.data
 
-        # FLAC
+        # FLAC pictures
         if hasattr(audio, "pictures") and audio.pictures:
             return audio.pictures[0].data
 
-        # MP4
+        # MP4 covr tag
         if hasattr(audio, "tags") and "covr" in audio.tags:
             covr = audio.tags["covr"]
             if covr and len(covr) > 0:
@@ -84,6 +124,14 @@ def _extract_art(audio) -> Optional[bytes]:
 
 
 def format_duration(duration_ms: Optional[int]) -> str:
+    """Format a duration in milliseconds to a human-readable string.
+    
+    Args:
+        duration_ms: Duration in milliseconds, or None.
+    
+    Returns:
+        Formatted string like "3:45" or "--:--" if duration is None.
+    """
     if duration_ms is None:
         return "--:--"
     total_sec = duration_ms // 1000
