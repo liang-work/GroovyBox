@@ -16,18 +16,33 @@ if not os.access(_home, os.W_OK):
     os.environ["HOME"] = os.path.join(_home, "Library", "Application Support")
 
 import flet as ft
+from flet import FilePicker
+from flet_audio import Audio as FletAudio, ReleaseMode
 from app import GroovyBoxApp
 
 
 def main(page: ft.Page):
     """Initialize and run the GroovyBox application.
     
-    Creates the main application instance which sets up the UI,
-    audio player, database, and all core functionality.
+    Pre-creates service instances (FilePicker, Audio) at startup so that:
+    1. The Flet build scanner detects the required Flutter plugins
+       (file_picker, flet_audio) and includes them in the iOS IPA.
+    2. The Flutter client registers the invoke-method handlers,
+       preventing TimeoutException on mobile.
+    3. All consumers reuse the same instance instead of creating
+       new ones on demand.
     
     Args:
         page: The Flet page object provided by the framework.
     """
+    page._file_picker = FilePicker()
+    page._flet_audio = FletAudio(
+        autoplay=False,
+        volume=0.8,
+        release_mode=ReleaseMode.RELEASE,
+    )
+    page.update()
+
     GroovyBoxApp(page)
 
 

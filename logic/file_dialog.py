@@ -13,10 +13,19 @@ be added to page.overlay.
 import logging
 from typing import Optional, List
 
-from flet import FilePicker
-from flet import FilePickerFileType
+from flet import FilePicker, FilePickerFileType
 
 logger = logging.getLogger("flet")
+
+
+def _get_picker(page) -> FilePicker:
+    """Return the pre-created FilePicker instance, creating one as fallback."""
+    picker = getattr(page, '_file_picker', None)
+    if picker is None:
+        picker = FilePicker()
+        page._file_picker = picker
+        page.update()
+    return picker
 
 
 async def pick_files(
@@ -37,7 +46,7 @@ async def pick_files(
         List of selected file paths, or None if cancelled.
     """
     try:
-        picker = FilePicker()
+        picker = _get_picker(page)
         file_type = FilePickerFileType.CUSTOM if extensions else FilePickerFileType.ANY
         result = await picker.pick_files(
             dialog_title=title,
@@ -65,7 +74,7 @@ async def pick_directory(
         Selected directory path, or None if cancelled.
     """
     try:
-        picker = FilePicker()
+        picker = _get_picker(page)
         return await picker.get_directory_path(dialog_title=title)
     except Exception as e:
         logger.warning("FilePicker.get_directory_path failed: %s", e)
@@ -93,7 +102,7 @@ async def save_file(
         Selected save path, or None if cancelled / unsupported on mobile.
     """
     try:
-        picker = FilePicker()
+        picker = _get_picker(page)
         file_type = FilePickerFileType.CUSTOM if extensions else FilePickerFileType.ANY
         path = await picker.save_file(
             dialog_title=title,

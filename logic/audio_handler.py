@@ -217,21 +217,29 @@ class AudioPlayer:
     def _init_flet_audio(self):
         """Initialize the flet_audio backend for mobile platforms.
         
-        Creates an Audio control and adds it to the page overlay.
+        Uses the pre-created Audio instance from page._flet_audio (created
+        in main.py) so the build scanner detects the flet_audio plugin.
         Sets up event handlers for load, duration, position, and state changes.
         """
-        import flet_audio
         from flet_audio import AudioState, ReleaseMode
 
-        self._audio = flet_audio.Audio(
-            autoplay=False,
-            volume=self._volume,
-            release_mode=ReleaseMode.RELEASE,
-            on_loaded=self._fa_on_loaded,
-            on_duration_change=self._fa_on_duration,
-            on_position_change=self._fa_on_position,
-            on_state_change=self._fa_on_state,
-        )
+        if hasattr(self.page, '_flet_audio') and self.page._flet_audio is not None:
+            self._audio = self.page._flet_audio
+        else:
+            import flet_audio
+            self._audio = flet_audio.Audio(
+                autoplay=False,
+                volume=self._volume,
+                release_mode=ReleaseMode.RELEASE,
+            )
+
+        self._audio.on_loaded = self._fa_on_loaded
+        self._audio.on_duration_change = self._fa_on_duration
+        self._audio.on_position_change = self._fa_on_position
+        self._audio.on_state_change = self._fa_on_state
+        self._audio.release_mode = ReleaseMode.RELEASE
+        self._audio.volume = self._volume
+        self.page.update()
 
         # Position tracking state
         self._seek_base_ms = 0
@@ -366,7 +374,7 @@ class AudioPlayer:
                 pygame.mixer.quit()
             except Exception:
                 pass
-        elif hasattr(self, '_audio'):
+        elif hasattr(self, '_audio') and self._audio is not None:
             if self._position_timer:
                 self._position_timer.cancel()
             self._audio = None
