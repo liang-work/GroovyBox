@@ -2,7 +2,7 @@
 !define PRODUCT_VERSION "1.0.0"
 !define PRODUCT_PUBLISHER "GroovyBox"
 !define PRODUCT_WEB_SITE "https://github.com/GroovyBox"
-!define PRODUCT_DIR_REGKEY "Software\Microsoft\Windows\CurrentVersion\App Paths\GroovyBox.exe"
+!define PRODUCT_DIR_REGKEY "Software\Microsoft\Windows\CurrentVersion\App Paths\groovybox.exe"
 !define PRODUCT_UNINST_KEY "Software\Microsoft\Windows\CurrentVersion\Uninstall\${PRODUCT_NAME}"
 !define PRODUCT_UNINST_ROOT_KEY "HKLM"
 
@@ -22,7 +22,7 @@ SetCompressor lzma
 ; Instfiles page
 !insertmacro MUI_PAGE_INSTFILES
 ; Finish page
-!define MUI_FINISHPAGE_RUN "$INSTDIR\GroovyBox.exe"
+!define MUI_FINISHPAGE_RUN "$INSTDIR\groovybox.exe"
 !define MUI_FINISHPAGE_SHOWREADME_NOTCHECKED
 !insertmacro MUI_PAGE_FINISH
 
@@ -39,14 +39,24 @@ InstallDirRegKey HKLM "${PRODUCT_DIR_REGKEY}" ""
 ShowInstDetails show
 ShowUnInstDetails show
 
+Var APP_EXE
+
 Section "MainSection" SEC01
   SetOutPath "$INSTDIR"
   File /r "build\windows\*"
 
+  ; Detect the actual executable name
+  IfFileExists "$INSTDIR\groovybox.exe" 0 +2
+  StrCpy $APP_EXE "groovybox.exe"
+  IfFileExists "$INSTDIR\GroovyBox.exe" 0 +2
+  StrCpy $APP_EXE "GroovyBox.exe"
+  StrCmp $APP_EXE "" 0 +2
+  StrCpy $APP_EXE "groovybox.exe"
+
   ; Create shortcuts
   CreateDirectory "$SMPROGRAMS\${PRODUCT_NAME}"
-  CreateShortCut "$SMPROGRAMS\${PRODUCT_NAME}\${PRODUCT_NAME}.lnk" "$INSTDIR\GroovyBox.exe"
-  CreateShortCut "$DESKTOP\${PRODUCT_NAME}.lnk" "$INSTDIR\GroovyBox.exe"
+  CreateShortCut "$SMPROGRAMS\${PRODUCT_NAME}\${PRODUCT_NAME}.lnk" "$INSTDIR\$APP_EXE"
+  CreateShortCut "$DESKTOP\${PRODUCT_NAME}.lnk" "$INSTDIR\$APP_EXE"
   CreateShortCut "$SMPROGRAMS\${PRODUCT_NAME}\Uninstall ${PRODUCT_NAME}.lnk" "$INSTDIR\uninst.exe"
 
   ; Write uninstaller
@@ -60,8 +70,8 @@ Section "MainSection" SEC01
 SectionEnd
 
 Section -Post
-  WriteRegStr HKLM "${PRODUCT_DIR_REGKEY}" "" "$INSTDIR\GroovyBox.exe"
-  WriteRegStr ${PRODUCT_UNINST_ROOT_KEY} "${PRODUCT_UNINST_KEY}" "DisplayIcon" "$INSTDIR\GroovyBox.exe"
+  WriteRegStr HKLM "${PRODUCT_DIR_REGKEY}" "" "$INSTDIR\$APP_EXE"
+  WriteRegStr ${PRODUCT_UNINST_ROOT_KEY} "${PRODUCT_UNINST_KEY}" "DisplayIcon" "$INSTDIR\$APP_EXE"
 SectionEnd
 
 ; Uninstall section
