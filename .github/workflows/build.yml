@@ -42,24 +42,15 @@ jobs:
         run: |
           choco install nsis -y --no-progress
           Add-Content -Path $env:GITHUB_PATH -Value "C:\Program Files (x86)\NSIS"
-      - name: Build NSIS installer
+      - name: Package portable directory
         continue-on-error: true
         shell: pwsh
         run: |
-          $nsis = "C:\Program Files (x86)\NSIS\makensis.exe"
-          if (Test-Path $nsis) {
-            & $nsis scripts\package_windows.nsi
-            Write-Output "NSIS installer built successfully"
-          } else {
-            Write-Warning "NSIS not found at $nsis"
-          }
-      - name: Package portable zip
-        continue-on-error: true
-        shell: pwsh
-        run: |
-          New-Item -ItemType Directory -Path dist -Force
+          $dst = "dist/groovybox_portable"
+          New-Item -ItemType Directory -Path $dst -Force | Out-Null
           if (Test-Path "build/windows") {
-            $src = "build/windows"
+            Copy-Item -Path "build/windows\*" -Destination $dst -Recurse -Force
+            Write-Host "Copied from build/windows"
           } else {
             Write-Warning "build/windows/ not found, searching build/ for output..."
             $exe = Get-ChildItem -Recurse -Path "build" -Filter "*.exe" -ErrorAction SilentlyContinue |
@@ -70,17 +61,49 @@ jobs:
                 Select-Object -First 1
             }
             if ($exe) {
-              $src = $exe.DirectoryName
-              Write-Host "Found build output at: $src"
+              Copy-Item -Path "$($exe.DirectoryName)\*" -Destination $dst -Recurse -Force
+              Write-Host "Copied build output from $($exe.DirectoryName)"
+            } else {
+              Write-Warning "No build output found, portable directory will be empty"
             }
           }
-          if ($src) {
-            Compress-Archive -Path "$src\*" -DestinationPath dist\GroovyBox-Windows.zip -Force
-            Write-Host "Portable zip created from $src"
-          } else {
-            Write-Warning "No build output found, creating empty zip"
-            New-Item -Path dist\GroovyBox-Windows.zip -ItemType File -Force
+      - name: Build NSIS installer
+        continue-on-error: true
+        shell: pwsh
+        run: |
+          $nsis = "C:\Program Files (x86)\NSIS\makensis.exe"
+          if (-not (Test-Path $nsis)) { Write-Warning "NSIS not found at $nsis"; exit 0 }
+
+          # Ensure build/windows/ has content for NSIS
+          if (-not (Test-Path "build/windows") -or -not (Get-ChildItem "build/windows" -ErrorAction SilentlyContinue)) {
+            Write-Warning "build/windows/ missing or empty, searching for build output..."
+            if (Test-Path "dist/groovybox_portable") {
+              New-Item -ItemType Directory -Path "build/windows" -Force | Out-Null
+              Copy-Item -Path "dist/groovybox_portable\*" -Destination "build/windows" -Recurse -Force
+              Write-Host "Copied from dist/groovybox_portable"
+            } else {
+              $exe = Get-ChildItem -Recurse -Path "build" -Filter "*.exe" -ErrorAction SilentlyContinue |
+                Where-Object { $_.FullName -notmatch '\\\w+\.exe$' -and $_.DirectoryName -notmatch '\\bin$' } |
+                Select-Object -First 1
+              if (-not $exe) {
+                $exe = Get-ChildItem -Recurse -Path "build" -Filter "*.exe" -ErrorAction SilentlyContinue |
+                  Select-Object -First 1
+              }
+              if ($exe) {
+                New-Item -ItemType Directory -Path "build/windows" -Force | Out-Null
+                Copy-Item -Path "$($exe.DirectoryName)\*" -Destination "build/windows" -Recurse -Force
+                Write-Host "Copied build output from $($exe.DirectoryName)"
+              }
+            }
           }
+
+          if (-not (Test-Path "build/windows") -or -not (Get-ChildItem "build/windows" -ErrorAction SilentlyContinue)) {
+            Write-Warning "No build output found, skipping NSIS installer"
+            exit 0
+          }
+
+          & $nsis scripts\package_windows.nsi
+          Write-Output "NSIS installer built successfully"
       - uses: actions/upload-artifact@v4
         with:
           name: GroovyBox-Windows-Installer
@@ -88,8 +111,8 @@ jobs:
           if-no-files-found: warn
       - uses: actions/upload-artifact@v4
         with:
-          name: GroovyBox-Windows-Zip
-          path: dist\GroovyBox-Windows.zip
+          name: GroovyBox-Windows-Portable
+          path: dist\groovybox_portable\
           if-no-files-found: warn
 
   linux:
