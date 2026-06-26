@@ -6,16 +6,14 @@ and launches the main application instance.
 """
 
 import os
-import platform
 
-# iOS: Flet runtime sets HOME to the app container root (read-only).
-# Python stdlib (ssl, pip, history, etc.) and Flet itself depend on a
-# writable HOME. Redirect to Library/Application Support so all
-# config/cache writes (including .groovybox) land in a sandbox-allowed path.
-if platform.system() == "iOS":
-    os.environ["HOME"] = os.path.join(
-        os.path.expanduser("~"), "Library", "Application Support"
-    )
+# HOME writability test: on iOS, Flet sets HOME to the app container root
+# which is read-only. Python stdlib (ssl, pip, history) and Flet itself
+# depend on a writable HOME. Redirect to Library/Application Support when
+# HOME is not writable (iOS sandbox). No-op on desktop.
+_home = os.path.expanduser("~")
+if not os.access(_home, os.W_OK):
+    os.environ["HOME"] = os.path.join(_home, "Library", "Application Support")
 
 import flet as ft
 from app import GroovyBoxApp

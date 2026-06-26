@@ -5,7 +5,6 @@ schema initialization, and application settings persistence. Uses SQLite
 with WAL journal mode for concurrent read/write performance.
 """
 
-import platform
 import sqlite3
 import os
 from typing import Optional
@@ -18,6 +17,11 @@ DB_PATH = None
 def _is_mobile() -> bool:
     """Check if the application is running on a mobile platform.
 
+    Detects mobile (Android / iOS) by checking platform-specific
+    environment variables or whether HOME is writable (iOS sandbox).
+    On desktop, HOME is always writable, so the os.makedirs test passes
+    and this returns False.
+
     Returns:
         True if running on Android, iOS, or in a Flet mobile environment.
     """
@@ -25,9 +29,17 @@ def _is_mobile() -> bool:
         return True
     if os.environ.get("FLET_APP_DATA_DIR"):
         return True
-    if platform.system() == "iOS":
+    # iOS: main.py redirects HOME if the container root is read-only.
+    # If HOME is still the read-only root, _is_mobile returns True.
+    # If main.py already redirected HOME (writable), the test passes
+    # and we return False (already handled).
+    try:
+        test_dir = os.path.join(os.path.expanduser("~"), ".groovybox_writable_test")
+        os.makedirs(test_dir, exist_ok=True)
+        os.rmdir(test_dir)
+        return False
+    except (OSError, PermissionError):
         return True
-    return False
 
 
 def get_app_data_dir() -> str:
@@ -35,7 +47,7 @@ def get_app_data_dir() -> str:
 
     Resolves the appropriate base directory based on the platform:
     - Android: Application's parent directory
-    - iOS: Library/Application Support (sandbox-safe, not iCloud-backed)
+    - iOS: Uses HOME (redirected by main.py to Library/Application Support)
     - Flet mobile: FLET_APP_DATA_DIR environment variable
     - Desktop: User's home directory
 
@@ -46,25 +58,17 @@ def get_app_data_dir() -> str:
         return os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     if os.environ.get("FLET_APP_DATA_DIR"):
         return os.environ["FLET_APP_DATA_DIR"]
-    if platform.system() == "iOS":
-        # Home is already redirected to Library/Application Support by main.py
-        return os.path.expanduser("~")
     return os.path.expanduser("~")
 
 
 def get_app_dir() -> str:
     """Return the full path to the GroovyBox data directory.
 
-    Creates a platform-appropriate subdirectory:
-    - Mobile: "groovybox" (without dot prefix)
-    - Desktop: ".groovybox" (hidden directory)
-
     Returns:
         Absolute path to the GroovyBox data directory.
     """
     base = get_app_data_dir()
-    name = "groovybox" if _is_mobile() else ".groovybox"
-    return os.path.join(base, name)
+    return os.path.join(base, "groovybox")
 
 
 def get_db_path():
