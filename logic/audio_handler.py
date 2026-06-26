@@ -232,8 +232,6 @@ class AudioPlayer:
             on_position_change=self._fa_on_position,
             on_state_change=self._fa_on_state,
         )
-        self.page.overlay.append(self._audio)
-        self.page.update()
 
         # Position tracking state
         self._seek_base_ms = 0
@@ -371,11 +369,7 @@ class AudioPlayer:
         elif hasattr(self, '_audio'):
             if self._position_timer:
                 self._position_timer.cancel()
-            try:
-                self.page.overlay.remove(self._audio)
-                self.page.update()
-            except Exception:
-                pass
+            self._audio = None
         else:
             if self._noop_timer:
                 self._noop_timer.cancel()
