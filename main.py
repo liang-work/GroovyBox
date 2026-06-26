@@ -5,6 +5,18 @@ application built with the Flet framework. It initializes the Flet page
 and launches the main application instance.
 """
 
+import os
+import platform
+
+# iOS: Flet runtime sets HOME to the app container root (read-only).
+# Python stdlib (ssl, pip, history, etc.) and Flet itself depend on a
+# writable HOME. Redirect to Library/Application Support so all
+# config/cache writes (including .groovybox) land in a sandbox-allowed path.
+if platform.system() == "iOS":
+    os.environ["HOME"] = os.path.join(
+        os.path.expanduser("~"), "Library", "Application Support"
+    )
+
 import flet as ft
 from app import GroovyBoxApp
 

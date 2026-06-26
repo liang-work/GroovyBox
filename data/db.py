@@ -47,7 +47,8 @@ def get_app_data_dir() -> str:
     if os.environ.get("FLET_APP_DATA_DIR"):
         return os.environ["FLET_APP_DATA_DIR"]
     if platform.system() == "iOS":
-        return os.path.join(os.path.expanduser("~"), "Library", "Application Support")
+        # Home is already redirected to Library/Application Support by main.py
+        return os.path.expanduser("~")
     return os.path.expanduser("~")
 
 
