@@ -36,77 +36,51 @@ jobs:
         env:
           PYTHONIOENCODING: utf-8
         run: python scripts/do_build.py windows
-      - name: Locate build output
-        id: locate
+      - name: Install NSIS
+        continue-on-error: true
         shell: pwsh
         run: |
-          # Try Flet's expected output path first
-          if (Test-Path "build/windows") {
-            $src = Resolve-Path "build/windows"
-            Write-Host "found=$src" >> $env:GITHUB_OUTPUT
-            Write-Host "Using build/windows/"
-            exit 0
-          }
-          # Search Flutter build output directory
-          $candidates = @(
-            "build/flutter/build/windows/x64/runner/Release",
-            "build/flutter/build/windows/runner/Release",
-            "build/flutter/build/windows/x86/runner/Release"
-          )
-          foreach ($c in $candidates) {
-            if (Test-Path $c) {
-              $src = Resolve-Path $c
-              Write-Host "found=$src" >> $env:GITHUB_OUTPUT
-              Write-Host "Using Flutter output: $c"
-              exit 0
-            }
-          }
-          # Recursive search as last resort
-          $exe = Get-ChildItem -Recurse -Path "build" -Filter "*.exe" -ErrorAction SilentlyContinue | Select-Object -First 1
-          if ($exe) {
-            $src = $exe.Directory.FullName
-            Write-Host "found=$src" >> $env:GITHUB_OUTPUT
-            Write-Host "Using found exe directory: $src"
-            exit 0
-          }
-          Write-Host "No build output found"
+          choco install nsis -y --no-progress
+          Add-Content -Path $env:GITHUB_PATH -Value "C:\Program Files (x86)\NSIS"
       - name: Build NSIS installer
         continue-on-error: true
         shell: pwsh
         run: |
           $nsis = "C:\Program Files (x86)\NSIS\makensis.exe"
-          choco install nsis -y --no-progress
-          Add-Content -Path $env:GITHUB_PATH -Value "C:\Program Files (x86)\NSIS"
-          if (-not (Test-Path $nsis)) {
-            Write-Warning "NSIS not found at $nsis, skipping installer"
-            exit 0
-          }
-          # Temporarily populate build/windows/ for NSIS
-          $src = "${{ steps.locate.outputs.found }}"
-          if (-not $src) {
-            Write-Warning "No build output found, skipping installer"
-            exit 0
-          }
-          New-Item -ItemType Directory -Path "build/windows" -Force | Out-Null
-          Copy-Item -Path "$src\*" -Destination "build/windows" -Recurse -Force
-          & $nsis scripts\package_windows.nsi
-          if ($LASTEXITCODE -ne 0) {
-            Write-Warning "NSIS installer failed (exit code $LASTEXITCODE), continuing without installer"
-          } else {
+          if (Test-Path $nsis) {
+            & $nsis scripts\package_windows.nsi
             Write-Output "NSIS installer built successfully"
+          } else {
+            Write-Warning "NSIS not found at $nsis"
           }
       - name: Package portable zip
+        continue-on-error: true
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Path dist -Force
-          $src = "${{ steps.locate.outputs.found }}"
-          if (-not $src) {
+          if (Test-Path "build/windows") {
+            $src = "build/windows"
+          } else {
+            Write-Warning "build/windows/ not found, searching build/ for output..."
+            $exe = Get-ChildItem -Recurse -Path "build" -Filter "*.exe" -ErrorAction SilentlyContinue |
+              Where-Object { $_.FullName -notmatch '\\\w+\.exe$' -and $_.DirectoryName -notmatch '\\bin$' } |
+              Select-Object -First 1
+            if (-not $exe) {
+              $exe = Get-ChildItem -Recurse -Path "build" -Filter "*.exe" -ErrorAction SilentlyContinue |
+                Select-Object -First 1
+            }
+            if ($exe) {
+              $src = $exe.DirectoryName
+              Write-Host "Found build output at: $src"
+            }
+          }
+          if ($src) {
+            Compress-Archive -Path "$src\*" -DestinationPath dist\GroovyBox-Windows.zip -Force
+            Write-Host "Portable zip created from $src"
+          } else {
             Write-Warning "No build output found, creating empty zip"
             New-Item -Path dist\GroovyBox-Windows.zip -ItemType File -Force
-            exit 0
           }
-          Compress-Archive -Path "$src\*" -DestinationPath dist\GroovyBox-Windows.zip -Force
-          Write-Output "Portable zip created successfully"
       - uses: actions/upload-artifact@v4
         with:
           name: GroovyBox-Windows-Installer
