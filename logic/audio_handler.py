@@ -58,16 +58,16 @@ class AudioPlayer:
         self.on_loading_change: Optional[Callable] = None
 
         # Select audio backend based on platform
-        self._use_pygame = self._is_desktop()
+        self._is_desktop_platform = self._is_desktop()
+        self._use_pygame = self._is_desktop_platform
         if self._use_pygame:
             self._init_pygame()
         else:
             try:
                 self._init_flet_audio()
             except Exception as ex:
-                logger.warning(f"flet_audio init failed ({ex}), falling back to pygame")
-                self._use_pygame = True
-                self._init_pygame()
+                logger.warning(f"flet_audio init failed ({ex})")
+                self._init_noop()
 
     # --- Platform detection ---
 
@@ -295,6 +295,26 @@ class AudioPlayer:
             pass
         return 0
 
+    # ======================== No-op backend (fallback) ========================
+
+    def _init_noop(self):
+        """Initialize a no-op audio backend when neither flet_audio nor pygame is available.
+
+        Prevents crashes on platforms where neither audio backend works
+        (e.g. iOS without flet_audio support), allowing the UI to display
+        and function normally without playback.
+        """
+        self._use_pygame = False
+        self._timer_active = True
+        self._noop_timer = threading.Timer(1.0, self._noop_tick)
+        self._noop_timer.start()
+
+    def _noop_tick(self):
+        """Periodic tick for no-op backend — keeps the timer alive only."""
+        if self._timer_active:
+            self._noop_timer = threading.Timer(1.0, self._noop_tick)
+            self._noop_timer.start()
+
     # ======================== Cross-backend helpers ========================
 
     async def capture_ui_loop(self):
@@ -348,7 +368,7 @@ class AudioPlayer:
                 pygame.mixer.quit()
             except Exception:
                 pass
-        else:
+        elif hasattr(self, '_audio'):
             if self._position_timer:
                 self._position_timer.cancel()
             try:
@@ -356,6 +376,9 @@ class AudioPlayer:
                 self.page.update()
             except Exception:
                 pass
+        else:
+            if self._noop_timer:
+                self._noop_timer.cancel()
         logger.debug("Audio player shut down")
 
     def play_track(self, track: Track):
@@ -412,13 +435,15 @@ class AudioPlayer:
             self._position_ms = 0
             self._pending_cmd = True
             self._pygame_send("load_play", path)
-        else:
+        elif hasattr(self, '_audio'):
             self._position_ms = 0
             self._duration_ms = 0
             self._is_playing = False
             self._audio.autoplay = True
             self._audio.src = path
             self.page.update()
+        else:
+            logger.warning("No audio backend available, skipping playback")
 
         self._is_playing = True
         self._loading = False
@@ -453,7 +478,7 @@ class AudioPlayer:
         if self._is_playing:
             if self._use_pygame:
                 self._pygame_send("pause")
-            else:
+            elif hasattr(self, '_audio'):
                 asyncio.create_task(self._audio.pause())
             self._is_playing = False
             if self.on_play_state_change:
@@ -462,7 +487,7 @@ class AudioPlayer:
             if self.current_index >= 0 and self.current_index < len(self.queue):
                 if self._use_pygame:
                     self._pygame_send("resume")
-                else:
+                elif hasattr(self, '_audio'):
                     asyncio.create_task(self._audio.resume())
                 self._is_playing = True
                 if self.on_play_state_change:
@@ -517,7 +542,7 @@ class AudioPlayer:
             self._pygame_send("seek", position_ms)
             if self.on_position_change:
                 self._call_on_ui(self.on_position_change, position_ms)
-        else:
+        elif hasattr(self, '_audio'):
             asyncio.create_task(self._audio.seek(position_ms))
             self._position_ms = position_ms
 
@@ -530,7 +555,7 @@ class AudioPlayer:
         self._volume = max(0.0, min(1.0, volume))
         if self._use_pygame:
             self._pygame_send("set_volume", self._volume)
-        else:
+        elif hasattr(self, '_audio'):
             self._audio.volume = self._volume
             self.page.update()
 

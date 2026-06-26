@@ -5,10 +5,10 @@ schema initialization, and application settings persistence. Uses SQLite
 with WAL journal mode for concurrent read/write performance.
 """
 
+import platform
 import sqlite3
 import os
-import json
-from typing import Optional, Any
+from typing import Optional
 
 
 # Global cached database path to avoid repeated path resolution
@@ -17,21 +17,28 @@ DB_PATH = None
 
 def _is_mobile() -> bool:
     """Check if the application is running on a mobile platform.
-    
+
     Returns:
-        True if running on Android or in a Flet mobile environment.
+        True if running on Android, iOS, or in a Flet mobile environment.
     """
-    return "ANDROID_ROOT" in os.environ or os.environ.get("FLET_APP_DATA_DIR") is not None
+    if "ANDROID_ROOT" in os.environ:
+        return True
+    if os.environ.get("FLET_APP_DATA_DIR"):
+        return True
+    if platform.system() == "iOS":
+        return True
+    return False
 
 
 def get_app_data_dir() -> str:
     """Return a writable app data directory on all platforms.
-    
+
     Resolves the appropriate base directory based on the platform:
     - Android: Application's parent directory
+    - iOS: Library/Application Support (sandbox-safe, not iCloud-backed)
     - Flet mobile: FLET_APP_DATA_DIR environment variable
     - Desktop: User's home directory
-    
+
     Returns:
         Absolute path to the writable application data directory.
     """
@@ -39,16 +46,18 @@ def get_app_data_dir() -> str:
         return os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     if os.environ.get("FLET_APP_DATA_DIR"):
         return os.environ["FLET_APP_DATA_DIR"]
+    if platform.system() == "iOS":
+        return os.path.join(os.path.expanduser("~"), "Library", "Application Support")
     return os.path.expanduser("~")
 
 
 def get_app_dir() -> str:
     """Return the full path to the GroovyBox data directory.
-    
+
     Creates a platform-appropriate subdirectory:
     - Mobile: "groovybox" (without dot prefix)
     - Desktop: ".groovybox" (hidden directory)
-    
+
     Returns:
         Absolute path to the GroovyBox data directory.
     """
