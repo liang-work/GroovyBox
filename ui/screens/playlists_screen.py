@@ -105,16 +105,17 @@ def PlaylistsScreen(page: ft.Page) -> ft.Control:
     def _delete_pl(pid, pname=""):
         """Show confirmation dialog for playlist deletion."""
         def confirm_yes(e):
-            page.pop_dialog()
-            page.update()
             prepo.delete_playlist(pid)
+            dlg.open = False
+            page.update()
             app = page.session.store.get("app")
             if app:
                 app._reload_ui()
             else:
                 page.update()
         def confirm_no(e):
-            page.pop_dialog()
+            dlg.open = False
+            page.update()
         dlg = ft.AlertDialog(
             title=ft.Text(tr("delete")),
             content=ft.Text(tr("confirmDeletePlaylist").replace("{}", pname)),

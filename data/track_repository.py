@@ -284,6 +284,19 @@ def _scan_sync(directory_path: str, recursive: bool) -> int:
     return 0
 
 
+def update_art_uri(track_id: int, art_path: Optional[str]):
+    """Update a track's album art URI in the database.
+    
+    Args:
+        track_id: The track's database ID.
+        art_path: New path to the album art image, or None to clear.
+    """
+    conn = get_connection()
+    conn.execute("UPDATE tracks SET art_uri=? WHERE id=?", (art_path, track_id))
+    conn.commit()
+    conn.close()
+
+
 def update_metadata(track_id: int, title: str, artist: str = None, album: str = None):
     """Update a track's metadata in the database.
     
