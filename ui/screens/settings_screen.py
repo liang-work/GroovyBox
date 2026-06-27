@@ -238,11 +238,12 @@ def SettingsScreen(page: ft.Page) -> ft.Column:
     async def export_logs(e):
         """Export application logs to a file."""
         from logic.file_dialog import save_file
-        path = await save_file(page, title="Export logs", default_name="groovybox_logs.txt", extensions=["txt"])
+        from logic.logger import _log_stream
+        log_bytes = _log_stream.getvalue().encode("utf-8")
+        path = await save_file(page, title="Export logs", default_name="groovybox_logs.txt",
+                               extensions=["txt"], src_bytes=log_bytes)
         if path:
-            from logic.logger import export_logs as do_export
             try:
-                do_export(path)
                 page.show_dialog(ft.SnackBar(ft.Text(tr("logsExported", path))))
                 logger.info(f"Logs exported to {path}")
             except Exception as ex:

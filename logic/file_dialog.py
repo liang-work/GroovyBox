@@ -86,31 +86,35 @@ async def save_file(
     title: str = "Save file",
     default_name: str = "file",
     extensions: Optional[List[str]] = None,
+    src_bytes: Optional[bytes] = None,
 ) -> Optional[str]:
-    """Open a save file dialog.
+    """Open a save file dialog and optionally write content.
 
-    On iOS/Android, src_bytes is required; this function does not
-    currently support saving from raw bytes — returns None on mobile.
+    On iOS/Android/Web, src_bytes is required. When provided, the
+    file content is written on all platforms.
 
     Args:
         page: The Flet page instance.
         title: Dialog window title.
         default_name: Default filename suggestion.
         extensions: List of allowed file extensions.
+        src_bytes: File content bytes (required on mobile/web).
 
     Returns:
-        Selected save path, or None if cancelled / unsupported on mobile.
+        Selected save path, or None if cancelled.
     """
     try:
         picker = _get_picker(page)
         file_type = FilePickerFileType.CUSTOM if extensions else FilePickerFileType.ANY
-        path = await picker.save_file(
+        kwargs = dict(
             dialog_title=title,
             file_name=default_name,
             allowed_extensions=extensions,
             file_type=file_type,
         )
-        return path
+        if src_bytes is not None:
+            kwargs["src_bytes"] = src_bytes
+        return await picker.save_file(**kwargs)
     except ValueError as e:
         logger.warning("FilePicker.save_file not supported on this platform: %s", e)
         return None

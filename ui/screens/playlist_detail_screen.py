@@ -90,63 +90,57 @@ class PlaylistDetailView(ft.Container):
     def _show_export_dialog(self):
         """Show the playlist export configuration dialog.
         
-        Allows the user to choose export options:
-        - Use relative paths in M3U
-        - Include lyrics and cover art
-        - Package as ZIP archive
+        Allows the user to choose export options then saves via
+        FilePicker (works on all platforms including mobile/web).
         """
         use_relpath_cb = ft.Checkbox(label=tr("useRelativePaths"), value=False)
         include_lyrics_cb = ft.Checkbox(label=tr("includeLyricsAndCovers"), value=False)
         as_zip_cb = ft.Checkbox(label=tr("packageAsZip"), value=False)
-        path_text = ft.Text("", size=12, color=ft.Colors.with_opacity(0.7, ft.Colors.ON_SURFACE))
 
-        async def pick_path(e):
-            """Open file picker for selecting export destination."""
+        async def do_export(e):
+            """Export to temp file, then save via file picker."""
+            import tempfile
             from logic.file_dialog import save_file
-            ext = ".zip" if as_zip_cb.value else ".m3u"
-            p = await save_file(self._page,
-                title=tr("export"),
-                default_name=f"{self.playlist.name or 'playlist'}{ext}",
-                extensions=["zip" if as_zip_cb.value else "m3u"],
-            )
-            if p:
-                path_text.value = p
-                path_text.update()
+            from logic.playlist_exporter import export_playlist
 
-        def do_export(e):
-            """Execute the playlist export with selected options."""
-            if not path_text.value:
-                return
+            self._page.pop_dialog()
+            suffix = ".zip" if as_zip_cb.value else ".m3u"
+            tmp = tempfile.NamedTemporaryFile(suffix=suffix, delete=False)
+            tmp_path = tmp.name
+            tmp.close()
             try:
-                from logic.playlist_exporter import export_playlist
                 out = export_playlist(
                     self.playlist.id,
-                    path_text.value,
+                    tmp_path,
                     use_relpath=use_relpath_cb.value,
                     include_lyrics=include_lyrics_cb.value,
                     include_covers=include_lyrics_cb.value,
                     as_zip=as_zip_cb.value,
                 )
-                self._page.pop_dialog()
-                self._page.show_dialog(ft.SnackBar(ft.Text(tr("exported").replace("{}", os.path.basename(out)))))
+                with open(out, "rb") as f:
+                    file_bytes = f.read()
+                saved = await save_file(self._page,
+                    title=tr("export"),
+                    default_name=f"{self.playlist.name or 'playlist'}{suffix}",
+                    extensions=["zip" if as_zip_cb.value else "m3u"],
+                    src_bytes=file_bytes,
+                )
+                if saved:
+                    self._page.show_dialog(ft.SnackBar(ft.Text(tr("exported").replace("{}", os.path.basename(saved)))))
             except Exception as ex:
                 logger.error(f"Export failed: {ex}")
-                self._page.show_dialog(ft.SnackBar(ft.Text(f"{tr('error').replace('{}', str(ex))}")))
+                self._page.show_dialog(ft.SnackBar(ft.Text(tr("error", str(ex)))))
+            finally:
+                try:
+                    os.unlink(tmp_path)
+                except Exception:
+                    pass
 
         dlg = ft.AlertDialog(
             title=ft.Text(tr("export")),
             content=ft.Column(
                 tight=True, width=320,
                 controls=[
-                    ft.Row(
-                        tight=True,
-                        controls=[
-                            ft.FilledButton(tr("choosePath"), icon=ft.Icons.FOLDER_OPEN, on_click=pick_path),
-                            ft.Container(expand=True),
-                            path_text,
-                        ],
-                    ),
-                    ft.Container(height=8),
                     use_relpath_cb,
                     include_lyrics_cb,
                     as_zip_cb,
@@ -154,7 +148,7 @@ class PlaylistDetailView(ft.Container):
             ),
             actions=[
                 ft.TextButton(tr("cancel"), on_click=lambda e: self._page.pop_dialog()),
-                ft.FilledButton(tr("export"), on_click=do_export),
+                ft.FilledButton(tr("export"), on_click=lambda e: self._page.run_task(do_export, e)),
             ],
         )
         self._page.show_dialog(dlg)
