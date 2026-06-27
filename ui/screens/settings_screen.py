@@ -5,6 +5,7 @@ music library management, player configuration, theme settings,
 language selection, database management, and log export.
 """
 
+import os
 import flet as ft
 import threading
 from data import db
@@ -54,6 +55,43 @@ def SettingsScreen(page: ft.Page) -> ft.Column:
     def refresh():
         """Refresh the page display."""
         page.update()
+
+    def _build_global_bg_ui():
+        """Build the global background image picker UI."""
+        global_bg_path = db.get_setting("global_bg_path", "")
+        has_bg = bool(global_bg_path) and os.path.isfile(global_bg_path)
+        bg_preview = ft.Container(
+            width=120, height=120, border_radius=12,
+            clip_behavior=ft.ClipBehavior.ANTI_ALIAS,
+            content=ft.Image(src=global_bg_path, fit=ft.BoxFit.COVER,
+                error_content=ft.Icon(ft.Icons.IMAGE, size=40, color=ft.Colors.WHITE54))
+                if has_bg else ft.Icon(ft.Icons.IMAGE, size=40, color=ft.Colors.WHITE54),
+            bgcolor=ft.Colors.with_opacity(0.1, ft.Colors.ON_SURFACE),
+        )
+
+        async def _pick_global_bg(_):
+            from logic.file_dialog import pick_files
+            paths = await pick_files(page, tr("selectImage"),
+                ["jpg", "jpeg", "png", "webp", "bmp"], allow_multiple=False)
+            if paths:
+                db.set_setting("global_bg_path", paths[0])
+                bg_preview.content = ft.Image(src=paths[0], fit=ft.BoxFit.COVER,
+                    error_content=ft.Icon(ft.Icons.IMAGE, size=40))
+                page.update()
+
+        def _clear_global_bg(e):
+            db.set_setting("global_bg_path", "")
+            bg_preview.content = ft.Icon(ft.Icons.IMAGE, size=40, color=ft.Colors.WHITE54)
+            page.update()
+
+        return ft.Column(visible=True, spacing=8, controls=[
+            ft.Row(alignment=ft.MainAxisAlignment.CENTER, controls=[bg_preview]),
+            ft.Row(alignment=ft.MainAxisAlignment.CENTER, controls=[
+                ft.FilledButton(tr("selectImage"), on_click=lambda e: page.run_task(_pick_global_bg, e)),
+                ft.Container(width=12),
+                ft.OutlinedButton(tr("clearImage"), on_click=_clear_global_bg),
+            ]),
+        ])
 
     def on_auto_scan_change(e):
         """Handle auto-scan toggle change."""
@@ -307,6 +345,26 @@ def SettingsScreen(page: ft.Page) -> ft.Column:
                             value=settings["continue_plays"],
                             on_change=on_continue_plays_change,
                         ),
+                        ft.Divider(height=1),
+                        ft.Text(tr("blurBackground"), size=14, weight=ft.FontWeight.BOLD),
+                        ft.Switch(
+                            label=tr("blurBackground"),
+                            value=db.get_setting("blur_background", "true") == "true",
+                            on_change=lambda e: save_setting("blur_background", e.control.value),
+                        ),
+                        ft.Row(
+                            tight=True,
+                            controls=[
+                                ft.Text(tr("blurIntensity"), size=13),
+                                ft.Container(expand=True),
+                                ft.Slider(
+                                    value=int(db.get_setting("blur_intensity", "30")),
+                                    min=1, max=100, divisions=99,
+                                    expand=True,
+                                    on_change=lambda e: save_setting("blur_intensity", str(int(e.control.value))),
+                                ),
+                            ],
+                        ),
                     ],
                 ),
             ),
@@ -343,6 +401,14 @@ def SettingsScreen(page: ft.Page) -> ft.Column:
                                 on_select=on_theme_mode_change,
                             ),
                         ),
+                        ft.Divider(height=1),
+                        ft.Text(tr("globalBackground"), size=14, weight=ft.FontWeight.BOLD),
+                        ft.Switch(
+                            label=tr("hideGlobalBg"),
+                            value=db.get_setting("global_bg_hidden", "false") == "true",
+                            on_change=lambda e: save_setting("global_bg_hidden", e.control.value),
+                        ),
+                        _build_global_bg_ui(),
                     ],
                 ),
             ),

@@ -6,9 +6,11 @@ navigation and import actions, a content area for screen switching,
 and a persistent mini player at the bottom.
 """
 
+import os
 import flet as ft
 from logic.localize import tr
 from logic.logger import logger
+from data import db
 from data.track_repository import AUDIO_EXTENSIONS, LYRICS_EXTENSIONS
 from ui.widgets.mini_player import MiniPlayerWidget
 
@@ -35,7 +37,7 @@ class ShellView(ft.View):
         self.content_view = ft.Column(expand=True, spacing=0)
         self.mini_player = MiniPlayerWidget(page)
 
-        # Assemble the shell layout
+        # Assemble the shell layout with optional global background
         body = ft.Column(
             expand=True,
             spacing=0,
@@ -46,12 +48,29 @@ class ShellView(ft.View):
             ],
         )
 
-        self.controls = [body]
+        bg_wrapper = self._build_global_bg_wrapper(body)
+        self.controls = [bg_wrapper] if bg_wrapper else [body]
 
     @property
     def page(self):
         """Access the Flet page instance."""
         return self._page
+
+    def _build_global_bg_wrapper(self, body):
+        """Wrap body in a container with global background if configured."""
+        path = db.get_setting("global_bg_path", "")
+        hidden = db.get_setting("global_bg_hidden", "false") == "true"
+        if hidden or not path or not os.path.isfile(path):
+            return None
+        return ft.Container(
+            expand=True,
+            image=ft.DecorationImage(src=path, fit=ft.BoxFit.COVER),
+            content=ft.Container(
+                expand=True,
+                bgcolor=ft.Colors.with_opacity(0.65, ft.Colors.SURFACE),
+                content=body,
+            ),
+        )
 
     def refresh_mini_player(self):
         """Force a refresh of the mini player widget."""

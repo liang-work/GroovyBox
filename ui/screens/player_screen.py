@@ -261,23 +261,33 @@ class PlayerScreen(ft.Container):
             self._schedule_initial_lyrics_scroll()
 
     def _build_background(self, track):
-        """Build the blurred album art background.
-        
-        Args:
-            track: The current track with art_uri.
-        
-        Returns:
-            A Stack with album art and semi-transparent overlay.
-        """
-        has_art = track and track.art_uri
+        """Build the player background with optional blur and global fallback."""
+        blur_enabled = db.get_setting("blur_background", "true") == "true"
+        blur_val = int(db.get_setting("blur_intensity", "30"))
+        global_bg = db.get_setting("global_bg_path", "")
+        bg_hidden = db.get_setting("global_bg_hidden", "false") == "true"
+
+        src = None
+        if track and track.art_uri:
+            src = track.art_uri
+        elif global_bg and os.path.isfile(global_bg) and not bg_hidden:
+            src = global_bg
+
         arts = []
-        if has_art:
+        if src:
             arts.append(
                 ft.Container(
                     expand=True,
-                    image=ft.DecorationImage(src=track.art_uri, fit=ft.BoxFit.COVER),
+                    image=ft.DecorationImage(src=src, fit=ft.BoxFit.COVER),
                 )
             )
+            if blur_enabled:
+                arts.append(
+                    ft.Container(
+                        expand=True,
+                        blur=blur_val,
+                    )
+                )
         arts.append(
             ft.Container(
                 expand=True,

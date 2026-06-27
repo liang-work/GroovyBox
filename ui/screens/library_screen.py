@@ -64,6 +64,7 @@ class LibraryScreen(ft.Column):
         nav = ft.NavigationRail(
             selected_index=self.selected_tab,
             on_change=self._on_nav_change,
+            bgcolor=ft.Colors.TRANSPARENT,
             extended=self._page.width > 800,
             destinations=[
                 ft.NavigationRailDestination(icon=ft.Icons.AUDIOTRACK, label=ft.Text(tr("tracks"))),
@@ -81,7 +82,6 @@ class LibraryScreen(ft.Column):
                 nav,
                 ft.Container(
                     expand=True,
-                    bgcolor=ft.Colors.SURFACE,
                     border_radius=ft.border_radius.BorderRadius(16, 0, 0, 0),
                     clip_behavior=ft.ClipBehavior.ANTI_ALIAS,
                     content=content,
