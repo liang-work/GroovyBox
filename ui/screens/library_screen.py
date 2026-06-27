@@ -39,6 +39,8 @@ class LibraryScreen(ft.Column):
         self.selected_ids = set()
         self.search_query = ""
         self.selected_tab = 0
+        self._sel_tile_refs = {}
+        self._sel_count_text = None
         self._build()
 
     def _get_app(self):
@@ -329,6 +331,7 @@ class LibraryScreen(ft.Column):
             )
             self._page.show_dialog(bs)
 
+        self._sel_count_text = ft.Text(f"{sel_count}", size=14, weight=ft.FontWeight.BOLD)
         return ft.Container(
             padding=ft.Padding(8, 4, 8, 4),
             bgcolor=ft.Colors.PRIMARY_CONTAINER,
@@ -336,7 +339,7 @@ class LibraryScreen(ft.Column):
                 tight=True,
                 controls=[
                     ft.IconButton(ft.Icons.CLOSE, icon_size=18, on_click=lambda e: self._exit_selection_mode()),
-                    ft.Text(f"{sel_count}", size=14, weight=ft.FontWeight.BOLD),
+                    self._sel_count_text,
                     ft.Container(expand=True),
                     ft.TextButton(tr("selectAll"), on_click=do_select_all),
                     ft.TextButton(tr("deselectAll"), on_click=do_deselect_all) if all_selected else ft.Container(),
@@ -403,42 +406,63 @@ class LibraryScreen(ft.Column):
 
     def _build_selection_tiles(self, tracks):
         """Build track tiles with checkboxes for multi-select mode.
-        
+
         Args:
             tracks: List of tracks to display.
-        
+
         Returns:
             List of Container widgets with checkboxes.
         """
         tiles = []
+        self._sel_tile_refs.clear()
         for t in tracks:
             is_sel = t.id in self.selected_ids
-            tiles.append(
-                ft.Container(
-                    bgcolor=ft.Colors.with_opacity(0.1, ft.Colors.PRIMARY) if is_sel else ft.Colors.TRANSPARENT,
-                    border_radius=8,
-                    content=ft.Checkbox(
-                        value=is_sel,
-                        label=t.title,
-                        on_change=lambda e, tid=t.id: self._toggle_select(tid),
-                    ),
-                    padding=ft.Padding(16, 4, 16, 4),
-                )
+            checkbox = ft.Checkbox(
+                value=is_sel,
+                label=t.title,
+                on_change=lambda e, tid=t.id: self._toggle_select(tid),
             )
+            container = ft.Container(
+                bgcolor=ft.Colors.with_opacity(0.1, ft.Colors.PRIMARY) if is_sel else ft.Colors.TRANSPARENT,
+                border_radius=8,
+                content=checkbox,
+                padding=ft.Padding(16, 4, 16, 4),
+            )
+            self._sel_tile_refs[t.id] = (container, checkbox)
+            tiles.append(container)
         return tiles
 
     def _toggle_select(self, tid):
         """Toggle selection state for a track.
-        
+
         Args:
             tid: The track ID to toggle.
         """
-        if tid in self.selected_ids:
+        was_empty = not self.selected_ids
+        was_sel = tid in self.selected_ids
+
+        if was_sel:
             self.selected_ids.remove(tid)
         else:
             self.selected_ids.add(tid)
-        self._build()
-        self.update()
+
+        now_empty = not self.selected_ids
+
+        if was_empty or now_empty:
+            # Entering or exiting selection mode → full rebuild
+            self._build()
+            self.update()
+        else:
+            # Stayed in selection mode → update checkbox in-place
+            container, checkbox = self._sel_tile_refs.get(tid, (None, None))
+            if container and checkbox:
+                is_sel = tid in self.selected_ids
+                checkbox.value = is_sel
+                container.bgcolor = ft.Colors.with_opacity(0.1, ft.Colors.PRIMARY) if is_sel else ft.Colors.TRANSPARENT
+                container.update()
+            if self._sel_count_text:
+                self._sel_count_text.value = str(len(self.selected_ids))
+                self._sel_count_text.update()
 
     def _play_track(self, track):
         """Play a single track from the library.
