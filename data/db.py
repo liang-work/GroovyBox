@@ -144,7 +144,8 @@ def init_database():
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             playlist_id INTEGER REFERENCES playlists(id) ON DELETE CASCADE,
             track_id INTEGER REFERENCES tracks(id) ON DELETE CASCADE,
-            added_at TEXT DEFAULT (datetime('now'))
+            added_at TEXT DEFAULT (datetime('now')),
+            sort_order INTEGER DEFAULT 0
         );
 
         CREATE TABLE IF NOT EXISTS watch_folders (
@@ -162,6 +163,11 @@ def init_database():
             value TEXT NOT NULL
         );
     """)
+    # Migration: add sort_order column for databases created before this feature
+    try:
+        conn.execute("ALTER TABLE playlist_entries ADD COLUMN sort_order INTEGER DEFAULT 0")
+    except Exception:
+        pass
     conn.commit()
     conn.close()
 

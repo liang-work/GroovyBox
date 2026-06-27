@@ -204,5 +204,15 @@
   "grantPermission": "Grant Permission",
   "openSettings": "Open Settings",
   "permissionDenied": "Permission Denied",
-  "permissionDeniedMessage": "Media storage permission was denied. Please grant the permission in app settings to use GroovyBox."
+  "permissionDeniedMessage": "Media storage permission was denied. Please grant the permission in app settings to use GroovyBox.",
+  "sort": "Sort",
+  "sortDefault": "Default order",
+  "sortTitleAsc": "Title A-Z",
+  "sortTitleDesc": "Title Z-A",
+  "sortArtist": "Artist A-Z",
+  "sortAlbum": "Album A-Z",
+  "sortDurationAsc": "Duration (shortest first)",
+  "sortDurationDesc": "Duration (longest first)",
+  "reverseOrder": "Reverse current order",
+  "remove": "Remove"
 }

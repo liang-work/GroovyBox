@@ -26,7 +26,7 @@ def watch_all_playlists() -> List[Playlist]:
 
 
 def watch_playlist_tracks(playlist_id: int) -> List[Track]:
-    """Retrieve all tracks in a playlist, ordered by when they were added.
+    """Retrieve all tracks in a playlist, ordered by sort_order then added_at.
     
     Args:
         playlist_id: The playlist's database ID.
@@ -39,11 +39,31 @@ def watch_playlist_tracks(playlist_id: int) -> List[Track]:
         """SELECT t.* FROM tracks t
            JOIN playlist_entries pe ON t.id = pe.track_id
            WHERE pe.playlist_id = ?
-           ORDER BY pe.added_at""",
+           ORDER BY pe.sort_order, pe.added_at""",
         (playlist_id,),
     ).fetchall()
     conn.close()
     return [_row_to_track(r) for r in rows]
+
+
+def set_playlist_track_order(playlist_id: int, track_ids: List[int]):
+    """Update the sort_order for all tracks in a playlist.
+    
+    Each track gets an incrementing sort_order value based on its
+    position in the provided list.
+    
+    Args:
+        playlist_id: The playlist's database ID.
+        track_ids: Track IDs in the desired order.
+    """
+    conn = get_connection()
+    for order, tid in enumerate(track_ids):
+        conn.execute(
+            "UPDATE playlist_entries SET sort_order = ? WHERE playlist_id = ? AND track_id = ?",
+            (order, playlist_id, tid),
+        )
+    conn.commit()
+    conn.close()
 
 
 def find_by_name(name: str) -> int | None:

@@ -205,5 +205,15 @@
   "grantPermission": "授予权限",
   "openSettings": "打开设置",
   "permissionDenied": "权限被拒绝",
-  "permissionDeniedMessage": "媒体存储权限被拒绝。请在应用设置中授予权限以使用 GroovyBox。"
+  "permissionDeniedMessage": "媒体存储权限被拒绝。请在应用设置中授予权限以使用 GroovyBox。",
+  "sort": "排序",
+  "sortDefault": "默认顺序",
+  "sortTitleAsc": "标题 A-Z",
+  "sortTitleDesc": "标题 Z-A",
+  "sortArtist": "艺术家 A-Z",
+  "sortAlbum": "专辑 A-Z",
+  "sortDurationAsc": "时长（从短到长）",
+  "sortDurationDesc": "时长（从长到短）",
+  "reverseOrder": "反转当前顺序",
+  "remove": "移除"
 }
