@@ -1388,7 +1388,7 @@ class PlayerScreen(ft.Container):
     def _on_lyrics_drag_update(self, e):
         """Handle touch drag events for lyrics scrolling."""
         self._lyrics_user_scrolling = True
-        self._lyrics_drag_accum += e.dy
+        self._lyrics_drag_accum += e.local_delta.y
         stride = self._LY_ITEM_H
         while self._lyrics_drag_accum >= stride:
             self._step_lyrics(1)
