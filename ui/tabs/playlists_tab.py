@@ -18,6 +18,9 @@ def build_playlists_list(page: ft.Page, on_open: callable) -> ft.Control:
             name = name_f.value
             page.pop_dialog()
             if name and name.strip():
+                if prepo.find_by_name(name.strip()):
+                    page.show_dialog(ft.SnackBar(ft.Text(tr("playlistExists").replace("{}", name.strip()))))
+                    return
                 prepo.create_playlist(name.strip())
                 page.update()
 

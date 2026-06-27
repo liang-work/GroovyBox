@@ -37,6 +37,9 @@ def PlaylistsScreen(page: ft.Page) -> ft.Control:
             name = name_f.value
             page.pop_dialog()
             if name and name.strip():
+                if prepo.find_by_name(name.strip()):
+                    page.show_dialog(ft.SnackBar(ft.Text(tr("playlistExists").replace("{}", name.strip()))))
+                    return
                 prepo.create_playlist(name.strip())
                 app = page.session.store.get("app")
                 if app:
@@ -106,13 +109,8 @@ def PlaylistsScreen(page: ft.Page) -> ft.Control:
         """Show confirmation dialog for playlist deletion."""
         def confirm_yes(e):
             prepo.delete_playlist(pid)
-            dlg.open = False
-            page.update()
-            app = page.session.store.get("app")
-            if app:
-                app._reload_ui()
-            else:
-                page.update()
+            page.pop_dialog()
+            page.run_task(page.push_route, "/library")
         def confirm_no(e):
             dlg.open = False
             page.update()

@@ -197,6 +197,7 @@
   "hideGlobalBg": "Hide Global Background",
   "blurIntensity": "Blur Intensity",
   "advancedSettings": "Advanced Settings",
+  "playlistExists": "Playlist \"{}\" already exists",
   "confirmDeletePlaylist": "Delete playlist \"{}\" ?",
   "permissionRequired": "Permission Required",
   "permissionMessage": "GroovyBox needs media storage permission to access your music files. Please grant the permission to continue.",

@@ -46,6 +46,15 @@ def watch_playlist_tracks(playlist_id: int) -> List[Track]:
     return [_row_to_track(r) for r in rows]
 
 
+def find_by_name(name: str) -> int | None:
+    conn = get_connection()
+    row = conn.execute(
+        "SELECT id FROM playlists WHERE name = ?", (name,)
+    ).fetchone()
+    conn.close()
+    return row[0] if row else None
+
+
 def create_playlist(name: str) -> int:
     """Create a new playlist.
     

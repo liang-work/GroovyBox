@@ -198,6 +198,7 @@
   "hideGlobalBg": "隐藏全局背景图",
   "blurIntensity": "模糊程度",
   "advancedSettings": "高级设置",
+  "playlistExists": "播放列表\"{}\"已存在",
   "confirmDeletePlaylist": "删除播放列表\"{}\"？",
   "permissionRequired": "需要权限",
   "permissionMessage": "GroovyBox 需要媒体存储权限才能访问您的音乐文件。请授予权限以继续使用。",
