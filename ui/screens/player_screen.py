@@ -1500,7 +1500,7 @@ class PlayerScreen(ft.Container):
         is_desktop = pw > 800
 
         max_w = int(pw * (0.4 if is_desktop else 0.8))
-        text_align = ft.TextAlign.LEFT
+        text_align = ft.TextAlign.CENTER if not is_desktop else ft.TextAlign.LEFT
 
         self._lyrics_widgets = []
         total = len(data.lines)
@@ -1556,8 +1556,8 @@ class PlayerScreen(ft.Container):
             container = ft.Container(
                 key=f"lyric_line_{i}",
                 height=line_h,
-                padding=ft.Padding(32, 0, 24, 0),
-                alignment=ft.Alignment(-1, 0),
+                padding=ft.Padding(28, 0, 28, 0),
+                alignment=ft.Alignment(0, 0),
                 width=max_w,
                 on_click=lambda e, t=line.time_ms: player.seek(t) if t else None,
             )
