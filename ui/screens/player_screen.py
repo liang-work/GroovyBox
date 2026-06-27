@@ -75,6 +75,7 @@ class PlayerScreen(ft.Container):
         self._lyrics_need_initial_scroll = False
         self._lyrics_user_scrolling = False
         self._lyrics_snap_timer = None
+        self._lyrics_programmatic_scroll = False
         self._lyrics_current_idx = 0
         self._last_lyrics_progress = 0.0
 
@@ -1431,19 +1432,43 @@ class PlayerScreen(ft.Container):
         """Clear user scrolling flag to resume auto-tracking."""
         self._lyrics_user_scrolling = False
 
+    def _on_flat_lyrics_scroll(self, e):
+        """Detect user scroll in flat lyrics and schedule snap-back."""
+        if self._lyrics_programmatic_scroll:
+            return
+        self._lyrics_user_scrolling = True
+        self._schedule_snap()
+
+    def _scroll_flat_lyrics_to(self, target_idx, duration=200):
+        """Scroll flat lyrics column to the given line index."""
+        self._lyrics_programmatic_scroll = True
+        column = getattr(self, '_lyrics_flat_column', None)
+        if not column:
+            self._lyrics_programmatic_scroll = False
+            return
+
+        async def _do_scroll():
+            try:
+                await column.scroll_to(index=target_idx, duration=duration)
+            except Exception:
+                pass
+            self._lyrics_programmatic_scroll = False
+
+        self._page.run_task(_do_scroll)
+
     def _schedule_initial_lyrics_scroll(self):
         """Schedule initial scroll to the current lyrics line after build."""
         target_idx = getattr(self, '_last_lyrics_idx', 0)
 
-        async def _do_rebuild():
+        async def _do_scroll():
             await asyncio.sleep(0.15)
             try:
-                self._rebuild_flat_lyrics(target_idx)
+                self._scroll_flat_lyrics_to(target_idx, duration=300)
                 self._lyrics_need_initial_scroll = False
             except Exception:
                 pass
 
-        self._page.run_task(_do_rebuild)
+        self._page.run_task(_do_scroll)
 
     def _build_timed_lyrics(self, data, player, offset, use_curved=False):
         """Build timed lyrics display (curved or flat mode).
@@ -1490,41 +1515,32 @@ class PlayerScreen(ft.Container):
             self._flat_lyrics_player = player
             self._flat_lyrics_max_w = max_w
             self._flat_lyrics_text_align = text_align
+            self._lyrics_player = player
             self._flat_lyrics_current_idx = current_idx
 
-            controls = self._build_flat_lyrics_controls(data, current_idx, current_idx, 0.0, max_w, text_align, player)
+            controls = self._build_flat_lyrics_controls(data, current_idx, 0.0, max_w, text_align, player)
 
             lyrics_column = ft.Column(
                 expand=True,
                 scroll=ft.ScrollMode.AUTO,
+                on_scroll=self._on_flat_lyrics_scroll,
                 alignment=ft.MainAxisAlignment.CENTER,
                 horizontal_alignment=ft.CrossAxisAlignment.CENTER,
                 controls=controls,
             )
             self._lyrics_flat_column = lyrics_column
 
-            switcher = ft.AnimatedSwitcher(
-                content=lyrics_column,
-                transition=ft.AnimatedSwitcherTransition.FADE,
-                duration=200,
-                switch_in_curve=ft.AnimationCurve.EASE_OUT,
-                switch_out_curve=ft.AnimationCurve.EASE_IN,
-                expand=True,
-            )
-            self._flat_lyrics_switcher = switcher
-
             return ft.Container(
                 expand=True,
                 padding=ft.Padding(0, 20, 0, 20),
-                content=switcher,
+                content=lyrics_column,
             )
 
-    def _build_flat_lyrics_controls(self, data, viewport_center, highlight_idx, progress, max_w, text_align, player):
-        """Build flat lyrics line controls with gradient highlighting.
+    def _build_flat_lyrics_controls(self, data, highlight_idx, progress, max_w, text_align, player):
+        """Build ALL lyrics line controls with gradient highlighting.
         
         Args:
             data: LyricsData object.
-            viewport_center: Center line index.
             highlight_idx: Active line index.
             progress: Progress within active line.
             max_w: Maximum width.
@@ -1535,18 +1551,8 @@ class PlayerScreen(ft.Container):
             List of controls for the flat lyrics view.
         """
         line_h = 36
-        half_visible = 5
-        total = len(data.lines)
-        above = min(half_visible, viewport_center)
-        below = min(half_visible, total - 1 - viewport_center)
-        start_idx = viewport_center - above
-        end_idx = viewport_center + below + 1
-
         controls = []
-        controls.append(ft.Container(height=line_h * (half_visible - above + 1)))
-
-        for i in range(start_idx, end_idx):
-            line = data.lines[i]
+        for i, line in enumerate(data.lines):
             container = ft.Container(
                 key=f"lyric_line_{i}",
                 height=line_h,
@@ -1588,8 +1594,6 @@ class PlayerScreen(ft.Container):
                     text_align=text_align,
                 )
             controls.append(container)
-
-        controls.append(ft.Container(height=line_h * (half_visible - below + 1)))
         return controls
 
     def _rebuild_flat_lyrics(self, highlight_idx, progress=0.0):
@@ -1598,24 +1602,16 @@ class PlayerScreen(ft.Container):
         player = getattr(self, '_flat_lyrics_player', None)
         max_w = getattr(self, '_flat_lyrics_max_w', 400)
         text_align = getattr(self, '_flat_lyrics_text_align', ft.TextAlign.LEFT)
-        switcher = getattr(self, '_flat_lyrics_switcher', None)
-        if not data or not player or not switcher:
+        column = getattr(self, '_lyrics_flat_column', None)
+        if not data or not player or not column:
             return
 
         controls = self._build_flat_lyrics_controls(
-            data, highlight_idx, highlight_idx, progress, max_w, text_align, player,
+            data, highlight_idx, progress, max_w, text_align, player,
         )
-        new_column = ft.Column(
-            expand=True,
-            scroll=ft.ScrollMode.AUTO,
-            alignment=ft.MainAxisAlignment.CENTER,
-            horizontal_alignment=ft.CrossAxisAlignment.CENTER,
-            controls=controls,
-        )
-        self._lyrics_flat_column = new_column
-        switcher.content = new_column
+        column.controls = controls
         try:
-            switcher.update()
+            column.update()
         except RuntimeError:
             pass
 
@@ -1671,13 +1667,116 @@ class PlayerScreen(ft.Container):
         if new_idx == self._last_lyrics_idx:
             old_progress = getattr(self, '_last_lyrics_progress', 0.0)
             if abs(progress - old_progress) < 0.02:
+                # Still scroll on initial load even if progress barely changed
+                if getattr(self, '_lyrics_need_initial_scroll', False):
+                    self._scroll_flat_lyrics_to(new_idx)
+                    self._lyrics_need_initial_scroll = False
                 return
-        else:
-            self._last_lyrics_idx = new_idx
-            self._lyrics_current_idx = new_idx
 
+            # Progress-only update on the current highlighted line
+            column = getattr(self, '_lyrics_flat_column', None)
+            max_w = getattr(self, '_flat_lyrics_max_w', 400)
+            text_align = getattr(self, '_flat_lyrics_text_align', ft.TextAlign.LEFT)
+            if column and 0 <= new_idx < len(column.controls):
+                ctrl = column.controls[new_idx]
+                if isinstance(ctrl, ft.Container):
+                    ln = data.lines[new_idx]
+                    text_w = self._estimate_text_width(ln.text, 19)
+                    effective_w = max_w - 56
+                    adj_progress = progress
+                    if text_w > effective_w:
+                        adj_progress = min(1.0, progress * (text_w / effective_w))
+                    scroll_widget = self._build_scrolling_lyric_line(
+                        ln.text, 19, ft.FontWeight.BOLD, ft.Colors.PRIMARY,
+                        effective_w, adj_progress, text_align,
+                    )
+                    ctrl.content = ft.ShaderMask(
+                        shader=ft.LinearGradient(
+                            begin=ft.Alignment(-1, 0),
+                            end=ft.Alignment(1, 0),
+                            colors=[ft.Colors.PRIMARY, ft.Colors.with_opacity(0.5, ft.Colors.ON_SURFACE)],
+                            stops=[adj_progress, adj_progress],
+                        ),
+                        content=scroll_widget,
+                        blend_mode=ft.BlendMode.SRC_IN,
+                    )
+                    try:
+                        ctrl.update()
+                    except RuntimeError:
+                        pass
+                # Scroll on initial load
+                if getattr(self, '_lyrics_need_initial_scroll', False):
+                    self._scroll_flat_lyrics_to(new_idx)
+            self._lyrics_need_initial_scroll = False
+            self._last_lyrics_progress = progress
+            return
+
+        # Line changed — update old and new line in-place
+        old_idx = self._last_lyrics_idx
+        self._last_lyrics_idx = new_idx
+        self._lyrics_current_idx = new_idx
         self._last_lyrics_progress = progress
-        self._rebuild_flat_lyrics(new_idx, progress=progress)
+
+        column = getattr(self, '_lyrics_flat_column', None)
+        max_w = getattr(self, '_flat_lyrics_max_w', 400)
+        text_align = getattr(self, '_flat_lyrics_text_align', ft.TextAlign.LEFT)
+        if column is None:
+            return
+
+        updated = []
+        # Reset old line to normal style
+        if 0 <= old_idx < len(column.controls):
+            old_ctrl = column.controls[old_idx]
+            if isinstance(old_ctrl, ft.Container):
+                old_line = data.lines[old_idx]
+                old_ctrl.content = ft.Text(
+                    old_line.text,
+                    size=16,
+                    weight=ft.FontWeight.NORMAL,
+                    color=ft.Colors.with_opacity(0.7, ft.Colors.ON_SURFACE),
+                    max_lines=1,
+                    overflow=ft.TextOverflow.ELLIPSIS,
+                    text_align=text_align,
+                )
+                updated.append(old_ctrl)
+
+        # Set new line to highlighted style
+        if 0 <= new_idx < len(column.controls):
+            new_ctrl = column.controls[new_idx]
+            if isinstance(new_ctrl, ft.Container):
+                new_line = data.lines[new_idx]
+                text_w = self._estimate_text_width(new_line.text, 19)
+                effective_w = max_w - 56
+                adj_progress = progress
+                if text_w > effective_w:
+                    adj_progress = min(1.0, progress * (text_w / effective_w))
+
+                scroll_widget = self._build_scrolling_lyric_line(
+                    new_line.text, 19, ft.FontWeight.BOLD, ft.Colors.PRIMARY,
+                    effective_w, adj_progress, text_align,
+                )
+                new_ctrl.content = ft.ShaderMask(
+                    shader=ft.LinearGradient(
+                        begin=ft.Alignment(-1, 0),
+                        end=ft.Alignment(1, 0),
+                        colors=[ft.Colors.PRIMARY, ft.Colors.with_opacity(0.5, ft.Colors.ON_SURFACE)],
+                        stops=[adj_progress, adj_progress],
+                    ),
+                    content=scroll_widget,
+                    blend_mode=ft.BlendMode.SRC_IN,
+                )
+                updated.append(new_ctrl)
+
+        for ctrl in updated:
+            try:
+                ctrl.update()
+            except RuntimeError:
+                pass
+
+        # Auto-scroll to current line
+        if column:
+            self._scroll_flat_lyrics_to(new_idx)
+
         self._lyrics_need_initial_scroll = False
 
     def _build_plain_lyrics(self, data):
