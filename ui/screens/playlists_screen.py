@@ -10,7 +10,7 @@ from logic.localize import tr
 from data.models import Playlist
 
 
-def PlaylistsScreen(page: ft.Page) -> ft.Control:
+def PlaylistsScreen(page: ft.Page, on_refresh=None) -> ft.Control:
     """Build the playlists management screen.
     
     Shows a list of all playlists with create and delete options.
@@ -41,11 +41,8 @@ def PlaylistsScreen(page: ft.Page) -> ft.Control:
                     page.show_dialog(ft.SnackBar(ft.Text(tr("playlistExists").replace("{}", name.strip()))))
                     return
                 prepo.create_playlist(name.strip())
-                app = page.session.store.get("app")
-                if app:
-                    app._reload_ui()
-                else:
-                    page.update()
+                if on_refresh:
+                    on_refresh()
 
         bs = ft.BottomSheet(
             content=ft.Container(
@@ -110,7 +107,8 @@ def PlaylistsScreen(page: ft.Page) -> ft.Control:
         def confirm_yes(e):
             prepo.delete_playlist(pid)
             page.pop_dialog()
-            page.run_task(page.push_route, "/library")
+            if on_refresh:
+                on_refresh()
         def confirm_no(e):
             dlg.open = False
             page.update()

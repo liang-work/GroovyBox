@@ -166,7 +166,7 @@ class LibraryScreen(ft.Column):
             return AlbumsByArtistScreen(self._page)
         elif self.selected_tab == 2:
             from ui.screens.playlists_screen import PlaylistsScreen
-            return PlaylistsScreen(self._page)
+            return PlaylistsScreen(self._page, on_refresh=lambda: (self._build(), self.update()))
         else:
             return self._build_tracks_content()
 

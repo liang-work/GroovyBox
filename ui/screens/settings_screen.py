@@ -58,34 +58,25 @@ def SettingsScreen(page: ft.Page) -> ft.Column:
 
     def _build_global_bg_ui():
         """Build the global background image picker UI."""
-        global_bg_path = db.get_setting("global_bg_path", "")
-        has_bg = bool(global_bg_path) and os.path.isfile(global_bg_path)
-        bg_preview = ft.Container(
-            width=120, height=120, border_radius=12,
-            clip_behavior=ft.ClipBehavior.ANTI_ALIAS,
-            content=ft.Image(src=global_bg_path, fit=ft.BoxFit.COVER,
-                error_content=ft.Icon(ft.Icons.IMAGE, size=40, color=ft.Colors.WHITE54))
-                if has_bg else ft.Icon(ft.Icons.IMAGE, size=40, color=ft.Colors.WHITE54),
-            bgcolor=ft.Colors.with_opacity(0.1, ft.Colors.ON_SURFACE),
-        )
-
         async def _pick_global_bg(_):
             from logic.file_dialog import pick_files
             paths = await pick_files(page, tr("selectImage"),
                 ["jpg", "jpeg", "png", "webp", "bmp"], allow_multiple=False)
             if paths:
                 db.set_setting("global_bg_path", paths[0])
-                bg_preview.content = ft.Image(src=paths[0], fit=ft.BoxFit.COVER,
-                    error_content=ft.Icon(ft.Icons.IMAGE, size=40))
                 page.update()
+                app = page.session.store.get("app")
+                if app:
+                    app._reload_ui()
 
         def _clear_global_bg(e):
             db.set_setting("global_bg_path", "")
-            bg_preview.content = ft.Icon(ft.Icons.IMAGE, size=40, color=ft.Colors.WHITE54)
             page.update()
+            app = page.session.store.get("app")
+            if app:
+                app._reload_ui()
 
         return ft.Column(visible=True, spacing=8, controls=[
-            ft.Row(alignment=ft.MainAxisAlignment.CENTER, controls=[bg_preview]),
             ft.Row(alignment=ft.MainAxisAlignment.CENTER, controls=[
                 ft.FilledButton(tr("selectImage"), on_click=lambda e: page.run_task(_pick_global_bg, e)),
                 ft.Container(width=12),
@@ -406,7 +397,7 @@ def SettingsScreen(page: ft.Page) -> ft.Column:
                         ft.Switch(
                             label=tr("hideGlobalBg"),
                             value=db.get_setting("global_bg_hidden", "false") == "true",
-                            on_change=lambda e: save_setting("global_bg_hidden", e.control.value),
+                            on_change=lambda e: (save_setting("global_bg_hidden", e.control.value), page.session.store.get("app") and page.session.store.get("app")._reload_ui()),
                         ),
                         _build_global_bg_ui(),
                     ],
