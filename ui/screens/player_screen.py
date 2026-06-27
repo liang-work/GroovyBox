@@ -237,7 +237,7 @@ class PlayerScreen(ft.Container):
             self._inner.controls = [
                 ft.Container(
                     expand=True,
-                    alignment=ft.Alignment(0, 0),
+                alignment=ft.Alignment(-1, 0),
                     content=ft.Text(tr("noMediaSelected")),
                 )
             ]
@@ -1128,7 +1128,7 @@ class PlayerScreen(ft.Container):
     # Curved lyrics constants
     _LY_HALF = 5          # Number of lines above/below center
     _LY_ARC = 0.45        # Arc rotation intensity
-    _LY_ITEM_H = 44       # Height per lyrics line
+    _LY_ITEM_H = 40       # Height per lyrics line
     _LY_ANIM_MS = 400     # Animation duration in ms
     _LY_ANIM_CURVE = ft.AnimationCurve.EASE_OUT_CUBIC
 
@@ -1213,9 +1213,9 @@ class PlayerScreen(ft.Container):
         if in_window:
             rotate_val = direction * t * arc
             v_pivot = direction * t * 2 if i != current_idx else 0
+            h_off = int(200 * t * t)
             container.rotate = ft.Rotate(rotate_val, ft.Alignment(-1.2, v_pivot))
-            h_off = int(50 * t * t)
-            container.padding = ft.Padding(32 - h_off, 0, 24, 0)
+            container.padding = ft.Padding(28 - h_off, 0, 28, 0)
             container.opacity = 1.0 if i == current_idx else max(0.25, 1.0 - t * 0.6)
         else:
             container.rotate = ft.Rotate(0, ft.Alignment(-1.2, 0))
@@ -1258,7 +1258,7 @@ class PlayerScreen(ft.Container):
             container = ft.Container(
                 height=self._LY_ITEM_H,
                 width=max_w,
-                alignment=ft.Alignment(-1, 0),
+                alignment=ft.Alignment(0, 0),
                 animate_rotation=ft.Animation(self._LY_ANIM_MS, self._LY_ANIM_CURVE),
                 animate_opacity=ft.Animation(self._LY_ANIM_MS, self._LY_ANIM_CURVE),
                 animate_margin=ft.Animation(self._LY_ANIM_MS, self._LY_ANIM_CURVE),
@@ -1500,7 +1500,7 @@ class PlayerScreen(ft.Container):
         is_desktop = pw > 800
 
         max_w = int(pw * (0.4 if is_desktop else 0.8))
-        text_align = ft.TextAlign.CENTER if not is_desktop else ft.TextAlign.LEFT
+        text_align = ft.TextAlign.CENTER
 
         self._lyrics_widgets = []
         total = len(data.lines)
@@ -1550,7 +1550,7 @@ class PlayerScreen(ft.Container):
         Returns:
             List of controls for the flat lyrics view.
         """
-        line_h = 36
+        line_h = 32
         controls = []
         for i, line in enumerate(data.lines):
             container = ft.Container(
