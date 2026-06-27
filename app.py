@@ -67,6 +67,10 @@ class GroovyBoxApp:
         page.on_route_change = self._on_route_change
         page.on_view_pop = self._on_view_pop
 
+        # Track last window size and register resize listener
+        self._last_window_width = page.width
+        page.on_resize = self._on_window_resize
+
         # Configure window properties
         page.title = "GroovyBox"
         try:
@@ -235,6 +239,35 @@ class GroovyBoxApp:
             e: Route change event from the Flet framework.
         """
         self._sync_views()
+
+    def _on_window_resize(self, e):
+        """Handle window resize by notifying the current active screen."""
+        try:
+            current_width = self.page.width
+            if current_width == self._last_window_width:
+                return
+            self._last_window_width = current_width
+            self._notify_active_screen_window_resize()
+        except Exception as ex:
+            logger.warning(f"_on_window_resize failed: {ex}")
+
+    def _notify_active_screen_window_resize(self):
+        """Notify the currently active screen to rebuild after window resize."""
+        try:
+            route = self.page.route
+            if route == "/player" and self.page.views:
+                top = self.page.views[-1]
+                if top.controls and hasattr(top.controls[0], 'on_window_size_changed'):
+                    top.controls[0].on_window_size_changed()
+                return
+            if self.shell and self.shell.content_view.controls:
+                content_screen = self.shell.content_view.controls[0]
+                if hasattr(content_screen, 'on_window_size_changed'):
+                    content_screen.on_window_size_changed()
+                if self.shell and hasattr(self.shell, 'on_window_size_changed'):
+                    self.shell.on_window_size_changed()
+        except Exception as ex:
+            logger.warning(f"_notify_active_screen_window_resize failed: {ex}")
 
     async def _on_view_pop(self, e):
         """Handle back navigation by popping the top view.

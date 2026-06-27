@@ -295,6 +295,10 @@ class MiniPlayerWidget(ft.Container):
         pos = max(0, min(self._position_ms, max_val))
         return float(pos) / float(max_val)
 
+    def on_window_size_changed(self):
+        """Handle window resize by rebuilding the mini player."""
+        self.refresh()
+
     def refresh_position(self, pos_ms: int, dur_ms: int):
         """Update the progress bar position efficiently.
         

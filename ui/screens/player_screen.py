@@ -94,6 +94,11 @@ class PlayerScreen(ft.Container):
         app = self._get_app()
         return app.audio_player if app else None
 
+    def on_window_size_changed(self):
+        """Handle window resize by rebuilding the player screen."""
+        if not self._sync_active:
+            self._rebuild()
+
     def _on_keyboard(self, e: ft.KeyboardEvent):
         """Handle keyboard shortcuts for player control.
         

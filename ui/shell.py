@@ -76,6 +76,11 @@ class ShellView(ft.View):
         """Force a refresh of the mini player widget."""
         self.mini_player.refresh()
 
+    def on_window_size_changed(self):
+        """Handle window resize by refreshing the mini player layout."""
+        if hasattr(self.mini_player, 'on_window_size_changed'):
+            self.mini_player.on_window_size_changed()
+
     def _build_toolbar(self):
         """Build the top toolbar with navigation and import buttons.
         

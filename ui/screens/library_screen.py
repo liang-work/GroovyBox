@@ -47,6 +47,11 @@ class LibraryScreen(ft.Column):
         """Get the application instance from the session store."""
         return self._page.session.store.get("app")
 
+    def on_window_size_changed(self):
+        """Handle window resize by rebuilding the layout."""
+        self._build()
+        self.update()
+
     def _build(self):
         """Build the library screen layout.
         Chooses between large (rail) and mobile (tabs) layout based on width.
