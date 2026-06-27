@@ -13,6 +13,7 @@ import threading
 import queue
 import asyncio
 import os
+from data import db
 import time
 import random
 from typing import Optional, Callable, List
@@ -41,7 +42,7 @@ class AudioPlayer:
         self.current_index = -1
         self.shuffle = False
         self.repeat_mode = "none"
-        self._volume = 0.8
+        self._volume = float(db.get_setting("player_volume", "0.8"))
         self._is_playing = False
         self._position_ms = 0
         self._duration_ms = 0
@@ -549,12 +550,8 @@ class AudioPlayer:
             self._position_ms = position_ms
 
     def set_volume(self, volume: float):
-        """Set the playback volume.
-        
-        Args:
-            volume: Volume level from 0.0 (mute) to 1.0 (max).
-        """
         self._volume = max(0.0, min(1.0, volume))
+        db.set_setting("player_volume", str(round(self._volume, 2)))
         if self._use_pygame:
             self._pygame_send("set_volume", self._volume)
         elif hasattr(self, '_audio'):

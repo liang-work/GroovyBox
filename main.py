@@ -36,9 +36,10 @@ def main(page: ft.Page):
         page: The Flet page object provided by the framework.
     """
     page._file_picker = FilePicker()
+    from data import db
     page._flet_audio = FletAudio(
         autoplay=False,
-        volume=0.8,
+        volume=float(db.get_setting("player_volume", "0.8")),
         release_mode=ReleaseMode.RELEASE,
     )
     page.update()
