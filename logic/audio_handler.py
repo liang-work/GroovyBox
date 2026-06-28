@@ -268,7 +268,7 @@ class AudioPlayer:
     def _fa_on_duration(self, e):
         """Handle duration change event from flet_audio."""
         if e.duration is not None:
-            self._duration_ms = int(e.duration)
+            self._duration_ms = int(e.duration.in_milliseconds())
 
     def _fa_on_position(self, e):
         """Handle position change event from flet_audio."""
@@ -421,7 +421,7 @@ class AudioPlayer:
             self._pygame_send("load_play", path)
         elif hasattr(self, '_audio'):
             self._position_ms = 0
-            self._duration_ms = 0
+            self._duration_ms = self._fa_get_duration(path)
             self._is_playing = False
             self._audio.autoplay = True
             self._audio.src = path
