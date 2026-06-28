@@ -5,11 +5,24 @@ application lifecycle. It manages routing, theme configuration, audio playback
 callbacks, and UI synchronization between screens.
 """
 
+import json
 import flet as ft
 from logic.logger import logger
 from logic.localize import tr, load_locale
 from data import db
 from logic.metadata_service import get_metadata
+
+
+DEFAULT_KEY_BINDINGS = {
+    "play_pause": "Space",
+    "next_track": "N",
+    "prev_track": "B",
+    "volume_up": "Arrow Up",
+    "volume_down": "Arrow Down",
+    "seek_back": "Arrow Left",
+    "seek_forward": "Arrow Right",
+    "exit_player": "Escape",
+}
 
 
 class GroovyBoxApp:
@@ -272,6 +285,19 @@ class GroovyBoxApp:
         except Exception as ex:
             logger.warning(f"_notify_active_screen_window_resize failed: {ex}")
 
+    def _load_key_bindings(self):
+        """Load custom key bindings from database, fall back to defaults."""
+        raw = db.get_setting("key_bindings", "")
+        if raw:
+            try:
+                stored = json.loads(raw)
+                defaults = dict(DEFAULT_KEY_BINDINGS)
+                defaults.update(stored)
+                return defaults
+            except Exception:
+                pass
+        return dict(DEFAULT_KEY_BINDINGS)
+
     def _on_global_keyboard(self, e: ft.KeyboardEvent):
         """Handle global keyboard shortcuts across all screens.
         
@@ -285,41 +311,49 @@ class GroovyBoxApp:
         - Arrow Up/Down: Volume +/-5%
         - Arrow Left/Right: Seek +/-5s
         """
+        # Check if key capture mode is active (from settings)
+        capture_cb = self.page.session.store.get("__key_capture_callback")
+        if capture_cb:
+            capture_cb(e.key)
+            return
+
         player = self.audio_player
         route = self.page.route
+        b = self._load_key_bindings()
 
         try:
+            key = e.key
             # Global shortcuts
-            if e.key in ("Space", " ", "MediaPlayPause"):
+            if key == b.get("play_pause", "Space") or key in (" ", "MediaPlayPause"):
                 if player:
                     player.toggle_play_pause()
                 self.page.update()
-            elif e.key in ("N", "n"):
+            elif key == b.get("next_track", "N"):
                 if player:
                     player.next()
                 self.page.update()
-            elif e.key in ("B", "b"):
+            elif key == b.get("prev_track", "B"):
                 if player:
                     player.previous()
                 self.page.update()
-            elif e.key == "Escape":
+            elif key == b.get("exit_player", "Escape"):
                 if route == "/player":
                     self.page.run_task(self.page.push_route, "/library")
             # Player-screen-only shortcuts (avoid UI conflicts elsewhere)
             elif route == "/player":
-                if e.key == "Arrow Up":
+                if key == b.get("volume_up", "Arrow Up"):
                     if player:
                         player.set_volume(min(1.0, player.volume + 0.05))
                     self.page.update()
-                elif e.key == "Arrow Down":
+                elif key == b.get("volume_down", "Arrow Down"):
                     if player:
                         player.set_volume(max(0.0, player.volume - 0.05))
                     self.page.update()
-                elif e.key == "Arrow Left":
+                elif key == b.get("seek_back", "Arrow Left"):
                     if player:
                         player.seek(max(0, player.position_ms - 5000))
                     self.page.update()
-                elif e.key == "Arrow Right":
+                elif key == b.get("seek_forward", "Arrow Right"):
                     if player:
                         player.seek(min(player.duration_ms, player.position_ms + 5000))
                     self.page.update()

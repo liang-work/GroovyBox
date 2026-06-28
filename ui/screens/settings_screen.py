@@ -5,6 +5,7 @@ music library management, player configuration, theme settings,
 language selection, database management, and log export.
 """
 
+import json
 import os
 import flet as ft
 import threading
@@ -12,6 +13,35 @@ from data import db
 from data import track_repository as trepo
 from logic.localize import tr, load_locale, get_locale
 from logic.logger import logger
+
+
+DEFAULT_KEY_BINDINGS = {
+    "play_pause": "Space",
+    "next_track": "N",
+    "prev_track": "B",
+    "volume_up": "Arrow Up",
+    "volume_down": "Arrow Down",
+    "seek_back": "Arrow Left",
+    "seek_forward": "Arrow Right",
+    "exit_player": "Escape",
+}
+
+ACTION_NAMES = {
+    "play_pause": "playPause",
+    "next_track": "nextTrack",
+    "prev_track": "previousTrack",
+    "volume_up": "volumeUp",
+    "volume_down": "volumeDown",
+    "seek_back": "seekBack",
+    "seek_forward": "seekForward",
+    "exit_player": "exitPlayer",
+}
+
+ACTION_ORDER = [
+    "play_pause", "next_track", "prev_track",
+    "volume_up", "volume_down", "seek_back", "seek_forward",
+    "exit_player",
+]
 
 
 def SettingsScreen(page: ft.Page) -> ft.Column:
@@ -250,6 +280,73 @@ def SettingsScreen(page: ft.Page) -> ft.Column:
                 page.show_dialog(ft.SnackBar(ft.Text(tr("errorExportingLogs", str(ex)))))
                 logger.error(f"Failed to export logs: {ex}")
 
+    # Build interactive hotkey rows for keyboard shortcuts section
+    kd_widgets = {}
+
+    def _build_hotkey_row(ak):
+        kd = ft.Text(
+            bindings.get(ak, DEFAULT_KEY_BINDINGS.get(ak, "?")),
+            size=13, weight=ft.FontWeight.BOLD,
+        )
+        kd_widgets[ak] = kd
+
+        def _on_click(e):
+            if cap[0] is not None:
+                return
+            cap[0] = ak
+            kd.value = "..."
+            kd.update()
+
+            def _on_capture(key):
+                if cap[0] != ak:
+                    return
+                cap[0] = None
+                page.session.store.set("__key_capture_callback", None)
+                if key == "Escape":
+                    kd.value = bindings.get(ak, DEFAULT_KEY_BINDINGS.get(ak, "?"))
+                    kd.update()
+                    return
+                bindings[ak] = key
+                db.set_setting("key_bindings", json.dumps(bindings, ensure_ascii=False))
+                kd.value = key
+                kd.update()
+            page.session.store.set("__key_capture_callback", _on_capture)
+        return ft.Container(
+            content=ft.Row(
+                tight=True,
+                alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
+                controls=[
+                    ft.Text(tr(ACTION_NAMES.get(ak, ak)), size=13, expand=True),
+                    ft.Container(
+                        on_click=_on_click,
+                        padding=ft.Padding(12, 4, 12, 4),
+                        bgcolor=ft.Colors.with_opacity(0.1, ft.Colors.PRIMARY),
+                        border_radius=6,
+                        content=kd,
+                    ),
+                ],
+            ),
+            padding=ft.Padding(0, 3, 0, 3),
+        )
+
+    def _reset_key_bindings(e):
+        bindings.clear()
+        bindings.update(DEFAULT_KEY_BINDINGS)
+        db.set_setting("key_bindings", json.dumps(bindings, ensure_ascii=False))
+        for ak, kd in kd_widgets.items():
+            kd.value = bindings[ak]
+        page.update()
+
+    bindings = dict(DEFAULT_KEY_BINDINGS)
+    raw = db.get_setting("key_bindings", "")
+    if raw:
+        try:
+            bindings.update(json.loads(raw))
+        except:
+            pass
+    cap = [None]
+    hotkey_rows = [_build_hotkey_row(ak) for ak in ACTION_ORDER]
+
     # Build the settings content
     content = ft.Column(
         scroll=ft.ScrollMode.AUTO,
@@ -466,16 +563,19 @@ def SettingsScreen(page: ft.Page) -> ft.Column:
                 padding=16,
                 content=ft.Column(
                     controls=[
-                        ft.Text(tr("keyboardShortcuts"), size=18, weight=ft.FontWeight.BOLD),
+                        ft.Row(
+                            tight=True,
+                            alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
+                            controls=[
+                                ft.Text(tr("keyboardShortcuts"), size=18, weight=ft.FontWeight.BOLD),
+                                ft.IconButton(ft.Icons.RESTART_ALT, tooltip=tr("reset"), on_click=_reset_key_bindings),
+                            ],
+                        ),
                         ft.Container(height=4),
-                        ft.Text("\u2191 \u2193  \u2190 \u2192 \u4ec5\u5728\u5168\u5c4f\u64ad\u653e\u5668\u4e2d\u751f\u6548", size=11, color=ft.Colors.with_opacity(0.6, ft.Colors.ON_SURFACE)),
-                        ft.Container(height=8),
-                        ft.Row(tight=True, controls=[ft.Container(width=80, content=ft.Text("Space", weight=ft.FontWeight.BOLD, size=13)), ft.Text(tr("playPause"), size=13, color=ft.Colors.with_opacity(0.7, ft.Colors.ON_SURFACE))]),
-                        ft.Row(tight=True, controls=[ft.Container(width=80, content=ft.Text("\u2191\u2193", weight=ft.FontWeight.BOLD, size=13)), ft.Text(tr("volumeUp") + " / " + tr("volumeDown"), size=13, color=ft.Colors.with_opacity(0.7, ft.Colors.ON_SURFACE))]),
-                        ft.Row(tight=True, controls=[ft.Container(width=80, content=ft.Text("\u2190\u2192", weight=ft.FontWeight.BOLD, size=13)), ft.Text(tr("seekBack") + " / " + tr("seekForward"), size=13, color=ft.Colors.with_opacity(0.7, ft.Colors.ON_SURFACE))]),
-                        ft.Row(tight=True, controls=[ft.Container(width=80, content=ft.Text("N", weight=ft.FontWeight.BOLD, size=13)), ft.Text(tr("nextTrack"), size=13, color=ft.Colors.with_opacity(0.7, ft.Colors.ON_SURFACE))]),
-                        ft.Row(tight=True, controls=[ft.Container(width=80, content=ft.Text("B", weight=ft.FontWeight.BOLD, size=13)), ft.Text(tr("previousTrack"), size=13, color=ft.Colors.with_opacity(0.7, ft.Colors.ON_SURFACE))]),
-                        ft.Row(tight=True, controls=[ft.Container(width=80, content=ft.Text("Esc", weight=ft.FontWeight.BOLD, size=13)), ft.Text(tr("exitPlayer"), size=13, color=ft.Colors.with_opacity(0.7, ft.Colors.ON_SURFACE))]),
+                        *hotkey_rows,
+                        ft.Container(height=4),
+                        ft.Text("↑ ↓  ← → 仅在全屏播放器中生效。点击按键可自定义快捷键，Esc取消。",
+                            size=11, color=ft.Colors.with_opacity(0.6, ft.Colors.ON_SURFACE)),
                     ],
                 ),
             ),
