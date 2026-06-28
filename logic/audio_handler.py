@@ -193,7 +193,7 @@ class AudioPlayer:
                 self._was_busy = busy
             except Exception:
                 pass
-            time.sleep(0.25)
+            time.sleep(0.1)
 
     def _pygame_get_duration(self, path: str) -> int:
         """Get the duration of an audio file using mutagen.
@@ -250,17 +250,17 @@ class AudioPlayer:
 
     def _start_fa_timer(self):
         """Start the periodic position timer for flet_audio backend."""
-        self._position_timer = threading.Timer(0.25, self._fa_tick)
+        self._position_timer = threading.Timer(0.1, self._fa_tick)
         self._position_timer.start()
 
     def _fa_tick(self):
         """Timer callback that updates position for flet_audio backend."""
         if self._is_playing:
-            self._position_ms += 250
+            self._position_ms += 100
         if self.on_position_change:
             self._call_on_ui(self.on_position_change, self._position_ms)
         if self._timer_active:
-            self._position_timer = threading.Timer(0.25, self._fa_tick)
+            self._position_timer = threading.Timer(0.1, self._fa_tick)
             self._position_timer.start()
 
     def _fa_on_loaded(self, e):

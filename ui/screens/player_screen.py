@@ -1646,7 +1646,7 @@ class PlayerScreen(ft.Container):
 
             if new_idx == self._last_lyrics_idx:
                 old_progress = getattr(self, '_last_lyrics_progress', 0.0)
-                if abs(progress - old_progress) < 0.02:
+                if abs(progress - old_progress) < 0.005:
                     return
             else:
                 self._last_lyrics_idx = new_idx
@@ -1671,7 +1671,7 @@ class PlayerScreen(ft.Container):
 
         if new_idx == self._last_lyrics_idx:
             old_progress = getattr(self, '_last_lyrics_progress', 0.0)
-            if abs(progress - old_progress) < 0.02:
+            if abs(progress - old_progress) < 0.005:
                 # Still scroll on initial load even if progress barely changed
                 if getattr(self, '_lyrics_need_initial_scroll', False):
                     self._scroll_flat_lyrics_to(new_idx)
