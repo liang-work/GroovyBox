@@ -57,6 +57,7 @@ class AudioPlayer:
         self.on_play_state_change: Optional[Callable] = None
         self.on_queue_change: Optional[Callable] = None
         self.on_loading_change: Optional[Callable] = None
+        self.on_missing_tracks: Optional[Callable[[List[str], bool], None]] = None
 
         # Select audio backend based on platform
         self._is_desktop_platform = self._is_desktop()
@@ -372,6 +373,12 @@ class AudioPlayer:
             track: The Track object to play.
         """
         logger.info(f"play_track: {track.title}")
+        if not os.path.exists(track.path):
+            name = track.title or os.path.basename(track.path)
+            logger.warning(f"play_track: file not found - {name}")
+            if self.on_missing_tracks:
+                self._call_on_ui(self.on_missing_tracks, [name], True)
+            return
         self.queue = [track]
         self.current_index = 0
         self._load_current()
@@ -385,9 +392,18 @@ class AudioPlayer:
         """
         if not tracks:
             return
-        logger.info(f"play_tracks: {len(tracks)} tracks, start index={initial_index}")
-        self.queue = list(tracks)
-        self.current_index = initial_index
+        valid = [t for t in tracks if os.path.exists(t.path)]
+        missing = [t for t in tracks if not os.path.exists(t.path)]
+        if missing:
+            names = [t.title or os.path.basename(t.path) for t in missing]
+            logger.warning(f"play_tracks: {len(names)} files not found")
+            if self.on_missing_tracks:
+                self._call_on_ui(self.on_missing_tracks, names, True)
+        if not valid:
+            return
+        logger.info(f"play_tracks: {len(valid)} tracks, start index={initial_index}")
+        self.queue = valid
+        self.current_index = min(initial_index, len(valid) - 1)
         self._load_current()
 
     def _load_current(self):
@@ -404,7 +420,25 @@ class AudioPlayer:
         logger.info(f"_load_current: index={self.current_index} track={track.title}")
         path = track.path
         if not os.path.exists(path):
+            track_name = track.title or os.path.basename(path)
             logger.error(f"File not found: {path}")
+            self._loading = False
+            self._is_playing = False
+            if self.on_loading_change:
+                self._call_on_ui(self.on_loading_change, False)
+            if self.on_play_state_change:
+                self._call_on_ui(self.on_play_state_change, False)
+            if self.on_missing_tracks:
+                self._call_on_ui(self.on_missing_tracks, [track_name], False)
+            # Find next valid track, avoid infinite loop
+            for _ in range(len(self.queue)):
+                self.current_index = (self.current_index + 1) % len(self.queue)
+                nxt = self.queue[self.current_index]
+                if os.path.exists(nxt.path):
+                    self._load_current()
+                    return
+            # All remaining tracks missing
+            self.current_index = -1
             return
 
         self._loading = True

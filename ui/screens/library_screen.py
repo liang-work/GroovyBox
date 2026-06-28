@@ -9,6 +9,7 @@ Supports both desktop (navigation rail) and mobile (tab buttons) layouts.
 Includes batch operations for selected tracks (delete, add to playlist/queue).
 """
 
+import os
 import flet as ft
 from data import track_repository as trepo
 from data import playlist_repository as prepo
@@ -312,8 +313,26 @@ class LibraryScreen(ft.Column):
             selected = [t for t in all_tracks if t.id in self.selected_ids]
             if not selected:
                 return
+            valid = [t for t in selected if os.path.exists(t.path)]
+            missing = [t for t in selected if not os.path.exists(t.path)]
+            if missing:
+                names = [t.title or os.path.basename(t.path) for t in missing]
+                if len(names) == 1:
+                    msg = f"File not found: {names[0]}"
+                else:
+                    preview = ", ".join(names[:3])
+                    extra = f"... (Total {len(names)})" if len(names) > 3 else ""
+                    msg = f"Files not found: {preview}{extra}"
+                dlg = ft.AlertDialog(
+                    title=ft.Text("Error"),
+                    content=ft.Text(msg),
+                    actions=[ft.TextButton("OK", on_click=lambda e: self._page.pop_dialog())],
+                )
+                self._page.show_dialog(dlg)
+            if not valid:
+                return
             start_idx = len(app.audio_player.queue)
-            app.audio_player.queue.extend(selected)
+            app.audio_player.queue.extend(valid)
             if not app.audio_player.is_playing:
                 app.audio_player.current_index = start_idx
                 app.audio_player._load_current()

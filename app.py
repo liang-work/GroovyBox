@@ -6,6 +6,7 @@ callbacks, and UI synchronization between screens.
 """
 
 import json
+from typing import List
 import flet as ft
 from logic.logger import logger
 from logic.localize import tr, load_locale
@@ -61,6 +62,7 @@ class GroovyBoxApp:
         self.audio_player.on_loading_change = self._on_loading_change
         self.audio_player.on_play_state_change = self._on_play_state_change
         self.audio_player.on_position_change = self._on_position_change
+        self.audio_player.on_missing_tracks = self._on_missing_tracks
 
         # Capture the UI event loop for thread-safe callbacks
         page.run_task(self.audio_player.capture_ui_loop)
@@ -175,6 +177,39 @@ class GroovyBoxApp:
             self._call_player_method("refresh_position", pos_ms, dur_ms)
         except Exception as ex:
             logger.warning(f"_on_position_change skipped: {ex}")
+
+    def _on_missing_tracks(self, names: List[str], from_user: bool):
+        """Handle missing track files during playback.
+        
+        Shows an AlertDialog for explicit user actions (play/queue),
+        or a SnackBar for automatic navigation skips.
+        
+        Args:
+            names: List of missing track display names.
+            from_user: True if triggered by explicit user action.
+        """
+        try:
+            if from_user and len(names) > 0:
+                if len(names) == 1:
+                    msg = f"File not found: {names[0]}"
+                else:
+                    preview = ", ".join(names[:3])
+                    extra = f"... (Total {len(names)})" if len(names) > 3 else ""
+                    msg = f"Files not found: {preview}{extra}"
+                dlg = ft.AlertDialog(
+                    title=ft.Text("Error"),
+                    content=ft.Text(msg),
+                    actions=[ft.TextButton("OK", on_click=lambda e: self.page.pop_dialog())],
+                )
+                self.page.show_dialog(dlg)
+                self.page.update()
+            elif not from_user and len(names) == 1:
+                self.page.show_snack_bar(
+                    ft.SnackBar(ft.Text(f"File not found: {names[0]}"), duration=3000)
+                )
+                self.page.update()
+        except Exception as ex:
+            logger.warning(f"_on_missing_tracks failed: {ex}")
 
     def _call_player_method(self, method_name, *args):
         """Call a method on the PlayerScreen if it's the current top view.
