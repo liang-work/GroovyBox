@@ -557,7 +557,7 @@ def SettingsScreen(page: ft.Page) -> ft.Column:
             ),
             # Keyboard Shortcuts Section (desktop layout only)
             ft.Container(
-                visible=page.width > 600,
+                visible=page.platform in (ft.PagePlatform.WINDOWS, ft.PagePlatform.LINUX, ft.PagePlatform.MACOS),
                 bgcolor=ft.Colors.SURFACE_CONTAINER,
                 border_radius=12,
                 padding=16,
