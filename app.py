@@ -71,6 +71,9 @@ class GroovyBoxApp:
         self._last_window_width = page.width
         page.on_resize = self._on_window_resize
 
+        # Global keyboard shortcuts for desktop
+        page.on_keyboard_event = self._on_global_keyboard
+
         # Configure window properties
         page.title = "GroovyBox"
         try:
@@ -269,6 +272,60 @@ class GroovyBoxApp:
         except Exception as ex:
             logger.warning(f"_notify_active_screen_window_resize failed: {ex}")
 
+    def _on_global_keyboard(self, e: ft.KeyboardEvent):
+        """Handle global keyboard shortcuts across all screens.
+        
+        Global shortcuts (work everywhere):
+        - Space: Toggle play/pause
+        - N: Next track
+        - B: Previous track
+        - Escape: Exit player screen
+        
+        Player-screen-only shortcuts:
+        - Arrow Up/Down: Volume +/-5%
+        - Arrow Left/Right: Seek +/-5s
+        """
+        player = self.audio_player
+        route = self.page.route
+
+        try:
+            # Global shortcuts
+            if e.key in ("Space", " ", "MediaPlayPause"):
+                if player:
+                    player.toggle_play_pause()
+                self.page.update()
+            elif e.key in ("N", "n"):
+                if player:
+                    player.next()
+                self.page.update()
+            elif e.key in ("B", "b"):
+                if player:
+                    player.previous()
+                self.page.update()
+            elif e.key == "Escape":
+                if route == "/player":
+                    self.page.run_task(self.page.push_route, "/library")
+            # Player-screen-only shortcuts (avoid UI conflicts elsewhere)
+            elif route == "/player":
+                if e.key == "Arrow Up":
+                    if player:
+                        player.set_volume(min(1.0, player.volume + 0.05))
+                    self.page.update()
+                elif e.key == "Arrow Down":
+                    if player:
+                        player.set_volume(max(0.0, player.volume - 0.05))
+                    self.page.update()
+                elif e.key == "Arrow Left":
+                    if player:
+                        player.seek(max(0, player.position_ms - 5000))
+                    self.page.update()
+                elif e.key == "Arrow Right":
+                    if player:
+                        player.seek(min(player.duration_ms, player.position_ms + 5000))
+                    self.page.update()
+        except Exception as ex:
+            logger.warning(f"_on_global_keyboard failed: {ex}")
+
     async def _on_view_pop(self, e):
         """Handle back navigation by popping the top view.
         
@@ -294,7 +351,6 @@ class GroovyBoxApp:
         - /live-sync: Lyrics sync mode (no-op, handled by player)
         """
         route = self.page.route
-        self.page.on_keyboard_event = None
 
         # Player screen takes full page (no shell)
         if route == "/player":

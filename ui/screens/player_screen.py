@@ -79,8 +79,6 @@ class PlayerScreen(ft.Container):
         self._lyrics_current_idx = 0
         self._last_lyrics_progress = 0.0
 
-        # Register keyboard shortcuts
-        page.on_keyboard_event = self._on_keyboard
         self._initialized = False
         self._rebuild()
         self._initialized = True
@@ -98,38 +96,6 @@ class PlayerScreen(ft.Container):
         """Handle window resize by rebuilding the player screen."""
         if not self._sync_active:
             self._rebuild()
-
-    def _on_keyboard(self, e: ft.KeyboardEvent):
-        """Handle keyboard shortcuts for player control.
-        
-        Shortcuts:
-        - Space: Toggle play/pause
-        - Left Arrow: Seek back 5 seconds
-        - Right Arrow: Seek forward 5 seconds
-        - Up Arrow: Volume up 5%
-        - Down Arrow: Volume down 5%
-        - Escape: Return to library
-        """
-        player = self._get_player()
-        if not player:
-            return
-        if e.key == "Space":
-            player.toggle_play_pause()
-            self._page.update()
-        elif e.key == "Arrow Left":
-            player.seek(max(0, player.position_ms - 5000))
-            self._page.update()
-        elif e.key == "Arrow Right":
-            player.seek(min(player.duration_ms, player.position_ms + 5000))
-            self._page.update()
-        elif e.key == "Arrow Up":
-            player.set_volume(min(1.0, player.volume + 0.05))
-            self._page.update()
-        elif e.key == "Arrow Down":
-            player.set_volume(max(0.0, player.volume - 0.05))
-            self._page.update()
-        elif e.key == "Escape":
-                self._page.run_task(self._page.push_route, "/library")
 
     def cycle_view(self, e=None):
         """Cycle between cover and lyrics view modes."""

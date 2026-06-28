@@ -215,5 +215,14 @@
   "sortDurationAsc": "时长（从短到长）",
   "sortDurationDesc": "时长（从长到短）",
   "reverseOrder": "反转当前顺序",
-  "remove": "移除"
+  "remove": "移除",
+  "keyboardShortcuts": "键盘快捷键",
+  "playPause": "播放 / 暂停",
+  "volumeUp": "增加音量",
+  "volumeDown": "减小音量",
+  "seekBack": "快退",
+  "seekForward": "快进",
+  "nextTrack": "下一曲",
+  "previousTrack": "上一曲",
+  "exitPlayer": "退出播放器"
 }

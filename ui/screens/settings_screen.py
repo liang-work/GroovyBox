@@ -458,6 +458,27 @@ def SettingsScreen(page: ft.Page) -> ft.Column:
                     ],
                 ),
             ),
+            # Keyboard Shortcuts Section (desktop layout only)
+            ft.Container(
+                visible=page.width > 600,
+                bgcolor=ft.Colors.SURFACE_CONTAINER,
+                border_radius=12,
+                padding=16,
+                content=ft.Column(
+                    controls=[
+                        ft.Text(tr("keyboardShortcuts"), size=18, weight=ft.FontWeight.BOLD),
+                        ft.Container(height=4),
+                        ft.Text("\u2191 \u2193  \u2190 \u2192 \u4ec5\u5728\u5168\u5c4f\u64ad\u653e\u5668\u4e2d\u751f\u6548", size=11, color=ft.Colors.with_opacity(0.6, ft.Colors.ON_SURFACE)),
+                        ft.Container(height=8),
+                        ft.Row(tight=True, controls=[ft.Container(width=80, content=ft.Text("Space", weight=ft.FontWeight.BOLD, size=13)), ft.Text(tr("playPause"), size=13, color=ft.Colors.with_opacity(0.7, ft.Colors.ON_SURFACE))]),
+                        ft.Row(tight=True, controls=[ft.Container(width=80, content=ft.Text("\u2191\u2193", weight=ft.FontWeight.BOLD, size=13)), ft.Text(tr("volumeUp") + " / " + tr("volumeDown"), size=13, color=ft.Colors.with_opacity(0.7, ft.Colors.ON_SURFACE))]),
+                        ft.Row(tight=True, controls=[ft.Container(width=80, content=ft.Text("\u2190\u2192", weight=ft.FontWeight.BOLD, size=13)), ft.Text(tr("seekBack") + " / " + tr("seekForward"), size=13, color=ft.Colors.with_opacity(0.7, ft.Colors.ON_SURFACE))]),
+                        ft.Row(tight=True, controls=[ft.Container(width=80, content=ft.Text("N", weight=ft.FontWeight.BOLD, size=13)), ft.Text(tr("nextTrack"), size=13, color=ft.Colors.with_opacity(0.7, ft.Colors.ON_SURFACE))]),
+                        ft.Row(tight=True, controls=[ft.Container(width=80, content=ft.Text("B", weight=ft.FontWeight.BOLD, size=13)), ft.Text(tr("previousTrack"), size=13, color=ft.Colors.with_opacity(0.7, ft.Colors.ON_SURFACE))]),
+                        ft.Row(tight=True, controls=[ft.Container(width=80, content=ft.Text("Esc", weight=ft.FontWeight.BOLD, size=13)), ft.Text(tr("exitPlayer"), size=13, color=ft.Colors.with_opacity(0.7, ft.Colors.ON_SURFACE))]),
+                    ],
+                ),
+            ),
             # About Section
             ft.Container(
                 bgcolor=ft.Colors.SURFACE_CONTAINER,

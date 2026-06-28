@@ -214,5 +214,14 @@
   "sortDurationAsc": "Duration (shortest first)",
   "sortDurationDesc": "Duration (longest first)",
   "reverseOrder": "Reverse current order",
-  "remove": "Remove"
+  "remove": "Remove",
+  "keyboardShortcuts": "Keyboard Shortcuts",
+  "playPause": "Play / Pause",
+  "volumeUp": "Volume Up",
+  "volumeDown": "Volume Down",
+  "seekBack": "Seek Back",
+  "seekForward": "Seek Forward",
+  "nextTrack": "Next Track",
+  "previousTrack": "Previous Track",
+  "exitPlayer": "Exit Player"
 }
