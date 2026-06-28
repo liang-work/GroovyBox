@@ -242,26 +242,22 @@ class AudioPlayer:
         self._audio.volume = self._volume
         self.page.update()
 
-        # Position tracking state
         self._seek_base_ms = 0
         self._timer_active = True
         self._position_timer = None
+        self._fa_tick_thread = None
         self._start_fa_timer()
 
     def _start_fa_timer(self):
-        """Start the periodic position timer for flet_audio backend."""
-        self._position_timer = threading.Timer(0.1, self._fa_tick)
-        self._position_timer.start()
-
-    def _fa_tick(self):
-        """Timer callback that updates position for flet_audio backend."""
-        if self._is_playing:
-            self._position_ms += 100
-        if self.on_position_change:
-            self._call_on_ui(self.on_position_change, self._position_ms)
-        if self._timer_active:
-            self._position_timer = threading.Timer(0.1, self._fa_tick)
-            self._position_timer.start()
+        def _loop():
+            while self._timer_active:
+                if self._is_playing:
+                    self._position_ms += 100
+                if self.on_position_change:
+                    self._call_on_ui(self.on_position_change, self._position_ms)
+                time.sleep(0.1)
+        self._fa_tick_thread = threading.Thread(target=_loop, daemon=True)
+        self._fa_tick_thread.start()
 
     def _fa_on_loaded(self, e):
         """Handle audio loaded event from flet_audio."""
@@ -305,22 +301,14 @@ class AudioPlayer:
     # ======================== No-op backend (fallback) ========================
 
     def _init_noop(self):
-        """Initialize a no-op audio backend when neither flet_audio nor pygame is available.
-
-        Prevents crashes on platforms where neither audio backend works
-        (e.g. iOS without flet_audio support), allowing the UI to display
-        and function normally without playback.
-        """
         self._use_pygame = False
         self._timer_active = True
-        self._noop_timer = threading.Timer(1.0, self._noop_tick)
-        self._noop_timer.start()
+        self._noop_thread = threading.Thread(target=self._noop_loop, daemon=True)
+        self._noop_thread.start()
 
-    def _noop_tick(self):
-        """Periodic tick for no-op backend — keeps the timer alive only."""
-        if self._timer_active:
-            self._noop_timer = threading.Timer(1.0, self._noop_tick)
-            self._noop_timer.start()
+    def _noop_loop(self):
+        while self._timer_active:
+            time.sleep(1.0)
 
     # ======================== Cross-backend helpers ========================
 
@@ -360,11 +348,6 @@ class AudioPlayer:
     # ======================== Public API ========================
 
     def shutdown(self):
-        """Shut down the audio player and release resources.
-        
-        Stops all timers, joins worker threads, and cleans up
-        the audio backend (Pygame mixer or flet_audio control).
-        """
         self._timer_active = False
         if self._use_pygame:
             self._pygame_send("quit")
@@ -375,13 +358,11 @@ class AudioPlayer:
                 pygame.mixer.quit()
             except Exception:
                 pass
-        elif hasattr(self, '_audio') and self._audio is not None:
-            if self._position_timer:
-                self._position_timer.cancel()
+        elif self._fa_tick_thread and self._fa_tick_thread.is_alive():
+            self._fa_tick_thread.join(timeout=1)
             self._audio = None
-        else:
-            if self._noop_timer:
-                self._noop_timer.cancel()
+        elif self._noop_thread and self._noop_thread.is_alive():
+            self._noop_thread.join(timeout=1)
         logger.debug("Audio player shut down")
 
     def play_track(self, track: Track):

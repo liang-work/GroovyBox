@@ -65,12 +65,6 @@ class UniversalImage(ft.Container):
         return uri.startswith("http://") or uri.startswith("https://")
 
     def _build_content(self):
-        """Build the appropriate content based on the URI type.
-        
-        Returns:
-            An Image widget for valid URIs, or a fallback Icon widget.
-        """
-        # Show fallback icon for missing or non-existent local files
         if not self._uri or not os.path.isfile(self._uri):
             return ft.Icon(
                 icon=self._fallback_icon,
@@ -78,24 +72,12 @@ class UniversalImage(ft.Container):
                 color=ft.Colors.WHITE54,
             )
 
-        # Network or local file image
-        if self._is_network(self._uri):
-            return ft.Image(
-                src=self._uri,
-                fit=self._fit,
-                error_content=ft.Icon(
-                    icon=self._fallback_icon,
-                    size=self._fallback_icon_size,
-                    color=ft.Colors.WHITE54,
-                ),
-            )
-        else:
-            return ft.Image(
-                src=self._uri,
-                fit=self._fit,
-                error_content=ft.Icon(
-                    icon=self._fallback_icon,
-                    size=self._fallback_icon_size,
-                    color=ft.Colors.WHITE54,
-                ),
-            )
+        return ft.Image(
+            src=self._uri,
+            fit=self._fit,
+            error_content=ft.Icon(
+                icon=self._fallback_icon,
+                size=self._fallback_icon_size,
+                color=ft.Colors.WHITE54,
+            ),
+        )

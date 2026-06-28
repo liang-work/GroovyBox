@@ -298,7 +298,7 @@ class ShellView(ft.View):
         from data import track_repository as trepo
 
         if not os.path.exists(path):
-            self._page.show_dialog(ft.SnackBar(ft.Text(tr("pathNotFound", path))))
+            self._page.show_snack_bar(ft.SnackBar(ft.Text(tr("pathNotFound", path))))
             return
 
         # Directory: scan for audio files
@@ -306,7 +306,7 @@ class ShellView(ft.View):
             n = await trepo.scan_directory_async(path)
             if n:
                 msg = tr("imported") + f" {n} " + tr("tracks")
-                self._page.show_dialog(ft.SnackBar(ft.Text(msg)))
+                self._page.show_snack_bar(ft.SnackBar(ft.Text(msg)))
             await self._reload_after_import()
             return
 
@@ -323,7 +323,7 @@ class ShellView(ft.View):
             if audio_paths:
                 n = await trepo.import_files_async(audio_paths)
                 msg = tr("imported") + f" {n} " + tr("tracks")
-                self._page.show_dialog(ft.SnackBar(ft.Text(msg)))
+                self._page.show_snack_bar(ft.SnackBar(ft.Text(msg)))
             await self._reload_after_import()
 
         # ZIP archive: extract and import contents
@@ -343,11 +343,11 @@ class ShellView(ft.View):
             msg = tr("imported") + f" {n_audio} " + tr("tracks")
             if lyrics_files:
                 msg += f", {len(lyrics_files)} " + tr("lyricsLines")
-            self._page.show_dialog(ft.SnackBar(ft.Text(msg)))
+            self._page.show_snack_bar(ft.SnackBar(ft.Text(msg)))
             await self._reload_after_import()
 
         else:
-            self._page.show_dialog(ft.SnackBar(ft.Text(tr("unsupportedFileType", ext))))
+            self._page.show_snack_bar(ft.SnackBar(ft.Text(tr("unsupportedFileType", ext))))
 
     async def _import_lyrics_files(self, lyrics_paths):
         """Batch import lyrics files by matching filenames to track titles.
@@ -382,7 +382,7 @@ class ShellView(ft.View):
                 not_matched += 1
         msg = f"Batch import: {matched} matched, {not_matched} not matched"
         logger.info(msg)
-        self._page.show_dialog(ft.SnackBar(ft.Text(msg)))
+        self._page.show_snack_bar(ft.SnackBar(ft.Text(msg)))
 
     async def _reload_after_import(self):
         """Reload the UI after completing an import operation.

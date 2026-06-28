@@ -10,7 +10,6 @@ Includes batch operations for selected tracks (delete, add to playlist/queue).
 """
 
 import flet as ft
-import os as _os
 from data import track_repository as trepo
 from data import playlist_repository as prepo
 from data.models import Track
@@ -18,6 +17,7 @@ from logic.localize import tr
 from logic.metadata_service import format_duration
 from ui.widgets.track_tile import TrackTile
 from ui.widgets.universal_image import UniversalImage
+from ui.widgets.track_actions import show_track_details, show_edit_dialog
 from logic.logger import logger
 
 
@@ -535,7 +535,7 @@ class LibraryScreen(ft.Column):
         """Show playlist selection for batch adding selected tracks."""
         playlists = prepo.watch_all_playlists()
         if not playlists:
-            self._page.show_dialog(ft.SnackBar(ft.Text(tr("noPlaylistsAvailable"))))
+            self._page.show_snack_bar(ft.SnackBar(ft.Text(tr("noPlaylistsAvailable"))))
             return
 
         def pick_pl(e, pl):
@@ -561,144 +561,13 @@ class LibraryScreen(ft.Column):
         self._page.show_dialog(dlg)
 
     def _show_add_to_playlist(self, track):
-        """Show playlist selection for adding a single track.
-        
-        Args:
-            track: The Track to add to a playlist.
-        """
-        playlists = prepo.watch_all_playlists()
-        if not playlists:
-            self._page.show_dialog(ft.SnackBar(ft.Text(tr("noPlaylistsAvailable"))))
-            return
-
-        def pick_pl(e, pl):
-            prepo.add_to_playlist(pl.id, track.id)
-            self._page.pop_dialog()
-
-        dlg = ft.BottomSheet(
-            content=ft.Column(
-                tight=True,
-                controls=[
-                    ft.Text(tr("addToPlaylist"), size=18, weight=ft.FontWeight.BOLD),
-                    *[ft.ListTile(title=ft.Text(p.name), on_click=lambda e, pl=p: pick_pl(e, pl)) for p in playlists],
-                ],
-            ),
-        )
-        self._page.show_dialog(dlg)
+        from ui.widgets.track_actions import show_add_to_playlist
+        show_add_to_playlist(self._page, track)
 
     def _show_track_details(self, track):
-        """Show detailed information about a track.
-        
-        Args:
-            track: The Track to display details for.
-        """
-        file_size = tr("unknown")
-        try:
-            if _os.path.isfile(track.path):
-                sz = _os.path.getsize(track.path) / (1024 * 1024)
-                file_size = f"{sz:.2f} MB"
-        except Exception:
-            pass
-
-        rows = [
-            self._detail_row(tr("title"), track.title),
-            self._detail_row(tr("artist"), track.artist or "Unknown"),
-            self._detail_row(tr("album"), track.album or "Unknown"),
-            self._detail_row(tr("duration"), format_duration(track.duration)),
-            self._detail_row(tr("fileSize"), file_size),
-            self._detail_row(tr("filePath"), track.path),
-        ]
-
-        dlg = ft.AlertDialog(
-            title=ft.Text(tr("trackDetails")),
-            content=ft.Column(tight=True, controls=rows),
-            actions=[ft.TextButton(tr("close"), on_click=lambda e: self._page.pop_dialog())],
-        )
-        self._page.show_dialog(dlg)
+        show_track_details(self._page, track)
 
     def _show_edit_dialog(self, track):
-        """Show dialog for editing track metadata."""
-        import shutil
-        from data.db import get_app_dir
+        show_edit_dialog(self._page, track, on_saved=lambda: (self._build(), self.update()))
 
-        tf = ft.TextField(label=tr("title"), value=track.title)
-        af = ft.TextField(label=tr("artist"), value=track.artist or "")
-        alf = ft.TextField(label=tr("album"), value=track.album or "")
 
-        new_art_path = [track.art_uri]
-
-        def _build_cover_content(src):
-            if src:
-                return ft.Image(src=src, fit=ft.BoxFit.COVER,
-                    error_content=ft.Icon(ft.Icons.ALBUM, size=48, color=ft.Colors.WHITE54))
-            return ft.Icon(ft.Icons.ALBUM, size=48, color=ft.Colors.WHITE54)
-
-        cover_img = ft.Container(
-            width=120, height=120,
-            border_radius=12,
-            clip_behavior=ft.ClipBehavior.ANTI_ALIAS,
-            content=_build_cover_content(track.art_uri),
-            bgcolor=ft.Colors.with_opacity(0.1, ft.Colors.ON_SURFACE),
-        )
-
-        async def pick_cover(_):
-            from logic.file_dialog import pick_files
-            paths = await pick_files(self._page, tr("importCover"), ["jpg", "jpeg", "png", "webp", "bmp"], allow_multiple=False)
-            if not paths:
-                return
-            src = paths[0]
-            art_dir = _os.path.join(get_app_dir(), "art")
-            _os.makedirs(art_dir, exist_ok=True)
-            ext = _os.path.splitext(src)[1] or ".jpg"
-            dst = _os.path.join(art_dir, f"cover_{track.id}{ext}")
-            shutil.copy2(src, dst)
-            new_art_path[0] = dst
-            cover_img.content = _build_cover_content(dst)
-            self._page.update()
-
-        def remove_cover(e):
-            new_art_path[0] = None
-            cover_img.content = _build_cover_content(None)
-            self._page.update()
-
-        def save(e):
-            trepo.update_metadata(track.id, tf.value, af.value or None, alf.value or None)
-            trepo.update_art_uri(track.id, new_art_path[0])
-            self._page.pop_dialog()
-            self._build()
-            self.update()
-
-        dlg = ft.AlertDialog(
-            title=ft.Text(tr("editMetadata")),
-            content=ft.Column(tight=True, width=320, controls=[
-                ft.Row(alignment=ft.MainAxisAlignment.CENTER, controls=[cover_img]),
-                ft.Row(alignment=ft.MainAxisAlignment.CENTER, controls=[
-                    ft.TextButton(tr("changeCover"), on_click=lambda e: self._page.run_task(pick_cover, e)),
-                    ft.TextButton(tr("removeCover"), on_click=remove_cover),
-                ]),
-                tf, af, alf,
-            ]),
-            actions=[
-                ft.TextButton(tr("cancel"), on_click=lambda e: self._page.pop_dialog()),
-                ft.FilledButton(tr("save"), on_click=save),
-            ],
-        )
-        self._page.show_dialog(dlg)
-
-    def _detail_row(self, label, value):
-        """Create a label-value row for the details dialog.
-        
-        Args:
-            label: The label text.
-            value: The value text.
-        
-        Returns:
-            A Row widget with label and value.
-        """
-        return ft.Row(
-            tight=True,
-            controls=[
-                ft.Container(width=100, content=ft.Text(label + ":", weight=ft.FontWeight.BOLD)),
-                ft.Container(expand=True, content=ft.Text(str(value), color=ft.Colors.with_opacity(0.7, ft.Colors.ON_SURFACE))),
-            ],
-        )

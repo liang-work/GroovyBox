@@ -1,17 +1,14 @@
 """Logging Module for GroovyBox.
-
-This module provides a centralized logging system with configurable
-log levels and the ability to export logs to a file. Supports both
-console output and in-memory log capture for export.
 """
 
 import logging
-import io
+from collections import deque
 
-# In-memory stream to capture log messages for export
-_log_stream = io.StringIO()
 
-# Mapping of user-friendly log level names to Python logging levels
+_MAX_LOG_LINES = 5000
+
+_log_buffer = deque(maxlen=_MAX_LOG_LINES)
+
 LEVEL_MAP = {
     "verbose": logging.DEBUG,
     "normal": logging.INFO,
@@ -20,18 +17,18 @@ LEVEL_MAP = {
 }
 
 
+class _CircularBufferHandler(logging.Handler):
+    """Handler that stores log records in a fixed-size circular buffer."""
+
+    def __init__(self, maxlen: int = _MAX_LOG_LINES):
+        super().__init__()
+        self.buffer = deque(maxlen=maxlen)
+
+    def emit(self, record: logging.LogRecord):
+        self.buffer.append(self.format(record))
+
+
 def _setup_logger():
-    """Initialize and configure the application logger.
-    
-    Creates a logger named "GroovyBox" with two handlers:
-    - StreamHandler: Outputs to console (stderr)
-    - StringHandler: Captures to in-memory buffer for export
-    
-    Both handlers use a timestamped format: [HH:MM:SS] LEVEL - message
-    
-    Returns:
-        The configured logging.Logger instance.
-    """
     logger = logging.getLogger("GroovyBox")
     logger.setLevel(logging.DEBUG)
 
@@ -39,29 +36,21 @@ def _setup_logger():
         "[%(asctime)s] %(levelname)s - %(message)s", datefmt="%H:%M:%S"
     )
 
-    # Console handler for real-time output
     ch = logging.StreamHandler()
     ch.setFormatter(formatter)
     logger.addHandler(ch)
 
-    # In-memory handler for log export
-    sh = logging.StreamHandler(_log_stream)
-    sh.setFormatter(formatter)
-    logger.addHandler(sh)
+    bh = _CircularBufferHandler(_MAX_LOG_LINES)
+    bh.setFormatter(formatter)
+    logger.addHandler(bh)
 
     return logger
 
 
-# Global logger instance used throughout the application
 logger = _setup_logger()
 
 
 def set_log_level(level_name: str):
-    """Set the application log level.
-    
-    Args:
-        level_name: One of "verbose", "normal", "errors_warnings", or "errors_only".
-    """
     lvl = LEVEL_MAP.get(level_name, logging.INFO)
     logger.setLevel(lvl)
     for h in logger.handlers:
@@ -70,13 +59,11 @@ def set_log_level(level_name: str):
 
 
 def export_logs(path: str):
-    """Export captured log messages to a text file.
-    
-    Writes all log messages captured since application start to the
-    specified file path.
-    
-    Args:
-        path: Absolute path for the output log file.
-    """
+    for h in logger.handlers:
+        if isinstance(h, _CircularBufferHandler):
+            lines = list(h.buffer)
+            break
+    else:
+        lines = []
     with open(path, "w", encoding="utf-8") as f:
-        f.write(_log_stream.getvalue())
+        f.write("\n".join(lines))

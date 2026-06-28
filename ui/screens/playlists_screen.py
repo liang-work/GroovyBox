@@ -38,7 +38,7 @@ def PlaylistsScreen(page: ft.Page, on_refresh=None) -> ft.Control:
             page.pop_dialog()
             if name and name.strip():
                 if prepo.find_by_name(name.strip()):
-                    page.show_dialog(ft.SnackBar(ft.Text(tr("playlistExists").replace("{}", name.strip()))))
+                    page.show_snack_bar(ft.SnackBar(ft.Text(tr("playlistExists").replace("{}", name.strip()))))
                     return
                 prepo.create_playlist(name.strip())
                 if on_refresh:

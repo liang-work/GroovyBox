@@ -13,35 +13,7 @@ from data import db
 from data import track_repository as trepo
 from logic.localize import tr, load_locale, get_locale
 from logic.logger import logger
-
-
-DEFAULT_KEY_BINDINGS = {
-    "play_pause": "Space",
-    "next_track": "N",
-    "prev_track": "B",
-    "volume_up": "Arrow Up",
-    "volume_down": "Arrow Down",
-    "seek_back": "Arrow Left",
-    "seek_forward": "Arrow Right",
-    "exit_player": "Escape",
-}
-
-ACTION_NAMES = {
-    "play_pause": "playPause",
-    "next_track": "nextTrack",
-    "prev_track": "previousTrack",
-    "volume_up": "volumeUp",
-    "volume_down": "volumeDown",
-    "seek_back": "seekBack",
-    "seek_forward": "seekForward",
-    "exit_player": "exitPlayer",
-}
-
-ACTION_ORDER = [
-    "play_pause", "next_track", "prev_track",
-    "volume_up", "volume_down", "seek_back", "seek_forward",
-    "exit_player",
-]
+from logic.key_bindings import DEFAULT_KEY_BINDINGS, ACTION_NAMES, ACTION_ORDER
 
 
 def SettingsScreen(page: ft.Page) -> ft.Column:
@@ -129,7 +101,7 @@ def SettingsScreen(page: ft.Page) -> ft.Column:
         lang = e.control.value
         load_locale(lang)
         db.set_setting("language", lang)
-        page.show_dialog(ft.SnackBar(ft.Text(tr("language") + ": " + lang)))
+        page.show_snack_bar(ft.SnackBar(ft.Text(tr("language") + ": " + lang)))
         if app:
             app._reload_ui()
 
@@ -154,33 +126,28 @@ def SettingsScreen(page: ft.Page) -> ft.Column:
             app.page.update()
 
     async def add_library(e):
-        """Add a new music library watch folder."""
         from logic.file_dialog import pick_directory
         path = await pick_directory(page, title="Select music library folder")
         if path:
             import os
             name = os.path.basename(path)
-            conn = db.get_connection()
             try:
-                conn.execute(
-                    "INSERT OR IGNORE INTO watch_folders (path, name, recursive, is_active) VALUES (?, ?, 1, 1)",
-                    (path, name),
-                )
-                conn.commit()
+                with db.get_connection() as conn:
+                    conn.execute(
+                        "INSERT OR IGNORE INTO watch_folders (path, name, recursive, is_active) VALUES (?, ?, 1, 1)",
+                        (path, name),
+                    )
+                    conn.commit()
                 trepo.scan_directory(path, recursive=True, callback=lambda: page.update())
             except Exception as ex:
-                page.show_dialog(ft.SnackBar(ft.Text(f"Error: {ex}")))
-            finally:
-                conn.close()
+                page.show_snack_bar(ft.SnackBar(ft.Text(f"Error: {ex}")))
             refresh()
 
     def scan_libraries(e):
-        """Manually trigger a scan of all active watch folders."""
-        conn = db.get_connection()
-        folders = conn.execute("SELECT * FROM watch_folders WHERE is_active=1").fetchall()
-        conn.close()
+        with db.get_connection() as conn:
+            folders = conn.execute("SELECT * FROM watch_folders WHERE is_active=1").fetchall()
         if not folders:
-            page.show_dialog(ft.SnackBar(ft.Text("No active libraries")))
+            page.show_snack_bar(ft.SnackBar(ft.Text("No active libraries")))
             page.update()
             return
 
@@ -189,7 +156,7 @@ def SettingsScreen(page: ft.Page) -> ft.Column:
                 trepo.scan_directory(f["path"], recursive=True, callback=lambda: page.update())
 
         threading.Thread(target=do_scan, daemon=True).start()
-        page.show_dialog(ft.SnackBar(ft.Text(tr("librariesScannedSuccessfully"))))
+        page.show_snack_bar(ft.SnackBar(ft.Text(tr("librariesScannedSuccessfully"))))
         page.update()
 
     def reset_database(e):
@@ -197,7 +164,7 @@ def SettingsScreen(page: ft.Page) -> ft.Column:
         def confirm_yes(e):
             trepo.clear_all_tracks()
             page.pop_dialog()
-            page.show_dialog(ft.SnackBar(ft.Text(tr("trackDatabaseReset"))))
+            page.show_snack_bar(ft.SnackBar(ft.Text(tr("trackDatabaseReset"))))
             refresh()
 
         def confirm_no(e):
@@ -214,10 +181,8 @@ def SettingsScreen(page: ft.Page) -> ft.Column:
         )
         page.show_dialog(dlg)
 
-    # Build libraries list from database
-    conn = db.get_connection()
-    folders = conn.execute("SELECT * FROM watch_folders ORDER BY added_at").fetchall()
-    conn.close()
+    with db.get_connection() as conn:
+        folders = conn.execute("SELECT * FROM watch_folders ORDER BY added_at").fetchall()
 
     lib_tiles = []
     for f in folders:
@@ -242,19 +207,15 @@ def SettingsScreen(page: ft.Page) -> ft.Column:
         )
 
     def _toggle_folder(fid, active):
-        """Toggle a watch folder's active status."""
-        conn = db.get_connection()
-        conn.execute("UPDATE watch_folders SET is_active=? WHERE id=?", (int(active), fid))
-        conn.commit()
-        conn.close()
+        with db.get_connection() as conn:
+            conn.execute("UPDATE watch_folders SET is_active=? WHERE id=?", (int(active), fid))
+            conn.commit()
         refresh()
 
     def _delete_folder(fid):
-        """Delete a watch folder from the database."""
-        conn = db.get_connection()
-        conn.execute("DELETE FROM watch_folders WHERE id=?", (fid,))
-        conn.commit()
-        conn.close()
+        with db.get_connection() as conn:
+            conn.execute("DELETE FROM watch_folders WHERE id=?", (fid,))
+            conn.commit()
         refresh()
 
     def _set_log_level(e):
@@ -266,19 +227,30 @@ def SettingsScreen(page: ft.Page) -> ft.Column:
         refresh()
 
     async def export_logs(e):
-        """Export application logs to a file."""
         from logic.file_dialog import save_file
-        from logic.logger import _log_stream
-        log_bytes = _log_stream.getvalue().encode("utf-8")
-        path = await save_file(page, title="Export logs", default_name="groovybox_logs.txt",
-                               extensions=["txt"], src_bytes=log_bytes)
-        if path:
+        from logic.logger import export_logs as _export_logs
+        import tempfile
+        tmp = tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False, encoding="utf-8")
+        tmp_path = tmp.name
+        tmp.close()
+        try:
+            _export_logs(tmp_path)
+            with open(tmp_path, "rb") as f:
+                log_bytes = f.read()
+            saved = await save_file(page, title="Export logs", default_name="groovybox_logs.txt",
+                                   extensions=["txt"], src_bytes=log_bytes)
+            if saved:
+                page.show_snack_bar(ft.SnackBar(ft.Text(tr("logsExported", saved))))
+                logger.info(f"Logs exported to {saved}")
+        except Exception as ex:
+            page.show_snack_bar(ft.SnackBar(ft.Text(tr("errorExportingLogs", str(ex)))))
+            logger.error(f"Failed to export logs: {ex}")
+        finally:
             try:
-                page.show_dialog(ft.SnackBar(ft.Text(tr("logsExported", path))))
-                logger.info(f"Logs exported to {path}")
-            except Exception as ex:
-                page.show_dialog(ft.SnackBar(ft.Text(tr("errorExportingLogs", str(ex)))))
-                logger.error(f"Failed to export logs: {ex}")
+                import os
+                os.unlink(tmp_path)
+            except Exception:
+                pass
 
     # Build interactive hotkey rows for keyboard shortcuts section
     kd_widgets = {}

@@ -89,61 +89,10 @@ class MiniPlayerWidget(ft.Container):
             app.audio_player.repeat_mode = modes[idx]
             self.refresh()
 
-    def _repeat_color(self):
-        """Get the appropriate color for the repeat button based on state."""
-        app = self._page.session.store.get("app")
-        mode = app.audio_player.repeat_mode if app and app.audio_player else "none"
-        if mode in ("one", "all"):
-            return ft.Colors.PRIMARY
-        return ft.Colors.with_opacity(0.4, ft.Colors.ON_SURFACE)
-
-    def _shuffle_color(self):
-        """Get the appropriate color for the shuffle button based on state."""
-        app = self._page.session.store.get("app")
-        if app and app.audio_player and app.audio_player.shuffle:
-            return ft.Colors.PRIMARY
-        return ft.Colors.with_opacity(0.4, ft.Colors.ON_SURFACE)
-
-    # Play mode cycle: (shuffle, repeat_mode) pairs
-    _PLAY_MODE_CYCLE = [
-        (False, "all"),    # List repeat
-        (False, "one"),    # Single repeat
-        (True,  "none"),   # Shuffle
-        (False, "none"),   # Sequential
-    ]
-
     def _cycle_play_mode(self):
-        """Cycle through play modes: list repeat -> single repeat -> shuffle -> sequential."""
-        app = self._page.session.store.get("app")
-        if not app or not app.audio_player:
-            return
-        player = app.audio_player
-        current = (player.shuffle, player.repeat_mode or "none")
-        try:
-            idx = (self._PLAY_MODE_CYCLE.index(current) + 1) % len(self._PLAY_MODE_CYCLE)
-        except ValueError:
-            idx = 0
-        player.shuffle, player.repeat_mode = self._PLAY_MODE_CYCLE[idx]
+        from logic.play_mode import cycle_play_mode
+        cycle_play_mode(self._page)
         self.refresh()
-
-    def _get_play_mode_icon(self):
-        """Get the icon and color for the current play mode.
-        
-        Returns:
-            Tuple of (icon_name, color) for the play mode button.
-        """
-        app = self._page.session.store.get("app")
-        if not app or not app.audio_player:
-            return ft.Icons.REPEAT, ft.Colors.with_opacity(0.4, ft.Colors.ON_SURFACE)
-        player = app.audio_player
-        if player.shuffle:
-            return ft.Icons.SHUFFLE, ft.Colors.PRIMARY
-        mode = player.repeat_mode or "none"
-        if mode == "one":
-            return ft.Icons.REPEAT_ONE, ft.Colors.PRIMARY
-        if mode == "all":
-            return ft.Icons.REPEAT, ft.Colors.PRIMARY
-        return ft.Icons.REPEAT, ft.Colors.with_opacity(0.4, ft.Colors.ON_SURFACE)
 
     def _open_queue(self, e):
         """Show the playback queue in a bottom sheet.
@@ -393,7 +342,8 @@ class MiniPlayerWidget(ft.Container):
         
         Layout: Progress bar + [Art | Title/Artist | PlayMode | Play | Queue]
         """
-        _pm_icon, _pm_color = self._get_play_mode_icon()
+        from logic.play_mode import get_play_mode_icon
+        _pm_icon, _pm_color = get_play_mode_icon(self._page)
         return ft.Container(
             height=self.height,
             padding=ft.Padding(0, 0, 0, self._page.padding.bottom if self._page.padding else 0),
@@ -409,7 +359,6 @@ class MiniPlayerWidget(ft.Container):
                         content=ft.Row(
                             tight=True,
                             controls=[
-                                # Album art thumbnail
                                 ft.Container(
                                     width=48, height=48,
                                     border_radius=8,
@@ -418,7 +367,6 @@ class MiniPlayerWidget(ft.Container):
                                     bgcolor=ft.Colors.with_opacity(0.3, ft.Colors.GREY),
                                     margin=ft.Margin(left=8, top=0, right=0, bottom=0),
                                 ),
-                                # Track info
                                 ft.Container(
                                     expand=True,
                                     padding=ft.Padding(8, 0, 8, 0),
@@ -430,7 +378,6 @@ class MiniPlayerWidget(ft.Container):
                                         ],
                                     ),
                                 ),
-                                # Play mode, play, and queue buttons
                                 ft.IconButton(_pm_icon, icon_size=20, icon_color=_pm_color, on_click=lambda _: self._cycle_play_mode()),
                                 ft.Container(
                                     padding=ft.Padding(2, 0, 2, 0),
@@ -449,7 +396,8 @@ class MiniPlayerWidget(ft.Container):
         
         Layout: Progress bar + [Art/Title | PlayMode/Prev/Play/Next/Queue | Volume]
         """
-        _pm_icon, _pm_color = self._get_play_mode_icon()
+        from logic.play_mode import get_play_mode_icon
+        _pm_icon, _pm_color = get_play_mode_icon(self._page)
         return ft.Container(
             height=self.height,
             padding=ft.Padding(0, 0, 0, self._page.padding.bottom if self._page.padding else 0),
@@ -465,7 +413,6 @@ class MiniPlayerWidget(ft.Container):
                         content=ft.Row(
                             tight=True,
                             controls=[
-                                # Track info section
                                 ft.Container(
                                     expand=3,
                                     content=ft.Row(
@@ -493,7 +440,6 @@ class MiniPlayerWidget(ft.Container):
                                         ],
                                     ),
                                 ),
-                                # Playback controls section
                                 ft.Container(
                                     expand=5,
                                     content=ft.Row(
@@ -511,7 +457,6 @@ class MiniPlayerWidget(ft.Container):
                                         ],
                                     ),
                                 ),
-                                # Volume control section
                                 ft.Container(
                                     expand=2,
                                     content=ft.Row(

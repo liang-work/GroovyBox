@@ -292,10 +292,10 @@ class PlaylistDetailView(ft.Container):
                     src_bytes=file_bytes,
                 )
                 if saved:
-                    self._page.show_dialog(ft.SnackBar(ft.Text(tr("exported").replace("{}", os.path.basename(saved)))))
+                    self._page.show_snack_bar(ft.SnackBar(ft.Text(tr("exported").replace("{}", os.path.basename(saved)))))
             except Exception as ex:
                 logger.error(f"Export failed: {ex}")
-                self._page.show_dialog(ft.SnackBar(ft.Text(tr("error", str(ex)))))
+                self._page.show_snack_bar(ft.SnackBar(ft.Text(tr("error", str(ex)))))
             finally:
                 try:
                     os.unlink(tmp_path)

@@ -11,18 +11,7 @@ from logic.logger import logger
 from logic.localize import tr, load_locale
 from data import db
 from logic.metadata_service import get_metadata
-
-
-DEFAULT_KEY_BINDINGS = {
-    "play_pause": "Space",
-    "next_track": "N",
-    "prev_track": "B",
-    "volume_up": "Arrow Up",
-    "volume_down": "Arrow Down",
-    "seek_back": "Arrow Left",
-    "seek_forward": "Arrow Right",
-    "exit_player": "Escape",
-}
+from logic.key_bindings import DEFAULT_KEY_BINDINGS
 
 
 class GroovyBoxApp:

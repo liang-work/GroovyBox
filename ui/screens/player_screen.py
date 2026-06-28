@@ -16,6 +16,7 @@ import threading
 from logic.localize import tr
 from logic.lyrics_parser import lyrics_from_json, lyrics_to_json
 from logic.metadata_service import format_duration
+from logic.play_mode import cycle_play_mode
 from data import db
 from data import track_repository as trepo
 from logic.logger import logger
@@ -377,12 +378,13 @@ class PlayerScreen(ft.Container):
             on_click=lambda e: player.toggle_play_pause(),
             bgcolor=ft.Colors.PRIMARY_CONTAINER,
         )
-        _pm_icon, _pm_color = _get_play_mode_icon(self._page)
+        from logic.play_mode import get_play_mode_icon as _gpm
+        _pm_icon, _pm_color = _gpm(self._page)
         ctrl_row = ft.Row(
             tight=True,
             alignment=ft.MainAxisAlignment.CENTER,
             controls=[
-                ft.IconButton(_pm_icon, icon_color=_pm_color, on_click=lambda e: _cycle_play_mode(self._page)),
+                ft.IconButton(_pm_icon, icon_color=_pm_color, on_click=lambda e: (cycle_play_mode(self._page), self._page.update())),
                 ft.IconButton(ft.Icons.SKIP_PREVIOUS, icon_size=28, on_click=lambda e: player.previous()),
                 self._play_btn,
                 ft.IconButton(ft.Icons.SKIP_NEXT, icon_size=28, on_click=lambda e: player.next()),
@@ -486,12 +488,13 @@ class PlayerScreen(ft.Container):
             bgcolor=ft.Colors.PRIMARY_CONTAINER,
         )
 
-        _pm_icon, _pm_color = _get_play_mode_icon(self._page)
+        from logic.play_mode import get_play_mode_icon as _gpm
+        _pm_icon, _pm_color = _gpm(self._page)
         ctrl_row = ft.Row(
             tight=True,
             alignment=ft.MainAxisAlignment.CENTER,
             controls=[
-                ft.IconButton(_pm_icon, icon_color=_pm_color, on_click=lambda e: _cycle_play_mode(self._page)),
+                ft.IconButton(_pm_icon, icon_color=_pm_color, on_click=lambda e: (cycle_play_mode(self._page), self._page.update())),
                 ft.IconButton(ft.Icons.SKIP_PREVIOUS, icon_size=32, on_click=lambda e: player.previous()),
                 ft.Container(
                     padding=ft.Padding(12, 0, 12, 0),
@@ -1012,7 +1015,7 @@ class PlayerScreen(ft.Container):
         """
         query = f"{track.artist or ''} {track.title or ''}".strip()
         if not query:
-            self._page.show_dialog(ft.SnackBar(ft.Text(tr("error").replace("{}", "No track info"))))
+            self._page.show_snack_bar(ft.SnackBar(ft.Text(tr("error").replace("{}", "No track info"))))
             return
         try:
             import urllib.request
@@ -1026,7 +1029,7 @@ class PlayerScreen(ft.Container):
                 safe = urllib.parse.quote(query)
                 url = f"https://music.163.com/api/search/get?type=1&s={safe}"
             if not url:
-                self._page.show_dialog(ft.SnackBar(ft.Text(tr("noLyricsAvailable"))))
+                self._page.show_snack_bar(ft.SnackBar(ft.Text(tr("noLyricsAvailable"))))
                 return
             req = urllib.request.Request(url, headers={"User-Agent": "GroovyBox/1.0"})
             with urllib.request.urlopen(req, timeout=10) as resp:
@@ -1056,12 +1059,12 @@ class PlayerScreen(ft.Container):
                     if queued.id == track.id:
                         queued.lyrics = json_str
                 self._rebuild()
-                self._page.show_dialog(ft.SnackBar(ft.Text(tr("importedLyricsLines").replace("{}", str(len(lyr_data.lines))).replace("{}", track.title or ""))))
+                self._page.show_snack_bar(ft.SnackBar(ft.Text(tr("importedLyricsLines").replace("{}", str(len(lyr_data.lines))).replace("{}", track.title or ""))))
             else:
-                self._page.show_dialog(ft.SnackBar(ft.Text(tr("noLyricsAvailable"))))
+                self._page.show_snack_bar(ft.SnackBar(ft.Text(tr("noLyricsAvailable"))))
         except Exception as ex:
             logger.error(f"Lyrics search failed: {ex}")
-            self._page.show_dialog(ft.SnackBar(ft.Text(tr("error").replace("{}", str(ex)))))
+            self._page.show_snack_bar(ft.SnackBar(ft.Text(tr("error").replace("{}", str(ex)))))
 
     def _clear_lyrics(self, track):
         """Remove lyrics from a track."""
@@ -1094,7 +1097,7 @@ class PlayerScreen(ft.Container):
             if queued.id == track.id:
                 queued.lyrics = json_str
         self._rebuild()
-        self._page.show_dialog(ft.SnackBar(ft.Text(tr("importedLyricsLines").replace("{}", str(len(ldata.lines))).replace("{}", track.title or ""))))
+        self._page.show_snack_bar(ft.SnackBar(ft.Text(tr("importedLyricsLines").replace("{}", str(len(ldata.lines))).replace("{}", track.title or ""))))
 
     # Curved lyrics constants
     _LY_HALF = 5          # Number of lines above/below center
@@ -1869,107 +1872,8 @@ def _get_view_tooltip(mode: str) -> str:
     return tr("showLyrics") if mode == "cover" else tr("showCover")
 
 
-def _build_progress_slider(page, player):
-    """Build a standalone progress slider (used in some layouts)."""
-    max_val = max(player.duration_ms, 1)
-    pos_val = max(0, min(player.position_ms, max_val))
-    return ft.Column(
-        tight=True,
-        horizontal_alignment=ft.CrossAxisAlignment.CENTER,
-        controls=[
-            ft.Slider(
-                value=float(pos_val),
-                min=0, max=float(max_val),
-                divisions=1000,
-                width=min(400, page.width - 80) if page.width else 400,
-                on_change=lambda e: player.seek(int(e.control.value)),
-            ),
-            ft.Row(
-                width=min(400, page.width - 80) if page.width else 400,
-                tight=True,
-                controls=[
-                    ft.Text(format_duration(pos_val), size=12),
-                    ft.Container(expand=True),
-                    ft.Text(format_duration(player.duration_ms), size=12),
-                ],
-            ),
-        ],
-    )
-
-
 def _jump_to(page, index):
-    """Jump to a specific track in the queue."""
     app = page.session.store.get("app")
     if app and app.audio_player:
         app.audio_player.current_index = index
         app.audio_player._load_current()
-
-
-def _toggle_shuffle(page):
-    """Toggle shuffle mode."""
-    app = page.session.store.get("app")
-    if app and app.audio_player:
-        app.audio_player.shuffle = not app.audio_player.shuffle
-        page.update()
-
-
-def _toggle_repeat(page):
-    """Cycle through repeat modes."""
-    app = page.session.store.get("app")
-    if app and app.audio_player:
-        modes = ["none", "one", "all"]
-        idx = (modes.index(app.audio_player.repeat_mode) + 1) % 3
-        app.audio_player.repeat_mode = modes[idx]
-        page.update()
-
-
-def _repeat_icon(mode: str) -> str:
-    """Get the icon for the current repeat mode."""
-    return {None: ft.Icons.REPEAT, "none": ft.Icons.REPEAT, "one": ft.Icons.REPEAT_ONE, "all": ft.Icons.REPEAT}.get(mode, ft.Icons.REPEAT)
-
-
-def _repeat_color(mode: str):
-    """Get the color for the repeat mode button."""
-    if mode in ("one", "all"):
-        return ft.Colors.PRIMARY
-    return ft.Colors.with_opacity(0.4, ft.Colors.ON_SURFACE)
-
-
-# Play mode cycle: (shuffle, repeat_mode) pairs
-_PLAY_MODE_CYCLE = [
-    (False, "all"),    # List repeat
-    (False, "one"),    # Single repeat
-    (True,  "none"),   # Shuffle
-    (False, "none"),   # Sequential
-]
-
-
-def _cycle_play_mode(page):
-    """Cycle through play modes: list repeat -> single repeat -> shuffle -> sequential."""
-    app = page.session.store.get("app")
-    if not app or not app.audio_player:
-        return
-    player = app.audio_player
-    current = (player.shuffle, player.repeat_mode or "none")
-    try:
-        idx = (_PLAY_MODE_CYCLE.index(current) + 1) % len(_PLAY_MODE_CYCLE)
-    except ValueError:
-        idx = 0
-    player.shuffle, player.repeat_mode = _PLAY_MODE_CYCLE[idx]
-    page.update()
-
-
-def _get_play_mode_icon(page):
-    """Get the icon and color for the current play mode."""
-    app = page.session.store.get("app")
-    if not app or not app.audio_player:
-        return ft.Icons.REPEAT, ft.Colors.with_opacity(0.4, ft.Colors.ON_SURFACE)
-    player = app.audio_player
-    if player.shuffle:
-        return ft.Icons.SHUFFLE, ft.Colors.PRIMARY
-    mode = player.repeat_mode or "none"
-    if mode == "one":
-        return ft.Icons.REPEAT_ONE, ft.Colors.PRIMARY
-    if mode == "all":
-        return ft.Icons.REPEAT, ft.Colors.PRIMARY
-    return ft.Icons.REPEAT, ft.Colors.with_opacity(0.4, ft.Colors.ON_SURFACE)
