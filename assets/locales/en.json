@@ -223,6 +223,7 @@
   "seekForward": "Seek Forward",
   "nextTrack": "Next Track",
   "previousTrack": "Previous Track",
+  "appName": "GroovyBox",
   "exitPlayer": "Exit Player",
   "useagreement": "Open Source Software License",
   "openSourceRepo": "Open Source Repository",

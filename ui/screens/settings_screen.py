@@ -571,7 +571,7 @@ def SettingsScreen(page: ft.Page) -> ft.Column:
                 content=ft.Column(
                     horizontal_alignment=ft.CrossAxisAlignment.CENTER,
                     controls=[
-                        ft.Text("GroovyBox", size=20, weight=ft.FontWeight.BOLD),
+                        ft.Text(tr("appName"), size=20, weight=ft.FontWeight.BOLD),
                         ft.Text(f"v{_build_version}", size=14, color=ft.Colors.with_opacity(0.7, ft.Colors.ON_SURFACE)),
                         ft.Text(f"Build {_build_number}", size=11, color=ft.Colors.with_opacity(0.5, ft.Colors.ON_SURFACE)),
                         ft.Container(height=8),

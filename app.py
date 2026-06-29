@@ -79,7 +79,7 @@ class GroovyBoxApp:
         page.on_keyboard_event = self._on_global_keyboard
 
         # Configure window properties
-        page.title = "GroovyBox"
+        page.title = tr("appName")
         try:
             page.window.min_width = 400
             page.window.min_height = 300
@@ -255,6 +255,7 @@ class GroovyBoxApp:
 
     def _reload_ui(self):
         """Force a complete UI rebuild (used after data changes)."""
+        self.page.title = tr("appName")
         self._sync_views()
 
     def _refresh_ui(self):
