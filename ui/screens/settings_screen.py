@@ -36,6 +36,18 @@ def SettingsScreen(page: ft.Page) -> ft.Column:
     """
     app = page.session.store.get("app")
 
+    # Read build info
+    _build_info_path = os.path.join(os.path.dirname(__file__), "..", "..", "build-config.json")
+    _build_version = "1.0.0"
+    _build_number = 0
+    try:
+        with open(_build_info_path, encoding="utf-8") as f:
+            info = json.load(f)
+            _build_version = info.get("app", {}).get("build_version", _build_version)
+            _build_number = info.get("app", {}).get("build_number", 0)
+    except Exception:
+        pass
+
     def load_settings():
         """Load current settings from the database."""
         return {
@@ -560,7 +572,8 @@ def SettingsScreen(page: ft.Page) -> ft.Column:
                     horizontal_alignment=ft.CrossAxisAlignment.CENTER,
                     controls=[
                         ft.Text("GroovyBox", size=20, weight=ft.FontWeight.BOLD),
-                        ft.Text("v1.0.0", size=14, color=ft.Colors.with_opacity(0.7, ft.Colors.ON_SURFACE)),
+                        ft.Text(f"v{_build_version}", size=14, color=ft.Colors.with_opacity(0.7, ft.Colors.ON_SURFACE)),
+                        ft.Text(f"Build {_build_number}", size=11, color=ft.Colors.with_opacity(0.5, ft.Colors.ON_SURFACE)),
                         ft.Container(height=8),
                         ft.Text("GNU General Public License v3.0", size=12, color=ft.Colors.with_opacity(0.6, ft.Colors.ON_SURFACE)),
                         ft.Text("Copyright \u00A9 2026 luolingy(liang-work)", size=12, color=ft.Colors.with_opacity(0.6, ft.Colors.ON_SURFACE)),
