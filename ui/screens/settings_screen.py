@@ -565,6 +565,26 @@ def SettingsScreen(page: ft.Page) -> ft.Column:
                         ft.Text("GNU General Public License v3.0", size=12, color=ft.Colors.with_opacity(0.6, ft.Colors.ON_SURFACE)),
                         ft.Text("Copyright \u00A9 2026 luolingy(liang-work)", size=12, color=ft.Colors.with_opacity(0.6, ft.Colors.ON_SURFACE)),
                         ft.Container(height=8),
+                        ft.Divider(height=1),
+                        ft.Container(height=4),
+                        ft.TextButton(
+                            icon=ft.Icons.DESCRIPTION,
+                            content=ft.Text(tr("useagreement"), size=13, weight=ft.FontWeight.W_500),
+                            url="https://agreement.luolingy.qzz.io/agreement/os-app-use-agreement",
+                        ),
+                        ft.TextButton(
+                            icon=ft.Icons.CODE,
+                            content=ft.Text(tr("openSourceRepo"), size=13, weight=ft.FontWeight.W_500),
+                            url="https://github.com/liang-work/groovybox",
+                        ),
+                        ft.TextButton(
+                            icon=ft.Icons.BUG_REPORT,
+                            content=ft.Text(tr("feedback"), size=13, weight=ft.FontWeight.W_500),
+                            url="https://github.com/liang-work/groovybox/issues",
+                        ),
+                        ft.Container(height=4),
+                        ft.Divider(height=1),
+                        ft.Container(height=8),
                         ft.Row(
                             tight=True,
                             alignment=ft.MainAxisAlignment.CENTER,

@@ -223,5 +223,8 @@
   "seekForward": "Seek Forward",
   "nextTrack": "Next Track",
   "previousTrack": "Previous Track",
-  "exitPlayer": "Exit Player"
+  "exitPlayer": "Exit Player",
+  "useagreement": "Open Source Software License",
+  "openSourceRepo": "Open Source Repository",
+  "feedback": "Feedback & Issues"
 }
