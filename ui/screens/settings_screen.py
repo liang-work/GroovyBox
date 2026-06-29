@@ -101,7 +101,7 @@ def SettingsScreen(page: ft.Page) -> ft.Column:
         lang = e.control.value
         load_locale(lang)
         db.set_setting("language", lang)
-        page.show_snack_bar(ft.SnackBar(ft.Text(tr("language") + ": " + lang)))
+        page.show_dialog(ft.SnackBar(ft.Text(tr("language") + ": " + lang)))
         if app:
             app._reload_ui()
 
@@ -140,14 +140,14 @@ def SettingsScreen(page: ft.Page) -> ft.Column:
                     conn.commit()
                 trepo.scan_directory(path, recursive=True, callback=lambda: page.update())
             except Exception as ex:
-                page.show_snack_bar(ft.SnackBar(ft.Text(f"Error: {ex}")))
+                page.show_dialog(ft.SnackBar(ft.Text(f"Error: {ex}")))
             refresh()
 
     def scan_libraries(e):
         with db.get_connection() as conn:
             folders = conn.execute("SELECT * FROM watch_folders WHERE is_active=1").fetchall()
         if not folders:
-            page.show_snack_bar(ft.SnackBar(ft.Text("No active libraries")))
+            page.show_dialog(ft.SnackBar(ft.Text("No active libraries")))
             page.update()
             return
 
@@ -156,7 +156,7 @@ def SettingsScreen(page: ft.Page) -> ft.Column:
                 trepo.scan_directory(f["path"], recursive=True, callback=lambda: page.update())
 
         threading.Thread(target=do_scan, daemon=True).start()
-        page.show_snack_bar(ft.SnackBar(ft.Text(tr("librariesScannedSuccessfully"))))
+        page.show_dialog(ft.SnackBar(ft.Text(tr("librariesScannedSuccessfully"))))
         page.update()
 
     def reset_database(e):
@@ -164,7 +164,7 @@ def SettingsScreen(page: ft.Page) -> ft.Column:
         def confirm_yes(e):
             trepo.clear_all_tracks()
             page.pop_dialog()
-            page.show_snack_bar(ft.SnackBar(ft.Text(tr("trackDatabaseReset"))))
+            page.show_dialog(ft.SnackBar(ft.Text(tr("trackDatabaseReset"))))
             refresh()
 
         def confirm_no(e):
@@ -240,10 +240,10 @@ def SettingsScreen(page: ft.Page) -> ft.Column:
             saved = await save_file(page, title="Export logs", default_name="groovybox_logs.txt",
                                    extensions=["txt"], src_bytes=log_bytes)
             if saved:
-                page.show_snack_bar(ft.SnackBar(ft.Text(tr("logsExported", saved))))
+                page.show_dialog(ft.SnackBar(ft.Text(tr("logsExported", saved))))
                 logger.info(f"Logs exported to {saved}")
         except Exception as ex:
-            page.show_snack_bar(ft.SnackBar(ft.Text(tr("errorExportingLogs", str(ex)))))
+            page.show_dialog(ft.SnackBar(ft.Text(tr("errorExportingLogs", str(ex)))))
             logger.error(f"Failed to export logs: {ex}")
         finally:
             try:

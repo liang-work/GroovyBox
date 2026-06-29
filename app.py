@@ -204,7 +204,7 @@ class GroovyBoxApp:
                 self.page.show_dialog(dlg)
                 self.page.update()
             elif not from_user and len(names) == 1:
-                self.page.show_snack_bar(
+                self.page.show_dialog(
                     ft.SnackBar(ft.Text(f"File not found: {names[0]}"), duration=3000)
                 )
                 self.page.update()
