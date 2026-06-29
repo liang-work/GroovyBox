@@ -37,6 +37,7 @@ def main(page: ft.Page):
     """
     page._file_picker = FilePicker()
     from data import db
+    db.init_database()
     page._flet_audio = FletAudio(
         autoplay=False,
         volume=float(db.get_setting("player_volume", "0.8")),
