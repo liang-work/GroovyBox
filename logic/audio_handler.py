@@ -1,16 +1,13 @@
 """Audio Handler for GroovyBox.
 
 This module provides the AudioPlayer class that manages audio playback
-across different platforms. Supports two backends:
-- Pygame: For desktop platforms (Windows, Linux, macOS)
-- flet_audio: For mobile platforms (Android, iOS)
+using flet_audio across all platforms (Windows, Linux, macOS, Android, iOS).
 
 The player handles track queue management, playback controls, position
 tracking, and cross-thread UI updates via callbacks.
 """
 
 import threading
-import queue
 import asyncio
 import os
 from data import db
@@ -26,8 +23,8 @@ class AudioPlayer:
     """Core audio playback engine for GroovyBox.
     
     Manages a queue of tracks, handles play/pause/seek operations,
-    and provides real-time position updates to the UI. Automatically
-    selects the appropriate audio backend based on the platform.
+    and provides real-time position updates to the UI. Uses the
+    flet_audio backend on all platforms.
     
     Attributes:
         queue: List of Track objects in the playback queue.
@@ -59,193 +56,33 @@ class AudioPlayer:
         self.on_loading_change: Optional[Callable] = None
         self.on_missing_tracks: Optional[Callable[[List[str], bool], None]] = None
 
-        # Select audio backend based on platform
-        self._is_desktop_platform = self._is_desktop()
-        self._use_pygame = self._is_desktop_platform
-        if self._use_pygame:
-            self._init_pygame()
-        else:
-            try:
-                self._init_flet_audio()
-            except Exception as ex:
-                logger.warning(f"flet_audio init failed ({ex})")
-                self._init_noop()
+        self._init_flet_audio()
 
-    # --- Platform detection ---
-
-    def _is_desktop(self):
-        """Check if running on a desktop platform.
-        
-        Returns:
-            True if on Windows, Linux, or macOS; False for mobile.
-        """
-        try:
-            p = self.page.platform
-            return p in (ft.PagePlatform.WINDOWS, ft.PagePlatform.LINUX, ft.PagePlatform.MACOS)
-        except Exception:
-            return True
-
-    # ======================== Pygame backend ========================
-
-    def _init_pygame(self):
-        """Initialize the Pygame mixer for desktop audio playback.
-        
-        Sets up a worker thread for audio commands and a polling thread
-        for position tracking and track-end detection.
-        """
-        import pygame
-        pygame.mixer.init(frequency=44100, size=-16, channels=2)
-        logger.debug("Pygame mixer initialized")
-
-        # Command queue for thread-safe audio operations
-        self._cmd_queue: queue.Queue = queue.Queue()
-        self._worker = threading.Thread(target=self._pygame_worker, daemon=True)
-        self._worker.start()
-        logger.debug("Audio worker thread started")
-
-        # Position tracking state
-        self._seek_base_ms = 0
-        self._was_busy = False
-        self._timer_active = True
-        self._pending_cmd = False
-        self._poll_thread = threading.Thread(target=self._pygame_poll, daemon=True)
-        self._poll_thread.start()
-
-    def _pygame_worker(self):
-        """Worker thread that processes audio commands from the queue.
-        
-        Handles load, play, pause, resume, seek, and volume commands.
-        Deduplicates consecutive seek commands for efficiency.
-        """
-        import pygame
-        while True:
-            cmd, args = self._cmd_queue.get()
-            if cmd == "quit":
-                break
-            
-            # Deduplicate consecutive seek commands
-            if cmd == "seek":
-                while True:
-                    try:
-                        next_cmd, next_args = self._cmd_queue.get_nowait()
-                        if next_cmd == "seek":
-                            cmd, args = next_cmd, next_args
-                            continue
-                        self._cmd_queue.put((next_cmd, next_args))
-                    except queue.Empty:
-                        break
-                    break
-            
-            try:
-                if cmd == "load_play":
-                    path = args[0]
-                    try:
-                        pygame.mixer.music.load(path)
-                    except pygame.error:
-                        f = open(path, "rb")
-                        pygame.mixer.music.load(f)
-                        f.close()
-                    pygame.mixer.music.set_volume(self._volume)
-                    pygame.mixer.music.play()
-                elif cmd == "pause":
-                    pygame.mixer.music.pause()
-                elif cmd == "resume":
-                    pygame.mixer.music.unpause()
-                elif cmd == "seek":
-                    pos_ms = args[0]
-                    pygame.mixer.music.play(start=pos_ms / 1000.0)
-                    pygame.mixer.music.set_volume(self._volume)
-                elif cmd == "set_volume":
-                    pygame.mixer.music.set_volume(args[0])
-            except Exception as ex:
-                logger.error(f"Audio worker error: {ex}")
-            finally:
-                if cmd in ("load_play", "seek"):
-                    self._pending_cmd = False
-            self._cmd_queue.task_done()
-
-    def _pygame_send(self, cmd, *args):
-        """Send a command to the Pygame audio worker thread.
-        
-        Args:
-            cmd: Command name (load_play, pause, resume, seek, set_volume, quit).
-            *args: Command arguments.
-        """
-        self._cmd_queue.put((cmd, args))
-
-    def _pygame_poll(self):
-        """Polling thread that tracks playback position and detects track end.
-        
-        Runs every 250ms to update position and trigger track-end callbacks.
-        """
-        import pygame
-        while self._timer_active:
-            try:
-                busy = pygame.mixer.music.get_busy()
-                pos = pygame.mixer.music.get_pos()
-                if busy and pos >= 0:
-                    if not self._pending_cmd:
-                        self._position_ms = self._seek_base_ms + pos
-                    if self.on_position_change:
-                        self._call_on_ui(self.on_position_change, self._position_ms)
-                # Detect natural track end
-                if self._was_busy and not busy and self._is_playing:
-                    self._call_on_ui(self._on_track_ended)
-                self._was_busy = busy
-            except Exception:
-                pass
-            time.sleep(0.1)
-
-    def _pygame_get_duration(self, path: str) -> int:
-        """Get the duration of an audio file using mutagen.
-        
-        Args:
-            path: Path to the audio file.
-        
-        Returns:
-            Duration in milliseconds, or 0 if unavailable.
-        """
-        import mutagen
-        try:
-            mf = mutagen.File(path)
-            if mf and mf.info:
-                return int(mf.info.length * 1000)
-        except Exception as ex:
-            logger.warning(f"Could not read duration for {path}: {ex}")
-        return 0
-
-    # ======================== flet_audio backend (mobile) ========================
+    # ======================== flet_audio backend ========================
 
     def _init_flet_audio(self):
-        """Initialize the flet_audio backend for mobile platforms.
-        
-        Uses the pre-created Audio instance from page._flet_audio (created
-        in main.py) so the build scanner detects the flet_audio plugin.
-        Sets up event handlers for load, duration, position, and state changes.
+        """Initialize the flet_audio backend.
+
+        Creates an initial Audio instance with no src (placeholder).
+        On track load, a new instance is created with the correct src
+        since flet_audio does not reliably reload after src changes.
         """
-        from flet_audio import AudioState, ReleaseMode
+        from flet_audio import Audio as FletAudio, AudioState, ReleaseMode
 
-        if hasattr(self.page, '_flet_audio') and self.page._flet_audio is not None:
-            self._audio = self.page._flet_audio
-        else:
-            import flet_audio
-            self._audio = flet_audio.Audio(
-                autoplay=False,
-                volume=self._volume,
-                release_mode=ReleaseMode.RELEASE,
-            )
-
+        self._audio = FletAudio(
+            src="",
+            autoplay=False,
+            volume=self._volume,
+            release_mode=ReleaseMode.RELEASE,
+        )
         self._audio.on_loaded = self._fa_on_loaded
         self._audio.on_duration_change = self._fa_on_duration
         self._audio.on_position_change = self._fa_on_position
         self._audio.on_state_change = self._fa_on_state
-        self._audio.release_mode = ReleaseMode.RELEASE
-        self._audio.volume = self._volume
+        self.page.services.append(self._audio)
         self.page.update()
 
-        self._seek_base_ms = 0
         self._timer_active = True
-        self._position_timer = None
         self._fa_tick_thread = None
         self._start_fa_timer()
 
@@ -261,15 +98,22 @@ class AudioPlayer:
         self._fa_tick_thread.start()
 
     def _fa_on_loaded(self, e):
-        """Handle audio loaded event from flet_audio."""
+        """Handle audio loaded event from flet_audio.
+
+        Starts playback once Flutter confirms the audio control is ready.
+        page.update() flushes the play command to the Flutter side.
+        """
         self._loading = False
+        if self._is_playing:
+            asyncio.create_task(self._audio.play())
+            self.page.update()
         if self.on_loading_change:
             self._call_on_ui(self.on_loading_change, False)
 
     def _fa_on_duration(self, e):
         """Handle duration change event from flet_audio."""
         if e.duration is not None:
-            self._duration_ms = int(e.duration.in_milliseconds())
+            self._duration_ms = e.duration.in_milliseconds
 
     def _fa_on_position(self, e):
         """Handle position change event from flet_audio."""
@@ -299,17 +143,37 @@ class AudioPlayer:
             pass
         return 0
 
-    # ======================== No-op backend (fallback) ========================
+    def _recreate_audio(self, path: str):
+        """Remove old audio instance and create a new one with src at construction.
 
-    def _init_noop(self):
-        self._use_pygame = False
-        self._timer_active = True
-        self._noop_thread = threading.Thread(target=self._noop_loop, daemon=True)
-        self._noop_thread.start()
+        Playback starts in _fa_on_loaded after Flutter confirms readiness.
 
-    def _noop_loop(self):
-        while self._timer_active:
-            time.sleep(1.0)
+        Args:
+            path: Absolute path to the audio file.
+        """
+        from flet_audio import Audio as FletAudio, ReleaseMode
+
+        if hasattr(self, '_audio') and self._audio is not None:
+            try:
+                if self._audio in self.page.services:
+                    self.page.services.remove(self._audio)
+            except Exception:
+                pass
+            self.page.update()
+
+        self._audio = FletAudio(
+            src=path,
+            autoplay=False,
+            volume=self._volume,
+            release_mode=ReleaseMode.RELEASE,
+            on_loaded=self._fa_on_loaded,
+            on_duration_change=self._fa_on_duration,
+            on_position_change=self._fa_on_position,
+            on_state_change=self._fa_on_state,
+        )
+        self.page.services.append(self._audio)
+        self.page.update()
+        # play() is called in _fa_on_loaded after Flutter confirms readiness
 
     # ======================== Cross-backend helpers ========================
 
@@ -350,20 +214,15 @@ class AudioPlayer:
 
     def shutdown(self):
         self._timer_active = False
-        if self._use_pygame:
-            self._pygame_send("quit")
-            self._worker.join(timeout=2)
+        if hasattr(self, '_audio') and self._audio is not None:
             try:
-                import pygame
-                pygame.mixer.music.stop()
-                pygame.mixer.quit()
+                if self._audio in self.page.services:
+                    self.page.services.remove(self._audio)
             except Exception:
                 pass
-        elif self._fa_tick_thread and self._fa_tick_thread.is_alive():
-            self._fa_tick_thread.join(timeout=1)
             self._audio = None
-        elif self._noop_thread and self._noop_thread.is_alive():
-            self._noop_thread.join(timeout=1)
+        if self._fa_tick_thread and self._fa_tick_thread.is_alive():
+            self._fa_tick_thread.join(timeout=1)
         logger.debug("Audio player shut down")
 
     def play_track(self, track: Track):
@@ -410,7 +269,7 @@ class AudioPlayer:
         """Load and start playing the track at current_index.
         
         Handles file existence check, metadata loading, and
-        initializes the appropriate audio backend. Triggers all
+        recreates the flet_audio instance with the new source. Triggers all
         registered callbacks for track change, play state, and queue updates.
         """
         if self.current_index < 0 or self.current_index >= len(self.queue):
@@ -445,23 +304,10 @@ class AudioPlayer:
         if self.on_loading_change:
             self._call_on_ui(self.on_loading_change, True)
 
-        # Load audio using the appropriate backend
-        if self._use_pygame:
-            self._duration_ms = self._pygame_get_duration(path)
-            logger.debug(f"Duration: {self._duration_ms}ms")
-            self._seek_base_ms = 0
-            self._position_ms = 0
-            self._pending_cmd = True
-            self._pygame_send("load_play", path)
-        elif hasattr(self, '_audio'):
-            self._position_ms = 0
-            self._duration_ms = self._fa_get_duration(path)
-            self._is_playing = False
-            self._audio.autoplay = True
-            self._audio.src = path
-            self.page.update()
-        else:
-            logger.warning("No audio backend available, skipping playback")
+        self._position_ms = 0
+        self._duration_ms = self._fa_get_duration(path)
+        self._is_playing = False
+        self._recreate_audio(path)
 
         self._is_playing = True
         self._loading = False
@@ -494,19 +340,13 @@ class AudioPlayer:
         If no track is loaded but the queue has items, starts playback.
         """
         if self._is_playing:
-            if self._use_pygame:
-                self._pygame_send("pause")
-            elif hasattr(self, '_audio'):
-                asyncio.create_task(self._audio.pause())
+            asyncio.create_task(self._audio.pause())
             self._is_playing = False
             if self.on_play_state_change:
                 self._call_on_ui(self.on_play_state_change, False)
         else:
             if self.current_index >= 0 and self.current_index < len(self.queue):
-                if self._use_pygame:
-                    self._pygame_send("resume")
-                elif hasattr(self, '_audio'):
-                    asyncio.create_task(self._audio.resume())
+                asyncio.create_task(self._audio.resume())
                 self._is_playing = True
                 if self.on_play_state_change:
                     self._call_on_ui(self.on_play_state_change, True)
@@ -553,25 +393,16 @@ class AudioPlayer:
         Args:
             position_ms: Target position in milliseconds.
         """
-        if self._use_pygame:
-            self._seek_base_ms = position_ms
-            self._position_ms = position_ms
-            self._pending_cmd = True
-            self._pygame_send("seek", position_ms)
-            if self.on_position_change:
-                self._call_on_ui(self.on_position_change, position_ms)
-        elif hasattr(self, '_audio'):
-            asyncio.create_task(self._audio.seek(position_ms))
-            self._position_ms = position_ms
+        asyncio.create_task(self._audio.seek(position_ms))
+        self._position_ms = position_ms
+        if self.on_position_change:
+            self._call_on_ui(self.on_position_change, position_ms)
 
     def set_volume(self, volume: float):
         self._volume = max(0.0, min(1.0, volume))
         db.set_setting("player_volume", str(round(self._volume, 2)))
-        if self._use_pygame:
-            self._pygame_send("set_volume", self._volume)
-        elif hasattr(self, '_audio'):
-            self._audio.volume = self._volume
-            self.page.update()
+        self._audio.volume = self._volume
+        self.page.update()
 
     def get_current_track(self) -> Optional[Track]:
         """Get the currently playing track object.

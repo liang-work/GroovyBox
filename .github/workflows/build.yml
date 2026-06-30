@@ -23,14 +23,12 @@ jobs:
       - name: Install dependencies
         run: |
           pip install flet==${{ env.FLET_VERSION }} flet-audio==${{ env.FLET_VERSION }}
-          pip install pygame mutagen Pillow colorthief httpx
+          pip install mutagen Pillow colorthief httpx
       - name: Cache Flutter SDK
         uses: actions/cache@v4
         with:
           path: ~/.flet/flutter
           key: flutter-${{ env.FLET_VERSION }}
-      - name: Add desktop deps
-        run: Add-Content -Path requirements.txt -Value "pygame>=2.5.0"
       - name: Build
         timeout-minutes: 60
         env:
@@ -130,14 +128,12 @@ jobs:
       - name: Install dependencies
         run: |
           pip install flet==${{ env.FLET_VERSION }} flet-audio==${{ env.FLET_VERSION }}
-          pip install pygame mutagen Pillow colorthief httpx
+          pip install mutagen Pillow colorthief httpx
       - name: Cache Flutter SDK
         uses: actions/cache@v4
         with:
           path: ~/.flet/flutter
           key: flutter-${{ env.FLET_VERSION }}
-      - name: Add desktop deps
-        run: echo "pygame>=2.5.0" >> requirements.txt
       - name: Build
         timeout-minutes: 60
         run: python scripts/do_build.py linux
@@ -158,14 +154,12 @@ jobs:
       - name: Install dependencies
         run: |
           pip install flet==${{ env.FLET_VERSION }} flet-audio==${{ env.FLET_VERSION }}
-          pip install pygame mutagen Pillow colorthief httpx
+          pip install mutagen Pillow colorthief httpx
       - name: Cache Flutter SDK
         uses: actions/cache@v4
         with:
           path: ~/.flet/flutter
           key: flutter-${{ env.FLET_VERSION }}
-      - name: Add desktop deps
-        run: echo "pygame>=2.5.0" >> requirements.txt
       - name: Build
         timeout-minutes: 60
         run: python scripts/do_build.py macos

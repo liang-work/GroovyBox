@@ -53,7 +53,7 @@ class GroovyBoxApp:
         # Store app reference in session for access from other components
         page.session.store.set("app", self)
 
-        # Initialize audio player with platform-appropriate backend
+        # Initialize audio player with flet_audio backend
         from logic.audio_handler import AudioPlayer
         self.audio_player = AudioPlayer(page)
 

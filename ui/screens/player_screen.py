@@ -544,13 +544,41 @@ class PlayerScreen(ft.Container):
     def _build_progress_slider(self, player):
         """Build the progress slider with time labels.
         
+        Shows an indeterminate ProgressBar while loading, then switches to
+        a Slider once the audio duration is known and playback is ready.
+        
         Args:
             player: AudioPlayer instance.
         
         Returns:
-            A Column with slider and position/duration labels.
+            A Column with slider/loading bar and position/duration labels.
         """
         bar_width = min(400, self._page.width - 80) if self._page.width else 400
+        if player.loading or self._pos_slider is None and player.duration_ms <= 0:
+            self._pos_slider = None
+            return ft.Column(
+                tight=True,
+                horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+                controls=[
+                    ft.Container(
+                        width=bar_width,
+                        height=24,
+                        content=ft.ProgressBar(
+                            color=ft.Colors.PRIMARY,
+                            bgcolor=ft.Colors.with_opacity(0.12, ft.Colors.PRIMARY),
+                        ),
+                    ),
+                    ft.Row(
+                        width=bar_width,
+                        tight=True,
+                        controls=[
+                            ft.Text("--:--", size=12),
+                            ft.Container(expand=True),
+                            ft.Text("--:--", size=12),
+                        ],
+                    ),
+                ],
+            )
         max_val = max(player.duration_ms, 1)
         pos_val = max(0, min(player.position_ms, max_val))
         self._cached_dur = max_val
