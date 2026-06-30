@@ -140,7 +140,7 @@ class AudioPlayer:
             src=path,
             autoplay=False,
             volume=self._volume,
-            release_mode=ReleaseMode.RELEASE,
+            release_mode=ReleaseMode.STOP,
             on_loaded=self._fa_on_loaded,
             on_duration_change=self._fa_on_duration,
             on_position_change=self._fa_on_position,
