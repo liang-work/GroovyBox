@@ -27,14 +27,12 @@ GroovyBox 是一个用 Python 和 Flet 打造的现代音乐播放器，支持 W
 
 ## 🖥️ 截图
 
-
-
-## 🚀 快速开始
 <img width="1581" height="893" alt="Screenshot_1" src="https://github.com/user-attachments/assets/87067e92-cd2b-4e90-a6d2-f33c25fc1f41" />
 <img width="1579" height="884" alt="Screenshot_2" src="https://github.com/user-attachments/assets/627d3f83-de62-45d1-93de-9d8f13833c10" />
 <img width="1578" height="887" alt="Screenshot_3" src="https://github.com/user-attachments/assets/f093a60d-ac76-4a34-9d67-582fddc250d8" />
 <img width="1578" height="892" alt="Screenshot_4" src="https://github.com/user-attachments/assets/58f0db0e-f8d7-4d49-805d-64d354a5c7e2" />
 
+## 🚀 快速开始
 
 ### 前提条件
 
