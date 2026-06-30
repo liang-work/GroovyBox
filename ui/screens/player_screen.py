@@ -582,8 +582,9 @@ class PlayerScreen(ft.Container):
         max_val = max(player.duration_ms, 1)
         pos_val = max(0, min(player.position_ms, max_val))
         self._cached_dur = max_val
-        def _on_seek_change(e: ft.ControlEvent) -> None:
+        def _on_seek_start(e: ft.ControlEvent) -> None:
             self._seeking = True
+        def _on_seek_end(e: ft.ControlEvent) -> None:
             _safe_seek(e, player)
             self._seeking = False
         self._pos_slider = ft.Slider(
@@ -597,7 +598,8 @@ class PlayerScreen(ft.Container):
             inactive_color=ft.Colors.with_opacity(0.15, ft.Colors.PRIMARY),
             thumb_color=ft.Colors.WHITE,
             overlay_color=ft.Colors.with_opacity(0.12, ft.Colors.WHITE),
-            on_change=_on_seek_change,
+            on_change_start=_on_seek_start,
+            on_change_end=_on_seek_end,
         )
         self._pos_text = ft.Text(format_duration(pos_val), size=12)
         self._dur_text = ft.Text(format_duration(player.duration_ms), size=12)

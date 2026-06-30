@@ -280,10 +280,13 @@ class MiniPlayerWidget(ft.Container):
             self._play_btn.icon = ft.Icons.PAUSE_ROUNDED if is_playing else ft.Icons.PLAY_ARROW_ROUNDED
             self._play_btn.update()
 
-    def _on_slider_change(self, e: ft.ControlEvent) -> None:
-        """Handle progress bar seek events."""
-        seek_ms = int(e.control.value)
+    def _on_slider_change_start(self, e: ft.ControlEvent) -> None:
+        """Handle progress bar drag start."""
         self._seeking = True
+
+    def _on_slider_change_end(self, e: ft.ControlEvent) -> None:
+        """Handle progress bar drag end - seek only on release."""
+        seek_ms = int(e.control.value)
         if self._on_seek:
             self._on_seek(seek_ms)
         self._seeking = False
@@ -316,7 +319,8 @@ class MiniPlayerWidget(ft.Container):
             inactive_color=ft.Colors.with_opacity(0.15, ft.Colors.PRIMARY),
             thumb_color=ft.Colors.WHITE,
             overlay_color=ft.Colors.with_opacity(0.12, ft.Colors.WHITE),
-            on_change=self._on_slider_change,
+            on_change_start=self._on_slider_change_start,
+            on_change_end=self._on_slider_change_end,
         )
         return self._pos_slider
 
