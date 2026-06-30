@@ -143,9 +143,9 @@ class PlayerScreen(ft.Container):
                 self._cached_dur = max_val
             self._pos_slider.value = float(max(0, min(pos_ms, max_val)))
             self._pos_slider.update()
-        if self._pos_text:
-            self._pos_text.value = format_duration(pos_ms)
-            self._pos_text.update()
+            if self._pos_text:
+                self._pos_text.value = format_duration(pos_ms)
+                self._pos_text.update()
         if self._dur_text:
             self._dur_text.value = format_duration(dur_ms)
             self._dur_text.update()
@@ -584,6 +584,10 @@ class PlayerScreen(ft.Container):
         self._cached_dur = max_val
         def _on_seek_start(e: ft.ControlEvent) -> None:
             self._seeking = True
+        def _on_seek_change(e: ft.ControlEvent) -> None:
+            if self._pos_text:
+                self._pos_text.value = format_duration(int(e.control.value))
+                self._pos_text.update()
         def _on_seek_end(e: ft.ControlEvent) -> None:
             _safe_seek(e, player)
             self._seeking = False
@@ -599,6 +603,7 @@ class PlayerScreen(ft.Container):
             thumb_color=ft.Colors.WHITE,
             overlay_color=ft.Colors.with_opacity(0.12, ft.Colors.WHITE),
             on_change_start=_on_seek_start,
+            on_change=_on_seek_change,
             on_change_end=_on_seek_end,
         )
         self._pos_text = ft.Text(format_duration(pos_val), size=12)
