@@ -56,32 +56,7 @@ class AudioPlayer:
         self.on_loading_change: Optional[Callable] = None
         self.on_missing_tracks: Optional[Callable[[List[str], bool], None]] = None
 
-        self._init_flet_audio()
-
-    # ======================== flet_audio backend ========================
-
-    def _init_flet_audio(self):
-        """Initialize the flet_audio backend.
-
-        Creates an initial Audio instance with no src (placeholder).
-        On track load, a new instance is created with the correct src
-        since flet_audio does not reliably reload after src changes.
-        """
-        from flet_audio import Audio as FletAudio, AudioState, ReleaseMode
-
-        self._audio = FletAudio(
-            src="",
-            autoplay=False,
-            volume=self._volume,
-            release_mode=ReleaseMode.RELEASE,
-        )
-        self._audio.on_loaded = self._fa_on_loaded
-        self._audio.on_duration_change = self._fa_on_duration
-        self._audio.on_position_change = self._fa_on_position
-        self._audio.on_state_change = self._fa_on_state
-        self.page.services.append(self._audio)
-        self.page.update()
-
+        # Timer for position polling; audio instance is created on first play
         self._timer_active = True
         self._fa_tick_thread = None
         self._start_fa_timer()
@@ -306,10 +281,9 @@ class AudioPlayer:
 
         self._position_ms = 0
         self._duration_ms = self._fa_get_duration(path)
-        self._is_playing = False
+        self._is_playing = True
         self._recreate_audio(path)
 
-        self._is_playing = True
         self._loading = False
 
         # Notify UI components of the changes
