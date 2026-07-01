@@ -88,10 +88,15 @@ class ShellView(ft.View):
             A Container with the toolbar layout including Home, Settings,
             and Import buttons.
         """
+        top_pad = 0
+        try:
+            top_pad = self._page.padding.top if self._page.padding else 0
+        except RuntimeError:
+            pass
         return ft.Container(
-            height=44,
+            height=44 + top_pad,
             bgcolor=ft.Colors.SURFACE_CONTAINER,
-            padding=ft.Padding(4, 0, 8, 0),
+            padding=ft.Padding(4, top_pad, 8, 0),
             content=ft.Row(
                 tight=True,
                 controls=[
