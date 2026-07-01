@@ -53,7 +53,7 @@ class PlayerScreen(ft.Container):
         self._page = page
         self._view_mode = page.session.store.get("player_view") or "cover"
 
-        self._inner = ft.Column(spacing=0)
+        self._inner = ft.Stack(expand=True)
         self.content = self._inner
 
         # UI element references for efficient updates
@@ -227,7 +227,7 @@ class PlayerScreen(ft.Container):
         bg = self._build_background(track)
         content = self._build_main_content(track, meta, player, is_desktop, use_curved)
 
-        self._inner.controls = [ft.Stack(expand=True, controls=[bg, content])]
+        self._inner.controls = [bg, content]
         if self._initialized:
             self.update()
         if getattr(self, '_lyrics_need_initial_scroll', False):
@@ -402,7 +402,6 @@ class PlayerScreen(ft.Container):
             bgcolor=ft.Colors.with_opacity(0.85, ft.Colors.SURFACE),
             border_radius=ft.border_radius.BorderRadius(16, 16, 0, 0),
             content=ft.Column(
-                tight=True,
                 horizontal_alignment=ft.CrossAxisAlignment.CENTER,
                 spacing=8,
                 controls=[progress, ctrl_row],
@@ -426,14 +425,12 @@ class PlayerScreen(ft.Container):
         Returns:
             A Row with volume icon and slider.
         """
-        pw = self._page.width or 400
-        vol_w = max(80, int((min(400, pw - 80)) * 0.85))
         return ft.Row(
-            tight=True,
+            tight=False,
             controls=[
                 ft.Icon(ft.Icons.VOLUME_UP, size=20, color=ft.Colors.with_opacity(0.7, ft.Colors.ON_SURFACE)),
                 ft.Container(
-                    width=vol_w,
+                    expand=True,
                     content=ft.Slider(
                         value=player.volume * 100, min=0, max=100, divisions=100,
                         on_change=lambda e: _safe_volume(e, player),
@@ -507,29 +504,36 @@ class PlayerScreen(ft.Container):
         progress = self._build_progress_slider(player)
 
         col = ft.Column(
+            expand=True,
             alignment=ft.MainAxisAlignment.CENTER,
-            horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+            horizontal_alignment=ft.CrossAxisAlignment.STRETCH,
             controls=[
                 ft.Container(alignment=ft.Alignment(0, 0), content=art),
                 ft.Container(height=12),
-                ft.Text(title, size=18 if compact else 22, weight=ft.FontWeight.BOLD,
-                        text_align=ft.TextAlign.CENTER, max_lines=1, overflow=ft.TextOverflow.ELLIPSIS),
-                ft.Text(artist, size=14 if compact else 16, color=ft.Colors.PRIMARY,
-                        text_align=ft.TextAlign.CENTER),
+                ft.Container(alignment=ft.Alignment(0, 0), content=ft.Text(
+                    title, size=18 if compact else 22, weight=ft.FontWeight.BOLD,
+                    text_align=ft.TextAlign.CENTER, max_lines=1, overflow=ft.TextOverflow.ELLIPSIS,
+                )),
+                ft.Container(alignment=ft.Alignment(0, 0), content=ft.Text(
+                    artist, size=14 if compact else 16, color=ft.Colors.PRIMARY,
+                    text_align=ft.TextAlign.CENTER,
+                )),
                 ft.Container(height=12),
                 progress,
-                ctrl_row,
-                ft.Row(
-                    tight=True,
-                    controls=[
-                        ft.IconButton(
-                            icon=ft.Icons.LYRICS,
-                            icon_size=20,
-                            on_click=lambda e: self._show_lyrics_menu(track, player),
-                            tooltip=tr("lyricsOptions"),
-                        ),
-                        self._build_volume_row(player),
-                    ],
+                ft.Container(alignment=ft.Alignment(0, 0), content=ctrl_row),
+                ft.Container(
+                    content=ft.Row(
+                        tight=False,
+                        controls=[
+                            ft.IconButton(
+                                icon=ft.Icons.LYRICS,
+                                icon_size=20,
+                                on_click=lambda e: self._show_lyrics_menu(track, player),
+                                tooltip=tr("lyricsOptions"),
+                            ),
+                            ft.Container(expand=True, content=self._build_volume_row(player)),
+                        ],
+                    ),
                 ),
                 ft.Container(height=16),
             ],
@@ -553,23 +557,16 @@ class PlayerScreen(ft.Container):
         Returns:
             A Column with slider/loading bar and position/duration labels.
         """
-        bar_width = min(400, self._page.width - 80) if self._page.width else 400
         if player.loading or self._pos_slider is None and player.duration_ms <= 0:
             self._pos_slider = None
             return ft.Column(
                 tight=True,
-                horizontal_alignment=ft.CrossAxisAlignment.CENTER,
                 controls=[
-                    ft.Container(
-                        width=bar_width,
-                        height=24,
-                        content=ft.ProgressBar(
-                            color=ft.Colors.PRIMARY,
-                            bgcolor=ft.Colors.with_opacity(0.12, ft.Colors.PRIMARY),
-                        ),
+                    ft.ProgressBar(
+                        color=ft.Colors.PRIMARY,
+                        bgcolor=ft.Colors.with_opacity(0.12, ft.Colors.PRIMARY),
                     ),
                     ft.Row(
-                        width=bar_width,
                         tight=True,
                         controls=[
                             ft.Text("--:--", size=12),
@@ -596,7 +593,6 @@ class PlayerScreen(ft.Container):
             min=0,
             max=float(max_val),
             divisions=1000,
-            width=bar_width,
             height=24,
             active_color=ft.Colors.PRIMARY,
             inactive_color=ft.Colors.with_opacity(0.15, ft.Colors.PRIMARY),
@@ -610,11 +606,9 @@ class PlayerScreen(ft.Container):
         self._dur_text = ft.Text(format_duration(player.duration_ms), size=12)
         return ft.Column(
             tight=True,
-            horizontal_alignment=ft.CrossAxisAlignment.CENTER,
             controls=[
                 self._pos_slider,
                 ft.Row(
-                    width=bar_width,
                     tight=True,
                     controls=[
                         self._pos_text,
@@ -1228,7 +1222,7 @@ class PlayerScreen(ft.Container):
             container.opacity = 1.0 if i == current_idx else max(0.25, 1.0 - t * 0.6)
         else:
             container.rotate = ft.Rotate(0, ft.Alignment(-1.2, 0))
-            container.padding = ft.Padding(32, 0, 24, 0)
+            container.padding = ft.Padding(32, 0, 32, 0)
             container.opacity = 0.0
         txt = container.content
         alpha = max(0.4, 0.85 - t * 0.45)
@@ -1338,7 +1332,7 @@ class PlayerScreen(ft.Container):
         self._lyrics_column = column
 
         padded_column = ft.Container(
-            padding=ft.Padding(48, 0, 16, 0),
+            padding=ft.Padding(32, 0, 32, 0),
             content=column,
         )
 
@@ -1508,7 +1502,7 @@ class PlayerScreen(ft.Container):
         pw = self._page.width or 400
         is_desktop = pw > 800
 
-        max_w = int(pw * (0.4 if is_desktop else 0.8))
+        max_w = pw if not is_desktop else int(pw * 0.4)
         text_align = ft.TextAlign.CENTER
 
         self._lyrics_widgets = []
@@ -1531,7 +1525,7 @@ class PlayerScreen(ft.Container):
 
             lyrics_column = ft.Column(
                 expand=True,
-                scroll=ft.ScrollMode.AUTO,
+                scroll=ft.ScrollMode.HIDDEN,
                 on_scroll=self._on_flat_lyrics_scroll,
                 alignment=ft.MainAxisAlignment.CENTER,
                 horizontal_alignment=ft.CrossAxisAlignment.CENTER,
@@ -1799,7 +1793,7 @@ class PlayerScreen(ft.Container):
         """
         return ft.Column(
             expand=True,
-            scroll=ft.ScrollMode.AUTO,
+            scroll=ft.ScrollMode.HIDDEN,
             controls=[
                 ft.Container(
                     padding=ft.Padding(32, 4, 32, 4),
