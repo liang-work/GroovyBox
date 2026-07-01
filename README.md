@@ -27,10 +27,13 @@ GroovyBox 是一个用 Python 和 Flet 打造的现代音乐播放器，支持 W
 
 ## 🖥️ 截图
 
-<img width="1581" height="893" alt="Screenshot_1" src="https://github.com/user-attachments/assets/87067e92-cd2b-4e90-a6d2-f33c25fc1f41" />
-<img width="1579" height="884" alt="Screenshot_2" src="https://github.com/user-attachments/assets/627d3f83-de62-45d1-93de-9d8f13833c10" />
-<img width="1578" height="887" alt="Screenshot_3" src="https://github.com/user-attachments/assets/f093a60d-ac76-4a34-9d67-582fddc250d8" />
-<img width="1578" height="892" alt="Screenshot_4" src="https://github.com/user-attachments/assets/58f0db0e-f8d7-4d49-805d-64d354a5c7e2" />
+
+<img width="1584" height="893" alt="fe31cdc6-a4ea-403f-a1c0-87647484b823" src="https://github.com/user-attachments/assets/4622f17b-eb15-4c40-80e2-95f98d44bafe" />
+<img width="1583" height="892" alt="b0c02b50-7a05-4399-bf6b-e0a11d0c8707" src="https://github.com/user-attachments/assets/fb44c63c-1b05-484f-89f3-b71092d250a3" />
+<img width="1584" height="893" alt="02f0166e-2fec-4b6c-82e3-8428fdea4cb8" src="https://github.com/user-attachments/assets/9c4e29fc-e99b-43d9-97dd-91c39ec26557" />
+<img width="1584" height="893" alt="4fcd4768-b0c5-46d6-bb17-5406fb771a43" src="https://github.com/user-attachments/assets/76ef20d7-28d8-4b6c-b8d6-73c607daa194" />
+<img width="1584" height="893" alt="7226cf1f-7e3d-47fb-a5fb-1a3acb30391b" src="https://github.com/user-attachments/assets/4ee2a964-d878-4824-8b2f-7ca4b9b78b79" />
+
 
 ## 🚀 快速开始
 
