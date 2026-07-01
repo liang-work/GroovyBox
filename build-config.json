@@ -24,8 +24,7 @@
     "info_plist": {
       "NSAppleMusicUsageDescription": "GroovyBox needs access to your music library to play songs.",
       "NSDocumentsFolderUsageDescription": "GroovyBox needs access to import music files from your documents.",
-      "UIBackgroundModes": ["audio", "fetch"],
-      "BGTaskSchedulerPermittedIdentifiers": ["$(PRODUCT_BUNDLE_IDENTIFIER)"]
+      "UIBackgroundModes": ["audio"]
     }
   },
   "build": {
