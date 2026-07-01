@@ -85,6 +85,10 @@ class GroovyBoxApp:
             page.window.min_height = 300
         except Exception:
             pass
+        try:
+            page.window.full_screen = True
+        except Exception:
+            pass
 
         # Navigate to the library screen as the initial view
         page.run_task(page.push_route, "/library")
