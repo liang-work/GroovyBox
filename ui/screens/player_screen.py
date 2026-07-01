@@ -425,6 +425,23 @@ class PlayerScreen(ft.Container):
         Returns:
             A Row with volume icon and slider.
         """
+        pw = self._page.width or 400
+        is_desktop = pw > 800
+        if is_desktop:
+            vol_w = max(80, int((min(400, pw - 80)) * 0.85))
+            return ft.Row(
+                tight=True,
+                controls=[
+                    ft.Icon(ft.Icons.VOLUME_UP, size=20, color=ft.Colors.with_opacity(0.7, ft.Colors.ON_SURFACE)),
+                    ft.Container(
+                        width=vol_w,
+                        content=ft.Slider(
+                            value=player.volume * 100, min=0, max=100, divisions=100,
+                            on_change=lambda e: _safe_volume(e, player),
+                        ),
+                    ),
+                ],
+            )
         return ft.Row(
             tight=False,
             controls=[
@@ -503,27 +520,23 @@ class PlayerScreen(ft.Container):
 
         progress = self._build_progress_slider(player)
 
-        col = ft.Column(
-            expand=True,
-            alignment=ft.MainAxisAlignment.CENTER,
-            horizontal_alignment=ft.CrossAxisAlignment.STRETCH,
-            controls=[
-                ft.Container(alignment=ft.Alignment(0, 0), content=art),
-                ft.Container(height=12),
-                ft.Container(alignment=ft.Alignment(0, 0), content=ft.Text(
-                    title, size=18 if compact else 22, weight=ft.FontWeight.BOLD,
-                    text_align=ft.TextAlign.CENTER, max_lines=1, overflow=ft.TextOverflow.ELLIPSIS,
-                )),
-                ft.Container(alignment=ft.Alignment(0, 0), content=ft.Text(
-                    artist, size=14 if compact else 16, color=ft.Colors.PRIMARY,
-                    text_align=ft.TextAlign.CENTER,
-                )),
-                ft.Container(height=12),
-                progress,
-                ft.Container(alignment=ft.Alignment(0, 0), content=ctrl_row),
-                ft.Container(
-                    content=ft.Row(
-                        tight=False,
+        if is_desktop:
+            col = ft.Column(
+                expand=True,
+                alignment=ft.MainAxisAlignment.CENTER,
+                horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+                controls=[
+                    ft.Container(alignment=ft.Alignment(0, 0), content=art),
+                    ft.Container(height=12),
+                    ft.Text(title, size=18 if compact else 22, weight=ft.FontWeight.BOLD,
+                            text_align=ft.TextAlign.CENTER, max_lines=1, overflow=ft.TextOverflow.ELLIPSIS),
+                    ft.Text(artist, size=14 if compact else 16, color=ft.Colors.PRIMARY,
+                            text_align=ft.TextAlign.CENTER),
+                    ft.Container(height=12),
+                    progress,
+                    ctrl_row,
+                    ft.Row(
+                        tight=True,
                         controls=[
                             ft.IconButton(
                                 icon=ft.Icons.LYRICS,
@@ -531,13 +544,48 @@ class PlayerScreen(ft.Container):
                                 on_click=lambda e: self._show_lyrics_menu(track, player),
                                 tooltip=tr("lyricsOptions"),
                             ),
-                            ft.Container(expand=True, content=self._build_volume_row(player)),
+                            self._build_volume_row(player),
                         ],
                     ),
-                ),
-                ft.Container(height=16),
-            ],
-        )
+                    ft.Container(height=16),
+                ],
+            )
+        else:
+            col = ft.Column(
+                expand=True,
+                alignment=ft.MainAxisAlignment.CENTER,
+                horizontal_alignment=ft.CrossAxisAlignment.STRETCH,
+                controls=[
+                    ft.Container(alignment=ft.Alignment(0, 0), content=art),
+                    ft.Container(height=12),
+                    ft.Container(alignment=ft.Alignment(0, 0), content=ft.Text(
+                        title, size=18 if compact else 22, weight=ft.FontWeight.BOLD,
+                        text_align=ft.TextAlign.CENTER, max_lines=1, overflow=ft.TextOverflow.ELLIPSIS,
+                    )),
+                    ft.Container(alignment=ft.Alignment(0, 0), content=ft.Text(
+                        artist, size=14 if compact else 16, color=ft.Colors.PRIMARY,
+                        text_align=ft.TextAlign.CENTER,
+                    )),
+                    ft.Container(height=12),
+                    progress,
+                    ft.Container(alignment=ft.Alignment(0, 0), content=ctrl_row),
+                    ft.Container(
+                        content=ft.Row(
+                            tight=False,
+                            controls=[
+                                ft.IconButton(
+                                    icon=ft.Icons.LYRICS,
+                                    icon_size=20,
+                                    on_click=lambda e: self._show_lyrics_menu(track, player),
+                                    tooltip=tr("lyricsOptions"),
+                                ),
+                                ft.Container(expand=True, content=self._build_volume_row(player)),
+                            ],
+                        ),
+                    ),
+                    ft.Container(height=16),
+                ],
+            )
 
         return ft.Container(
             expand=True,
@@ -557,8 +605,34 @@ class PlayerScreen(ft.Container):
         Returns:
             A Column with slider/loading bar and position/duration labels.
         """
+        is_desktop = (self._page.width or 400) > 800
+        bar_width = min(400, self._page.width - (64 if not is_desktop else 80)) if self._page.width else 400
         if player.loading or self._pos_slider is None and player.duration_ms <= 0:
             self._pos_slider = None
+            if is_desktop:
+                return ft.Column(
+                    tight=True,
+                    horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+                    controls=[
+                        ft.Container(
+                            width=bar_width,
+                            height=24,
+                            content=ft.ProgressBar(
+                                color=ft.Colors.PRIMARY,
+                                bgcolor=ft.Colors.with_opacity(0.12, ft.Colors.PRIMARY),
+                            ),
+                        ),
+                        ft.Row(
+                            width=bar_width,
+                            tight=True,
+                            controls=[
+                                ft.Text("--:--", size=12),
+                                ft.Container(expand=True),
+                                ft.Text("--:--", size=12),
+                            ],
+                        ),
+                    ],
+                )
             return ft.Column(
                 tight=True,
                 controls=[
@@ -588,11 +662,13 @@ class PlayerScreen(ft.Container):
         def _on_seek_end(e: ft.ControlEvent) -> None:
             _safe_seek(e, player)
             self._seeking = False
+        slider_width = bar_width if is_desktop else None
         self._pos_slider = ft.Slider(
             value=float(pos_val),
             min=0,
             max=float(max_val),
             divisions=1000,
+            width=slider_width,
             height=24,
             active_color=ft.Colors.PRIMARY,
             inactive_color=ft.Colors.with_opacity(0.15, ft.Colors.PRIMARY),
@@ -604,6 +680,23 @@ class PlayerScreen(ft.Container):
         )
         self._pos_text = ft.Text(format_duration(pos_val), size=12)
         self._dur_text = ft.Text(format_duration(player.duration_ms), size=12)
+        if is_desktop:
+            return ft.Column(
+                tight=True,
+                horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+                controls=[
+                    self._pos_slider,
+                    ft.Row(
+                        width=bar_width,
+                        tight=True,
+                        controls=[
+                            self._pos_text,
+                            ft.Container(expand=True),
+                            self._dur_text,
+                        ],
+                    ),
+                ],
+            )
         return ft.Column(
             tight=True,
             controls=[
