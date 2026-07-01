@@ -8,8 +8,6 @@ scanning, and track management operations. Supports both synchronous
 
 import asyncio
 import os
-import shutil
-import tempfile
 from typing import List, Optional
 import threading
 from data.db import get_connection, get_app_dir
@@ -62,27 +60,6 @@ def _collect_music_files(directory_path: str, recursive: bool) -> List[str]:
     return files
 
 
-def _ensure_permanent(path: str) -> str:
-    temp_root = tempfile.gettempdir()
-    if not path.startswith(temp_root):
-        return path
-    music_dir = os.path.join(get_app_dir(), "music")
-    os.makedirs(music_dir, exist_ok=True)
-    basename = os.path.basename(path)
-    dest = os.path.join(music_dir, basename)
-    counter = 1
-    while os.path.exists(dest):
-        name, ext = os.path.splitext(basename)
-        dest = os.path.join(music_dir, f"{name}_{counter}{ext}")
-        counter += 1
-    try:
-        shutil.copy2(path, dest)
-        logger.debug("Copied %s -> %s", path, dest)
-        return dest
-    except Exception:
-        return path
-
-
 def _do_import(file_paths: List[str], conn) -> int:
     existing = {
         r["path"] for r in conn.execute(
@@ -98,7 +75,6 @@ def _do_import(file_paths: List[str], conn) -> int:
 
     imported = 0
     for path in new_paths:
-        path = _ensure_permanent(path)
         if not os.path.isfile(path):
             continue
         try:
