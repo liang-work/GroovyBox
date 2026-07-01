@@ -1545,7 +1545,8 @@ class PlayerScreen(ft.Container):
 
         async def _do_scroll():
             try:
-                await column.scroll_to(index=target_idx, duration=duration)
+                offset = target_idx * 32
+                await column.scroll_to(offset=offset, duration=duration)
             except Exception:
                 pass
             self._lyrics_programmatic_scroll = False
@@ -1618,9 +1619,8 @@ class PlayerScreen(ft.Container):
 
             lyrics_column = ft.Column(
                 expand=True,
-                scroll=ft.ScrollMode.HIDDEN,
+                scroll=ft.ScrollMode.AUTO,
                 on_scroll=self._on_flat_lyrics_scroll,
-                alignment=ft.MainAxisAlignment.CENTER,
                 horizontal_alignment=ft.CrossAxisAlignment.CENTER,
                 controls=controls,
             )
@@ -1886,7 +1886,7 @@ class PlayerScreen(ft.Container):
         """
         return ft.Column(
             expand=True,
-            scroll=ft.ScrollMode.HIDDEN,
+            scroll=ft.ScrollMode.AUTO,
             controls=[
                 ft.Container(
                     padding=ft.Padding(32, 4, 32, 4),
