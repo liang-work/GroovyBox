@@ -6,11 +6,12 @@ callbacks, and UI synchronization between screens.
 """
 
 import json
-from typing import List
+from typing import List, Optional
 import flet as ft
 from logic.logger import logger
 from logic.localize import tr, load_locale
 from data import db
+from data import track_repository as trepo
 from logic.metadata_service import get_metadata
 from logic.key_bindings import DEFAULT_KEY_BINDINGS
 
@@ -78,15 +79,15 @@ class GroovyBoxApp:
         # Global keyboard shortcuts for desktop
         page.on_keyboard_event = self._on_global_keyboard
 
+        # Check for missing track files on startup (async, non-blocking)
+        self._missing_count = 0
+        page.run_task(self._check_missing_tracks_on_startup)
+
         # Configure window properties
         page.title = tr("appName")
         try:
             page.window.min_width = 400
             page.window.min_height = 300
-        except Exception:
-            pass
-        try:
-            page.window.full_screen = True
         except Exception:
             pass
 
@@ -104,6 +105,35 @@ class GroovyBoxApp:
                 self.page.update()
         except Exception:
             pass
+
+    async def _check_missing_tracks_on_startup(self):
+        missing = trepo.get_missing_tracks()
+        self._missing_count = len(missing)
+        if self._missing_count > 0:
+            logger.warning(f"Found {self._missing_count} missing track(s) on startup")
+            msg = tr("missingTracksFound").format(self._missing_count)
+
+            def do_remove(e):
+                self.page.pop_dialog()
+                self._remove_missing_tracks()
+
+            dlg = ft.AlertDialog(
+                title=ft.Text(tr("missingTracks")),
+                content=ft.Text(msg),
+                actions=[
+                    ft.TextButton(tr("ignore"), on_click=lambda e: self.page.pop_dialog()),
+                    ft.FilledButton(tr("removeAllMissing"), on_click=do_remove),
+                ],
+            )
+            self.page.show_dialog(dlg)
+            self.page.update()
+
+    def _remove_missing_tracks(self):
+        missing = trepo.get_missing_tracks()
+        ids = [t.id for t in missing]
+        trepo.delete_tracks(ids)
+        self._missing_count = 0
+        self._reload_ui()
 
     def _load_locale(self):
         """Load the user's preferred language from settings."""

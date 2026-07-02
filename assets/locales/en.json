@@ -227,5 +227,14 @@
   "exitPlayer": "Exit Player",
   "useagreement": "Open Source Software License",
   "openSourceRepo": "Open Source Repository",
-  "feedback": "Feedback & Issues"
+  "feedback": "Feedback & Issues",
+  "missingTracks": "Missing Tracks",
+  "missingTracksFound": "Found {0} track(s) with missing files. They may have been deleted or moved. Would you like to remove them?",
+  "removeAllMissing": "Remove All Missing",
+  "ignore": "Ignore",
+  "missingTracksBanner": "{0} track(s) not found. Re-import or remove them.",
+  "repairLibrary": "Repair Library",
+  "repairLibraryDescription": "Find and remove tracks whose files are no longer accessible.",
+  "repairLibraryDone": "Repair complete: removed {0} missing track(s).",
+  "noMissingTracks": "✓ No missing tracks"
 }

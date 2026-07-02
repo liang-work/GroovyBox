@@ -4,6 +4,7 @@ This module displays the detail view for a specific album, showing
 the album art, play controls, and a list of tracks in the album.
 """
 
+import os
 import flet as ft
 from data import playlist_repository as prepo
 from logic.localize import tr
@@ -93,6 +94,7 @@ class AlbumDetailView(ft.Container):
                                 leading=ft.Text(str(i + 1).zfill(2), color=ft.Colors.GREY, size=14),
                                 on_tap=lambda e, idx=i: self._play_at(tracks, idx),
                                 padding=4,
+                                is_missing=not os.path.isfile(t.path),
                             )
                             for i, t in enumerate(tracks)
                         ] + [ft.Container(height=80)],

@@ -193,6 +193,37 @@ def SettingsScreen(page: ft.Page) -> ft.Column:
         )
         page.show_dialog(dlg)
 
+    def repair_library(e):
+        missing = trepo.get_missing_tracks()
+        if not missing:
+            page.show_dialog(ft.SnackBar(ft.Text(tr("noMissingTracks"))))
+            page.update()
+            return
+
+        def confirm_yes(e):
+            ids = [t.id for t in missing]
+            trepo.delete_tracks(ids)
+            page.pop_dialog()
+            page.show_dialog(ft.SnackBar(ft.Text(tr("repairLibraryDone").format(len(ids)))))
+            refresh()
+
+        def confirm_no(e):
+            page.pop_dialog()
+            refresh()
+
+        names = "\n".join(t.title or os.path.basename(t.path) for t in missing[:10])
+        if len(missing) > 10:
+            names += f"\n... (+{len(missing) - 10} more)"
+        dlg = ft.AlertDialog(
+            title=ft.Text(tr("repairLibrary")),
+            content=ft.Text(tr("missingTracksFound").format(len(missing)) + "\n\n" + names),
+            actions=[
+                ft.TextButton(tr("cancel"), on_click=confirm_no),
+                ft.FilledButton(tr("removeAllMissing"), on_click=confirm_yes),
+            ],
+        )
+        page.show_dialog(dlg)
+
     with db.get_connection() as conn:
         folders = conn.execute("SELECT * FROM watch_folders ORDER BY added_at").fetchall()
 
@@ -495,6 +526,14 @@ def SettingsScreen(page: ft.Page) -> ft.Column:
                     controls=[
                         ft.Text(tr("databaseManagement"), size=18, weight=ft.FontWeight.BOLD),
                         ft.Text(tr("databaseManagementDescription"), size=12, color=ft.Colors.GREY),
+                        ft.ListTile(
+                            title=ft.Text(tr("repairLibrary")),
+                            subtitle=ft.Text(tr("repairLibraryDescription"), size=11, color=ft.Colors.GREY),
+                            trailing=ft.FilledButton(
+                                tr("repairLibrary"),
+                                on_click=repair_library,
+                            ),
+                        ),
                         ft.ListTile(
                             title=ft.Text(tr("resetTrackDatabase")),
                             trailing=ft.FilledButton(

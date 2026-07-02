@@ -1944,6 +1944,7 @@ class PlayerScreen(ft.Container):
                 show_trailing=True,
                 trailing_icon=ft.Icons.DELETE,
                 on_trailing_pressed=lambda e, idx=i: self._remove_from_queue(idx),
+                is_missing=not os.path.isfile(t.path),
             )
             tracks.append(tile)
 

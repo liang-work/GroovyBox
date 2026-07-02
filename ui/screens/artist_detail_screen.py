@@ -6,6 +6,7 @@ Provides options for track management including add to playlist,
 edit metadata, and delete.
 """
 
+import os
 import flet as ft
 from data import playlist_repository as prepo
 from logic.localize import tr
@@ -60,6 +61,7 @@ def ArtistDetailScreen(page: ft.Page, artist_name: str) -> ft.Control:
         tile = TrackTile(
             track=t,
             show_trailing=True,
+            is_missing=not os.path.isfile(t.path),
             on_tap=lambda e, trk=t: _play_track(trk),
             on_long_press=lambda e, trk=t: _show_options(trk),
             on_trailing_pressed=lambda e, trk=t: _show_options(trk),

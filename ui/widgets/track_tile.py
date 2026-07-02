@@ -24,6 +24,7 @@ def TrackTile(
     leading: Optional[ft.Control] = None,
     padding: float = 8,
     trailing_icon: str = ft.Icons.MORE_VERT,
+    is_missing: bool = False,
 ) -> ft.Container:
     """Create a track list item widget.
     
@@ -41,6 +42,7 @@ def TrackTile(
         leading: Optional leading control (e.g., track number).
         padding: Vertical padding override for the tile.
         trailing_icon: Icon to use for the trailing button.
+        is_missing: Whether the track file is missing on disk.
     
     Returns:
         A Container widget with the styled track tile.
@@ -49,6 +51,10 @@ def TrackTile(
     bg = ft.Colors.with_opacity(0.15, ft.Colors.PRIMARY) if is_playing else ft.Colors.TRANSPARENT
     title_color = ft.Colors.PRIMARY if is_playing else ft.Colors.ON_SURFACE
     title_weight = ft.FontWeight.BOLD if is_playing else ft.FontWeight.NORMAL
+
+    if is_missing:
+        title_color = ft.Colors.with_opacity(0.4, ft.Colors.ON_SURFACE)
+        bg = ft.Colors.with_opacity(0.05, ft.Colors.ERROR)
 
     # Build subtitle: "Artist • Duration"
     subtitle = f"{track.artist or tr('unknownArtist', 'Unknown Artist')} \u2022 {format_duration(track.duration)}"

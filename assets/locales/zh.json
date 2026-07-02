@@ -228,5 +228,14 @@
   "exitPlayer": "退出播放器",
   "useagreement":"开源软件使用协议",
   "openSourceRepo": "开源仓库",
-  "feedback": "问题反馈"
+  "feedback": "问题反馈",
+  "missingTracks": "缺失的曲目",
+  "missingTracksFound": "发现 {0} 首曲目的文件已缺失，可能已被删除或移动。是否要移除它们？",
+  "removeAllMissing": "移除所有缺失",
+  "ignore": "忽略",
+  "missingTracksBanner": "{0} 首曲目文件找不到。请重新导入或移除它们。",
+  "repairLibrary": "修复曲库",
+  "repairLibraryDescription": "扫描并移除文件已无法访问的曲目。",
+  "repairLibraryDone": "修复完成：已移除 {0} 首缺失的曲目。",
+  "noMissingTracks": "✓ 没有缺失的曲目"
 }

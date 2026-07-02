@@ -8,9 +8,10 @@ scanning, and track management operations. Supports both synchronous
 
 import asyncio
 import os
+import shutil
 from typing import List, Optional
 import threading
-from data.db import get_connection, get_app_dir
+from data.db import get_connection, get_app_dir, is_mobile
 from logic.logger import logger
 from data.models import Track
 from logic.metadata_service import get_metadata, SUPPORTED_EXTENSIONS
@@ -20,6 +21,12 @@ AUDIO_EXTENSIONS = {"mp3", "m4a", "wav", "flac", "aac", "ogg", "wma", "m4p", "ai
 
 # Supported lyrics file extensions for batch import
 LYRICS_EXTENSIONS = {"lrc", "srt", "txt"}
+
+
+def _get_music_dir() -> str:
+    music_dir = os.path.join(get_app_dir(), "music")
+    os.makedirs(music_dir, exist_ok=True)
+    return music_dir
 
 
 def watch_all_tracks() -> List[Track]:
@@ -60,6 +67,28 @@ def _collect_music_files(directory_path: str, recursive: bool) -> List[str]:
     return files
 
 
+def _copy_to_music_dir(src: str) -> str:
+    music_dir = _get_music_dir()
+    filename = os.path.basename(src)
+    dest = os.path.join(music_dir, filename)
+    if not os.path.exists(dest):
+        try:
+            shutil.copy2(src, dest)
+            return dest
+        except Exception:
+            return src
+    name, ext = os.path.splitext(filename)
+    for counter in range(1, 999):
+        alt = os.path.join(music_dir, f"{name}_{counter}{ext}")
+        if not os.path.exists(alt):
+            try:
+                shutil.copy2(src, alt)
+                return alt
+            except Exception:
+                return src
+    return src
+
+
 def _do_import(file_paths: List[str], conn) -> int:
     existing = {
         r["path"] for r in conn.execute(
@@ -69,6 +98,7 @@ def _do_import(file_paths: List[str], conn) -> int:
         ).fetchall()
     }
     new_paths = [p for p in file_paths if p not in existing]
+    mobile = is_mobile()
 
     art_dir = os.path.join(get_app_dir(), "art")
     os.makedirs(art_dir, exist_ok=True)
@@ -81,6 +111,8 @@ def _do_import(file_paths: List[str], conn) -> int:
             meta = get_metadata(path)
             filename = os.path.basename(path)
             title = meta.title or os.path.splitext(filename)[0]
+
+            final_path = _copy_to_music_dir(path) if mobile else path
 
             art_path = None
             if meta.art_bytes:
@@ -98,7 +130,7 @@ def _do_import(file_paths: List[str], conn) -> int:
                    (title, artist, album, duration, path, art_uri, lyrics_offset)
                    VALUES (?, ?, ?, ?, ?, ?, 0)""",
                 (title, meta.artist, meta.album,
-                 meta.duration, path, art_path),
+                 meta.duration, final_path, art_path),
             )
             conn.commit()
             imported += 1
@@ -206,6 +238,38 @@ def clear_all_tracks():
     with get_connection() as conn:
         conn.execute("DELETE FROM tracks")
         conn.commit()
+
+
+def get_missing_tracks() -> List[Track]:
+    missing: List[Track] = []
+    with get_connection() as conn:
+        rows = conn.execute("SELECT * FROM tracks").fetchall()
+    for r in rows:
+        track = _row_to_track(r)
+        if not os.path.isfile(track.path):
+            missing.append(track)
+    return missing
+
+
+def delete_tracks(track_ids: List[int]):
+    if not track_ids:
+        return
+    placeholders = ",".join("?" * len(track_ids))
+    with get_connection() as conn:
+        for tid in track_ids:
+            row = conn.execute("SELECT art_uri FROM tracks WHERE id=?", (tid,)).fetchone()
+            if row and row["art_uri"] and os.path.isfile(row["art_uri"]):
+                try:
+                    os.remove(row["art_uri"])
+                except Exception:
+                    pass
+        conn.execute(f"DELETE FROM tracks WHERE id IN ({placeholders})", track_ids)
+        conn.commit()
+
+
+def count_tracks() -> int:
+    with get_connection() as conn:
+        return conn.execute("SELECT COUNT(*) FROM tracks").fetchone()[0]
 
 
 def _row_to_track(row) -> Track:

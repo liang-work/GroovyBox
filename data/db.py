@@ -18,7 +18,7 @@ DB_PATH = None
 _SETTING_CACHE: dict = {}
 
 
-def _is_mobile() -> bool:
+def is_mobile() -> bool:
     if "ANDROID_ROOT" in os.environ:
         return True
     if os.environ.get("FLET_APP_DATA_DIR"):
@@ -30,6 +30,10 @@ def _is_mobile() -> bool:
         return False
     except (OSError, PermissionError):
         return True
+
+
+# Backward compat alias
+_is_mobile = is_mobile
 
 
 def get_app_data_dir() -> str:

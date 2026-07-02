@@ -140,6 +140,7 @@ class PlaylistDetailView(ft.Container):
                 leading=ft.Text(str(i + 1).zfill(2), color=ft.Colors.GREY, size=14),
                 on_tap=lambda e, idx=i: self._play_at(tracks, idx),
                 padding=4,
+                is_missing=not os.path.isfile(t.path),
             )
             if self._selecting:
                 tile = ft.Container(

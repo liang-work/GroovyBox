@@ -20,6 +20,7 @@ from ui.widgets.track_tile import TrackTile
 from ui.widgets.universal_image import UniversalImage
 from ui.widgets.track_actions import show_track_details, show_edit_dialog
 from logic.logger import logger
+from data.db import is_mobile
 
 
 class LibraryScreen(ft.Column):
@@ -189,6 +190,9 @@ class LibraryScreen(ft.Column):
 
         is_sel_mode = bool(self.selected_ids)
 
+        missing_tracks = [t for t in all_tracks if not os.path.isfile(t.path)]
+        missing_count = len(missing_tracks)
+
         # Build search hint text with track counts
         search_hint = tr("searchTracks")
         if all_tracks:
@@ -224,12 +228,46 @@ class LibraryScreen(ft.Column):
                 ),
             )
 
+        # Build missing tracks banner
+        missing_banner = None
+        if missing_count > 0 and not is_sel_mode:
+            def do_remove_missing(e):
+                ids = [t.id for t in missing_tracks]
+                trepo.delete_tracks(ids)
+                self._build()
+                self.update()
+
+            missing_banner = ft.Container(
+                bgcolor=ft.Colors.with_opacity(0.1, ft.Colors.ERROR),
+                padding=ft.Padding(12, 6, 12, 6),
+                content=ft.Row(
+                    tight=True,
+                    controls=[
+                        ft.Icon(ft.Icons.WARNING_AMBER, size=18, color=ft.Colors.ERROR),
+                        ft.Container(width=8),
+                        ft.Text(
+                            tr("missingTracksBanner").format(str(missing_count)),
+                            size=12, color=ft.Colors.ERROR, expand=True,
+                        ),
+                        ft.FilledButton(
+                            tr("removeAllMissing"),
+                            on_click=do_remove_missing,
+                            height=28,
+                        ),
+                    ],
+                ),
+            )
+
         # Build track list or empty state
         if not tracks:
-            main = ft.Container(
-                expand=True,
-                alignment=ft.Alignment(0, 0),
-                content=ft.Text(tr("noTracksYet"), color=ft.Colors.GREY),
+            main = ft.ListView(
+                spacing=2,
+                padding=ft.Padding(0, 120 if missing_banner else 72, 0, 16),
+                controls=[ft.Container(
+                    expand=True,
+                    alignment=ft.Alignment(0, 0),
+                    content=ft.Text(tr("noTracksYet"), color=ft.Colors.GREY),
+                )],
             )
         elif is_sel_mode:
             main = ft.ListView(
@@ -240,13 +278,17 @@ class LibraryScreen(ft.Column):
         else:
             main = ft.ListView(
                 spacing=2,
-                padding=ft.Padding(0, 72, 0, 16),
+                padding=ft.Padding(0, 100 if missing_banner else 72, 0, 16),
                 controls=self._build_track_tiles(tracks),
             )
 
+        overlay_controls = [ft.Container(top=0, left=0, right=0, content=top_bar)]
+        if missing_banner:
+            overlay_controls.append(ft.Container(top=44, left=0, right=0, content=missing_banner))
+
         return ft.Stack(
             expand=True,
-            controls=[main, ft.Container(top=0, left=0, right=0, content=top_bar)],
+            controls=[main, *overlay_controls],
         )
 
     def _build_selection_bar(self):
@@ -420,6 +462,7 @@ class LibraryScreen(ft.Column):
             tile = TrackTile(
                 track=t,
                 show_trailing=True,
+                is_missing=not os.path.isfile(t.path),
                 on_tap=lambda e, trk=t: self._play_track(trk),
                 on_long_press=lambda e, trk=t: self._toggle_select(trk.id),
                 on_trailing_pressed=lambda e, trk=t: self._show_track_options(trk),
@@ -441,13 +484,16 @@ class LibraryScreen(ft.Column):
         self._sel_tile_refs.clear()
         for t in tracks:
             is_sel = t.id in self.selected_ids
+            is_missing = not os.path.isfile(t.path)
             checkbox = ft.Checkbox(
                 value=is_sel,
                 label=t.title,
                 on_change=lambda e, tid=t.id: self._toggle_select(tid),
             )
             container = ft.Container(
-                bgcolor=ft.Colors.with_opacity(0.1, ft.Colors.PRIMARY) if is_sel else ft.Colors.TRANSPARENT,
+                bgcolor=ft.Colors.with_opacity(0.1, ft.Colors.ERROR) if is_missing else (
+                    ft.Colors.with_opacity(0.1, ft.Colors.PRIMARY) if is_sel else ft.Colors.TRANSPARENT
+                ),
                 border_radius=8,
                 content=checkbox,
                 padding=ft.Padding(16, 4, 16, 4),
